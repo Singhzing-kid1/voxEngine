@@ -117,16 +117,59 @@ int main(){
     vec3 cameraFront = vec3(0.0f, 0.0f, -1.0f);
     vec3 cameraUp = vec3(0.0f, 1.0f, 0.0f);
 
+    float yaw = -90.0f;
+    float pitch = 0.0f;
+    float lastX = 0.0f;
+    float lastY = 0.0f;
+    float fov = 45.0f;
+    bool lockCam = false;
+
+    float accumX = 0.0f;
+    float accumY = 0.0f;
+    float relX, relY;
+    float sensitivity = 0.005f;
+    float xOffset, yOffset;
+    int mouseX, mouseY;
+
+
+
     float cameraSpeed = 0.05f;
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    SDL_SetWindowGrab(window, SDL_TRUE);
 
     while(!quit){
         float currentFrame = SDL_GetTicks()/1000.0f;
         deltaTime = currentFrame - lastFrame;
-        cout << deltaTime << endl;
         lastFrame = currentFrame;
-        
+
+        xOffset = accumX - lastX;
+        yOffset = lastY - accumY;
+
+        lastX = accumX;
+        lastY = accumY;
+
+        xOffset *= sensitivity;
+        yOffset *= sensitivity;
+
+        yaw += xOffset;
+        pitch += yOffset;
+
+        cout << "accumX: " << accumX << ", accumY: " << accumY << ", lastX: " << lastX << ", lastY: " << lastY << ", x off: " << xOffset << ", y off: " << yOffset << ", yaw: " << yaw << ", pitch: " << pitch << endl;
+
+        if (pitch > 89.0f){
+            pitch = 89.0f;
+        }
+
+        if (pitch < -89.0f){
+            pitch = -89.0f;
+        }
+
+        cameraFront.x = cos(radians(yaw)) * cos(radians(pitch));
+        cameraFront.y = sin(radians(pitch));
+        cameraFront.z = sin(radians(yaw)) * cos(radians(pitch));
+        cameraFront = normalize(cameraFront);
+
         while(SDL_PollEvent(&e)){
             cameraSpeed = 2.5f * deltaTime;
             if(e.type == SDL_QUIT){
@@ -150,7 +193,25 @@ int main(){
                     cameraPos -= cameraSpeed * normalize(cross(cameraFront, cameraUp));
                 }
             }
+
+            if(e.type == SDL_MOUSEMOTION){
+                relX = e.motion.xrel;
+                relY = e.motion.yrel;
+
+                accumX += relX;
+                accumY += relY;
+
+                SDL_GetMouseState(&mouseX, &mouseY);
+                float newMouseX = mouseX + relX;
+                float newMouseY = mouseY + relY;
+
+                if(newMouseX < 0 || newMouseX > 640 || newMouseY < 0 || newMouseY > 480){
+                    SDL_WarpMouseInWindow(window, 640 / 2, 480 / 2);
+                }
+            }
         }
+
+        //cout << "x: " << accumX << ", y: " << accumY << endl; 
 
         view = lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
