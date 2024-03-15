@@ -105,6 +105,13 @@ int main(int argc, char* argv[]){
 
     float cameraSpeed = 0.05f;
 
+    float accumX, accumY;
+    float lastX = 0.0, lastY = 0.0;
+    int mouseX, mouseY;
+    float xOffset = 0.0, yOffset = 0.0;
+    float sensitivity = 0.1;
+    float yaw, pitch;
+
     SDL_SetWindowGrab(window, SDL_TRUE);
 
     while(!quit){
@@ -146,19 +153,19 @@ int main(int argc, char* argv[]){
                     quit = true;
                 }
 
-                if(e.key.keysym.sym == SDLK_w){
+                if(e.key.keysym.scancode == SDL_SCANCODE_W){
                     mainCam.moveCamera("ws", cameraSpeed);
                 }
 
-                if(e.key.keysym.sym == SDLK_s){
+                if(e.key.keysym.scancode == SDL_SCANCODE_S){
                     mainCam.moveCamera("ws", -cameraSpeed);
                 }
 
-                if(e.key.keysym.sym == SDLK_d){
+                if(e.key.keysym.scancode == SDL_SCANCODE_D){
                     mainCam.moveCamera("ad", cameraSpeed);
                 }
 
-                if(e.key.keysym.sym == SDLK_a){
+                if(e.key.keysym.sym == SDL_SCANCODE_A){
                     mainCam.moveCamera("ad", -cameraSpeed);
                 }
 
