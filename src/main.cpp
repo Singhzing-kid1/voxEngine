@@ -3,7 +3,7 @@
 float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
 
-int main(){
+int main(int argc, char* argv[]){
     SDL_Window* window;
     SDL_GLContext context;
 
@@ -12,23 +12,12 @@ int main(){
         return 1;
     }
 
-    window = SDL_CreateWindow("v0.0.1", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    window = SDL_CreateWindow("v0.0.2", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, HEIGHT, WIDTH, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 
     if(window == nullptr){
         cout << "SDL could not create window. Error: " << SDL_GetError();
         return 1;
     }
-
-    #ifdef _WIN32
-    SDL_SysWMinfo info;
-    SDL_VERSION(&info.version);
-    if (!SDL_GetWindowWMInfo(window, &info)) {
-        cout << "cant get window WM info: " << SDL_GetError();
-        return 1;
-    }
-
-    HWND hwnd = info.info.win.window;
-    #endif
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
@@ -104,38 +93,18 @@ int main(){
 
     glEnable(GL_DEPTH_TEST);
 
+    Camera mainCam(45.0f, (float)HEIGHT, (float)WIDTH, 0.1f, 100.0f, vec3(0.0f, 0.0f, -3.0f));
+
     mat4 model = mat4(1.0f);
-    model = rotate(model, radians(30.0f), vec3(1.0f, 0.0f, 0.0f));
 
     mat4 view = mat4(1.0f);
-    view = translate(view, vec3(0.0f, 0.0f, -3.0f));
+    view = translate(view, mainCam.getPosVec());
 
     mat4 projection;
-    projection = perspective(radians(45.0f), 800.0f/600.0f, 0.1f, 100.0f);
-
-    vec3 cameraPos = vec3(0.0f, 0.0f, 3.0f);
-    vec3 cameraFront = vec3(0.0f, 0.0f, -1.0f);
-    vec3 cameraUp = vec3(0.0f, 1.0f, 0.0f);
-
-    float yaw = -90.0f;
-    float pitch = 0.0f;
-    float lastX = 0.0f;
-    float lastY = 0.0f;
-    float fov = 45.0f;
-    bool lockCam = false;
-
-    float accumX = 0.0f;
-    float accumY = 0.0f;
-    float relX, relY;
-    float sensitivity = 0.005f;
-    float xOffset, yOffset;
-    int mouseX, mouseY;
-
-
+    projection = perspective(mainCam.getFov(), mainCam.getAspect(), mainCam.getNear(), mainCam.getFar());
 
     float cameraSpeed = 0.05f;
 
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     SDL_SetWindowGrab(window, SDL_TRUE);
 
     while(!quit){
@@ -155,65 +124,62 @@ int main(){
         yaw += xOffset;
         pitch += yOffset;
 
-        cout << "accumX: " << accumX << ", accumY: " << accumY << ", lastX: " << lastX << ", lastY: " << lastY << ", x off: " << xOffset << ", y off: " << yOffset << ", yaw: " << yaw << ", pitch: " << pitch << endl;
-
-        if (pitch > 89.0f){
+        if(pitch > 89.0f){
             pitch = 89.0f;
         }
-
-        if (pitch < -89.0f){
+        if(pitch < -89.0f){
             pitch = -89.0f;
         }
 
-        cameraFront.x = cos(radians(yaw)) * cos(radians(pitch));
-        cameraFront.y = sin(radians(pitch));
-        cameraFront.z = sin(radians(yaw)) * cos(radians(pitch));
-        cameraFront = normalize(cameraFront);
+        mainCam.setYaw(yaw);
+        mainCam.setPitch(pitch);
 
         while(SDL_PollEvent(&e)){
-            cameraSpeed = 2.5f * deltaTime;
+            cameraSpeed = 2.5 * deltaTime;
             if(e.type == SDL_QUIT){
                 quit = true;
             }
 
             if(e.type == SDL_KEYDOWN){
+
+                if(e.key.keysym.sym == SDLK_ESCAPE){
+                    quit = true;
+                }
+
                 if(e.key.keysym.sym == SDLK_w){
-                    cameraPos += cameraSpeed * cameraFront;
+                    mainCam.moveCamera("ws", cameraSpeed);
                 }
 
                 if(e.key.keysym.sym == SDLK_s){
-                    cameraPos -= cameraSpeed * cameraFront;
+                    mainCam.moveCamera("ws", -cameraSpeed);
                 }
 
                 if(e.key.keysym.sym == SDLK_d){
-                    cameraPos += cameraSpeed * normalize(cross(cameraFront, cameraUp));
+                    mainCam.moveCamera("ad", cameraSpeed);
                 }
 
                 if(e.key.keysym.sym == SDLK_a){
-                    cameraPos -= cameraSpeed * normalize(cross(cameraFront, cameraUp));
+                    mainCam.moveCamera("ad", -cameraSpeed);
                 }
+
             }
 
             if(e.type == SDL_MOUSEMOTION){
-                relX = e.motion.xrel;
-                relY = e.motion.yrel;
-
-                accumX += relX;
-                accumY += relY;
+                accumX -= e.motion.xrel;
+                accumY += e.motion.yrel;
 
                 SDL_GetMouseState(&mouseX, &mouseY);
-                float newMouseX = mouseX + relX;
-                float newMouseY = mouseY + relY;
+                float newMouseX = mouseX + e.motion.xrel;
+                float newMouseY = mouseY + e.motion.yrel;
 
-                if(newMouseX < 0 || newMouseX > 640 || newMouseY < 0 || newMouseY > 480){
-                    SDL_WarpMouseInWindow(window, 640 / 2, 480 / 2);
+                if(newMouseX < WIDTH/2 || newMouseX > WIDTH/2 || newMouseY < HEIGHT/2 || newMouseY > HEIGHT/2){
+                    SDL_WarpMouseInWindow(window, HEIGHT/2, WIDTH/2);
                 }
             }
         }
+        mainCam.update();
 
-        //cout << "x: " << accumX << ", y: " << accumY << endl; 
-
-        view = lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        view = lookAt(mainCam.getPosVec(), mainCam.getFrontVec() + mainCam.getPosVec(), mainCam.getUpVec());
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -231,4 +197,6 @@ int main(){
         SDL_Delay(20);
         SDL_GL_SwapWindow(window);
     }
+
+    return 1;
 }
