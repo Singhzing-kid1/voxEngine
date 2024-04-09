@@ -46,14 +46,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-
-    - name: install dependencies
-      shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y glew glm sdl2
-        
-
+    
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
       id: strings
