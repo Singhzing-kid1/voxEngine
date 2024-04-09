@@ -34,9 +34,6 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
         choco install glew glm sdl2
-        
-    - name: Install project dependencies
-      run: npm install
 
     - name: Build
       run: npm run build
