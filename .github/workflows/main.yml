@@ -34,8 +34,11 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
         choco install glew glm sdl2
-
-    - name: Build
+        
+    - name: Configure with CMake
       run: |
-        cmake -DCMAKE_BUILD_TYPE=Release -S ${{ gihub.workspace }} -B ${{ github.workspace }}/build
-        cmake --build .${{ github.workspace }}/build
+        cmake -B build -S .
+        
+    - name: Build with CMake
+      run: |
+        cmake --build build
