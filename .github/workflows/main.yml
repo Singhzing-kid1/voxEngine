@@ -36,7 +36,6 @@ jobs:
         choco install glew glm sdl2
 
     - name: Build
-      run: npm run build
-
-    - name: Test
-      run: npm test
+      run: |
+        cmake -DCMAKE_BUILD_TYPE=Release -S ../.. -B ../../build
+        cmake --build ../../build
