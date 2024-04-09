@@ -37,4 +37,5 @@ jobs:
 
     - name: Build
       run: |
-        ls
+        cmake -DCMAKE_BUILD_TYPE=Release -S ./ -B ./build
+        cmake --build ./build
