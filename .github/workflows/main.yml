@@ -36,7 +36,7 @@ jobs:
         choco install glew glm sdl2
         
     - name: Install project dependencies
-      run: npm ci
+      run: npm install
 
     - name: Build
       run: npm run build
