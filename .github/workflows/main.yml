@@ -33,10 +33,8 @@ jobs:
     - name: Install Windows dependencies
       if: matrix.os == 'windows-latest'
       run: |
-        cd C:/msys64
-        dir
-        start mingw64.exe
-        cd ${{ github.workspace }}
+        shell: bash
+        pacman -S mingw-w64-SDL2 mingw-w64-glm mingw-w64-glew
         
     - name: Configure with CMake
       run: |
