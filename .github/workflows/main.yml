@@ -7,84 +7,85 @@ on:
     branches: [ "main" ]
 
 jobs:
+
   build:
-      runs-on: ${{ matrix.os }}
-      strategy:
-        matrix:
-          os: [ubuntu-latest, windows-latest]
-          node-version: [20.x]
-  
-      steps:
-      - uses: actions/checkout@v3
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-  
-      # Install dependencies for Linux
-      - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libglew-dev libglm-dev libsdl2-dev
-  
-      # Install dependencies for Windows
-      - name: Install Windows dependencies
-        if: matrix.os == 'windows-latest'
-        run: |
-          choco install glew glm sdl2
-          
-      - name: Configure with CMake
-        run: |
-          cmake -B build -S .
-          
-      - name: Build with CMake
-        run: |
-          cmake --build build
-  
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ matrix.os }}-build
-          path: build
-  
-    release:
-      needs: build
-      runs-on: ubuntu-latest
-      
-      steps:
-      - uses: actions/checkout@v3
-      
-      - name: Download Artifacts
-        uses: actions/download-artifact@v3
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node-version: [20.x]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    # Install dependencies for Linux
+    - name: Install Linux dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libglew-dev libglm-dev libsdl2-dev
+
+    # Install dependencies for Windows
+    - name: Install Windows dependencies
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install glew glm sdl2
         
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-          
-      - name: Upload Linux Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./ubuntu-latest-build/build.zip
-          asset_name: build-linux.zip
-          asset_content_type: application/zip
-          
-      - name: Upload Windows Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./windows-latest-build/build.zip
-          asset_name: build-windows.zip
-          asset_content_type: application/zip
+    - name: Configure with CMake
+      run: |
+        cmake -B build -S .
+        
+    - name: Build with CMake
+      run: |
+        cmake --build build
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.os }}-build
+        path: build
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Download Artifacts
+      uses: actions/download-artifact@v3
+      
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+        
+    - name: Upload Linux Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./ubuntu-latest-build/build.zip
+        asset_name: build-linux.zip
+        asset_content_type: application/zip
+        
+    - name: Upload Windows Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./windows-latest-build/build.zip
+        asset_name: build-windows.zip
+        asset_content_type: application/zip
