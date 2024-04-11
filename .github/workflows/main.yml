@@ -34,7 +34,8 @@ jobs:
       if: matrix.os == 'windows-latest'
       shell: bash
       run: |
-        pacman -S mingw-w64-SDL2 mingw-w64-glm mingw-w64-glew
+        sudo apt-get update
+        sudo apt-get install -y libglew-dev libglm-dev libsdl2-dev
         
     - name: Configure with CMake
       run: |
