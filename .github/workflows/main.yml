@@ -33,7 +33,7 @@ jobs:
     - name: Install Windows dependencies
       if: matrix.os == 'windows-latest'
       run: |
-        cd C:/mysys2
+        cd C:/msys64
         dir
         
     - name: Configure with CMake
