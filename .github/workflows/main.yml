@@ -34,6 +34,7 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
         choco install msys2
+        cd C:
         start mingw64
         
     - name: Configure with CMake
