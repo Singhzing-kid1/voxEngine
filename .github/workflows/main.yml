@@ -33,11 +33,9 @@ jobs:
     - name: Install Windows dependencies
       if: matrix.os == 'windows-latest'
       run: |
-        choco install msys2
-        refreshenv
-        cd C:
-        dir
-        start mingw64
+        cd C:\msys2
+        start mingw64.exe -c "pacman -S mingw-w64-SDL2 mingw-w64-glm mingw-w64-glew && exit"
+        cd ${{ github.workspace }}
         
     - name: Configure with CMake
       run: |
