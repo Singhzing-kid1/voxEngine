@@ -36,16 +36,10 @@ jobs:
         vcpkg install glew glm sdl2
 
     - name: Configure CMake
-      if: matrix.os == 'windows-latest'
       env:
         CMAKE_PREFIX_PATH: ${{ env.VCPKG_INSTALLATION_ROOT }}/installed/x86windows
       run: |
         cmake -B build -S . 
-        
-    - name: Configure with CMake
-      if: matrix.os == 'ubuntu.latest'
-      run: |
-        cmake -B build -S .
         
     - name: Build with CMake
       run: |
