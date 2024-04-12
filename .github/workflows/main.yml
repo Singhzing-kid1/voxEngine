@@ -37,7 +37,7 @@ jobs:
 
     - name: Configure CMake
       env:
-        CMAKE_PREFIX_PATH: ${{ env.VCPKG_INSTALLATION_ROOT }}/installed/x86windows
+        CMAKE_PREFIX_PATH: ${{ env.VCPKG_INSTALLATION_ROOT }}/installed/x86-windows/share/glm
       run: |
         cmake -B build -S . 
         
