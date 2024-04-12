@@ -28,13 +28,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y libglew-dev libglm-dev libsdl2-dev
-
-    - name: Set up vcpkg
-      if: matrix.os == 'windows-latest'
-      uses: microsoft/vcpkg-action@v0.2 
-      with:
-        vcpkgDirectory: '${{ github.workspace }}/vcpkg'
-        triplet: 'x64-windows'
           
     # Install dependencies for Windows
     - name: Install Windows dependencies
@@ -45,9 +38,9 @@ jobs:
     - name: Configure CMake
       if: matrix.os == 'windows-latest'
       env:
-        CMAKE_PREFIX_PATH: ${{ github.workspace }}/vcpkg/installed/x64-windows
+        CMAKE_PREFIX_PATH: ${{ env.VCPKG_INSTALLATION_ROOT }}/installed/x86windows
       run: |
-        cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+        cmake -B build -S . 
         
     - name: Configure with CMake
       if: matrix.os == 'ubuntu.latest'
