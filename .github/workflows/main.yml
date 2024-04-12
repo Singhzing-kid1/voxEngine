@@ -33,7 +33,7 @@ jobs:
     - name: Install Windows dependencies
       if: matrix.os == 'windows-latest'
       run: |
-        wslbash.exe
+        vcpkg install glew glm sdl2
         
     - name: Configure with CMake
       run: |
