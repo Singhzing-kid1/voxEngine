@@ -29,13 +29,28 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libglew-dev libglm-dev libsdl2-dev
 
+    - name: Set up vcpkg
+      if: matrix.os == 'windows-latets'
+      uses: microsoft/vcpkg-action@v0.2 
+      with:
+        vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+        triplet: 'x64-windows'
+          
     # Install dependencies for Windows
     - name: Install Windows dependencies
       if: matrix.os == 'windows-latest'
       run: |
         vcpkg install glew glm sdl2
+
+    - name: Configure CMake
+      if: matrix.os == 'windows-latest'
+      env:
+        CMAKE_PREFIX_PATH: ${{ github.workspace }}/vcpkg/installed/x64-windows
+      run: |
+        cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
         
     - name: Configure with CMake
+      if: matrix.os == 'ubuntu.latest'
       run: |
         cmake -B build -S .
         
