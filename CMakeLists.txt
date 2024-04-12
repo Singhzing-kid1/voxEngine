@@ -19,7 +19,7 @@ add_executable(main ${HEADER_FILES} ${SOURCE_FILES})
 #libraries:
 
 #glm
-find_package(glm CONFIG REQUIRED)
+find_package(glm REQUIRED)
 target_link_libraries(main PRIVATE glm::glm)
 
 
