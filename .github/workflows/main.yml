@@ -39,7 +39,7 @@ jobs:
       env:
         CMAKE_PREFIX_PATH: ${{ env.VCPKG_INSTALLATION_ROOT }}/installed/x86-windows/share/glm
       run: |
-        cmake -B build -S . 
+        cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_INSTALLATION_ROOT }}/scripts/buildsystems/vcpkg.cmake
         
     - name: Build with CMake
       run: |
