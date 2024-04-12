@@ -30,7 +30,7 @@ jobs:
         sudo apt-get install -y libglew-dev libglm-dev libsdl2-dev
 
     - name: Set up vcpkg
-      if: matrix.os == 'windows-latets'
+      if: matrix.os == 'windows-latest'
       uses: microsoft/vcpkg-action@v0.2 
       with:
         vcpkgDirectory: '${{ github.workspace }}/vcpkg'
