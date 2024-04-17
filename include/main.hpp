@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
 #include <GL/gl.h>
@@ -8,6 +9,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <algorithm>
+#include <vector>
 #include <sstream>
 #include <fstream>
 #include <string>
@@ -21,6 +24,7 @@
 
 #include "shaders.hpp"
 #include "camera.hpp"
+#include "model.hpp"
 
 using namespace std;
 using namespace glm;

@@ -13,6 +13,17 @@ file(GLOB HEADER_FILES "./include/*.hpp")
 # Add all source files in the src directory
 file(GLOB SOURCE_FILES "./src/*.cpp")
 
+# Add all shader files
+file(GLOB SHADER_SOURCE_FILES "./shaders/*.glsl")
+file(COPY ${SHADER_SOURCE_FILES} DESTINATION "shaders")
+
+#add shape/model files
+file(GLOB MODEL_SOURCE_FILES "./models/*.model")
+file(GLOB SHAPE_FILES "./models/*.shape")
+
+file(COPY ${MODEL_SOURCE_FILES} DESTINATION "models")
+file(COPY ${SHAPE_FILES} DESTINATION "models")
+
 # Add executable target
 add_executable(main ${HEADER_FILES} ${SOURCE_FILES})
 
@@ -38,3 +49,4 @@ target_link_libraries(main
     $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
     $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
+

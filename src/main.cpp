@@ -41,12 +41,6 @@ int main(int argc, char* argv[]){
         return 1;
     }
 
-    SDL_Event e;
-    bool quit = false;
-
-    Shader testShader("../shaders/vertex.glsl", "../shaders/frag.glsl");
-
-
     float vertices[] = {
         0.5f, 0.5f, 0.5f, 
         0.5f, -0.5f, 0.5f, 
@@ -72,7 +66,7 @@ int main(int argc, char* argv[]){
         2, 3, 7,
         2, 6, 7
     };
-
+    
     unsigned int VBO, EBO, VAO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -91,9 +85,14 @@ int main(int argc, char* argv[]){
 
     glBindVertexArray(0);
 
+    SDL_Event e;
+    bool quit = false;
+
     glEnable(GL_DEPTH_TEST);
 
+    Shader testShader("./shaders/vertex.glsl", "./shaders/frag.glsl");
     Camera mainCam(45.0f, (float)HEIGHT, (float)WIDTH, 0.1f, 100.0f, vec3(0.0f, 0.0f, -3.0f));
+    Model testModel("./models/testModel.model", 1);
 
     mat4 model = mat4(1.0f);
 
@@ -105,12 +104,12 @@ int main(int argc, char* argv[]){
 
     float cameraSpeed = 0.05f;
 
-    float accumX, accumY;
+    float accumX = 0.0f, accumY = 0.0f;
     float lastX = 0.0, lastY = 0.0;
     int mouseX, mouseY;
     float xOffset = 0.0, yOffset = 0.0;
-    float sensitivity = 0.1;
-    float yaw, pitch;
+    float sensitivity = 0.5;
+    float yaw = 0.0f, pitch = 0.0f;
 
     SDL_SetWindowGrab(window, SDL_TRUE);
 
@@ -165,15 +164,16 @@ int main(int argc, char* argv[]){
                     mainCam.moveCamera("ad", cameraSpeed);
                 }
 
-                if(e.key.keysym.sym == SDL_SCANCODE_A){
+                if(e.key.keysym.scancode == SDL_SCANCODE_A){
                     mainCam.moveCamera("ad", -cameraSpeed);
                 }
 
             }
 
             if(e.type == SDL_MOUSEMOTION){
-                accumX -= e.motion.xrel;
-                accumY += e.motion.yrel;
+                accumX -= abs(e.motion.xrel) > 1 ? e.motion.xrel : 0;
+                accumY += abs(e.motion.yrel) > 1 ? e.motion.yrel : 0;
+                cout << "xRel: " << e.motion.xrel << ", yRel: " << e.motion.yrel << endl;
 
                 SDL_GetMouseState(&mouseX, &mouseY);
                 float newMouseX = mouseX + e.motion.xrel;
@@ -190,16 +190,23 @@ int main(int argc, char* argv[]){
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        testShader.setUniform("model", model);
-        testShader.setUniform("view", view);
-        testShader.setUniform("projection", projection);
+        for(size_t x = 0; x < testModel.getPositions().size(); x++){
+            testShader.use();
+            testShader.setUniform("model", model);
+            testShader.setUniform("view", view);
+            testShader.setUniform("projection", projection);
+            testShader.setUniform("position", testModel.getPositions()[x]);
+            testShader.setUniform("color", testModel.getColors()[x]);
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0);
 
-        testShader.use();
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+            glBindVertexArray(VAO);
+            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+            glBindVertexArray(0);
+        }
+
+
 
         SDL_Delay(20);
         SDL_GL_SwapWindow(window);
