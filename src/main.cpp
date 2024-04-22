@@ -171,7 +171,7 @@ int main(int argc, char* argv[]){
             }
 
             if(e.type == SDL_MOUSEMOTION){
-                accumX -= abs(e.motion.xrel) > 1 ? e.motion.xrel : 0;
+                accumX += abs(e.motion.xrel) > 1 ? e.motion.xrel : 0;
                 accumY += abs(e.motion.yrel) > 1 ? e.motion.yrel : 0;
                 cout << "xRel: " << e.motion.xrel << ", yRel: " << e.motion.yrel << endl;
 
