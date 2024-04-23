@@ -12,7 +12,7 @@ int main(int argc, char* argv[]){
         return 1;
     }
 
-    window = SDL_CreateWindow("v0.0.2", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, HEIGHT, WIDTH, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    window = SDL_CreateWindow("v0.0.3", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, HEIGHT, WIDTH, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 
     if(window == nullptr){
         cout << "SDL could not create window. Error: " << SDL_GetError();
@@ -171,7 +171,7 @@ int main(int argc, char* argv[]){
             }
 
             if(e.type == SDL_MOUSEMOTION){
-                accumX += abs(e.motion.xrel) > 1 ? e.motion.xrel : 0;
+                accumX -= abs(e.motion.xrel) > 1 ? e.motion.xrel : 0;
                 accumY += abs(e.motion.yrel) > 1 ? e.motion.yrel : 0;
                 cout << "xRel: " << e.motion.xrel << ", yRel: " << e.motion.yrel << endl;
 
