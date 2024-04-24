@@ -176,6 +176,7 @@ int main(int argc, char* argv[]){
                 cout << "xRel: " << e.motion.xrel << ", yRel: " << e.motion.yrel << endl;
 
                 SDL_GetMouseState(&mouseX, &mouseY);
+
                 float newMouseX = mouseX + e.motion.xrel;
                 float newMouseY = mouseY + e.motion.yrel;
 
@@ -206,9 +207,7 @@ int main(int argc, char* argv[]){
             glBindVertexArray(0);
         }
 
-
-
-        SDL_Delay(20);
+        SDL_Delay(5);
         SDL_GL_SwapWindow(window);
     }
 

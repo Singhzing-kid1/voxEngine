@@ -19,8 +19,8 @@
 #include <windows.h>
 #endif
 
-#define HEIGHT 1920
-#define WIDTH 1080
+#define HEIGHT 1280
+#define WIDTH 720
 
 #include "shaders.hpp"
 #include "camera.hpp"
