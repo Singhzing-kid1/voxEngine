@@ -1,6 +1,6 @@
 #include "main.hpp"
 
-Model::Model(const char* modelPath, int size){
+Model::Model(const char* modelPath, float size){
     ifstream model(modelPath);
     string line;
     vector<string> data;
@@ -38,11 +38,13 @@ Model::Model(const char* modelPath, int size){
         replace(temp.begin(), temp.end(), ',', ' ');
 
         stringstream ss(temp);
-        int tempI;
+        float tempF;
         vec3 tempV;
         for(int x = 0; x < 3; x++){
-            ss >> tempI;
-            tempV[x] = tempI;
+            ss >> tempF;
+            tempF = tempF * (2.0f*size);
+            cout << tempF << endl;
+            tempV[x] = tempF;
         }
 
         this->position.push_back(tempV);
@@ -63,6 +65,54 @@ Model::Model(const char* modelPath, int size){
         this->color.push_back(tempV);
     }
 
+    float vertices[] = {
+        1.0f, 1.0f, 1.0f, 
+        1.0f, -1.0f, 1.0f, 
+        -1.0f, 1.0f, 1.0f, 
+        -1.0f, -1.0f, 1.0f,
+        1.0f, 1.0f, -1.0f, 
+        1.0f, -1.0f, -1.0f, 
+        -1.0f, 1.0f, -1.0f, 
+        -1.0f, -1.0f, -1.0f
+    };
+
+    unsigned int indices[] = {
+        2, 0, 1,
+        2, 3, 1,
+        3, 1, 5,
+        3, 7, 5,
+        7, 5, 4,
+        7, 6, 4,
+        6, 4, 0,
+        6, 2, 0,
+        1, 5, 4,
+        1, 0, 4,
+        2, 3, 7,
+        2, 6, 7
+    };
+
+    for(size_t x = 0; x < sizeof(vertices)/sizeof(float); x++){
+        vertices[x] *= size;
+    }
+    
+
+    glGenVertexArrays(1, &this->vao);
+    glGenBuffers(1, &this->vbo);
+    glGenBuffers(1, &this->ebo);
+
+    glBindVertexArray(this->vao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, this->vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(0);
+
 }
 
 unsigned int Model::getVao(){
@@ -75,4 +125,22 @@ vector<vec3> Model::getPositions(){
 
 vector<vec3> Model::getColors(){
     return this->color;
+}
+
+void Model::render(Shader shader, mat4 model, mat4 view, mat4 projection){
+            for(size_t x = 0; x < this->getPositions().size(); x++){
+            shader.use();
+            shader.setUniform("model", model);
+            shader.setUniform("view", view);
+            shader.setUniform("projection", projection);
+            shader.setUniform("position", this->position[x]);
+            shader.setUniform("color", this->color[x]);
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0);
+
+            glBindVertexArray(this->vao);
+            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+            glBindVertexArray(0);
+        }
 }

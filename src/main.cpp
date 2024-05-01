@@ -41,58 +41,14 @@ int main(int argc, char* argv[]){
         return 1;
     }
 
-    float vertices[] = {
-        0.5f, 0.5f, 0.5f, 
-        0.5f, -0.5f, 0.5f, 
-        -0.5f, 0.5f, 0.5f, 
-        -0.5f, -0.5f, 0.5f,
-        0.5f, 0.5f, -0.5f, 
-        0.5f, -0.5f, -0.5f, 
-        -0.5f, 0.5f, -0.5f, 
-        -0.5f, -0.5f, -0.5f
-    };
-
-    unsigned int indices[] = {
-        2, 0, 1,
-        2, 3, 1,
-        3, 1, 5,
-        3, 7, 5,
-        7, 5, 4,
-        7, 6, 4,
-        6, 4, 0,
-        6, 2, 0,
-        1, 5, 4,
-        1, 0, 4,
-        2, 3, 7,
-        2, 6, 7
-    };
-    
-    unsigned int VBO, EBO, VAO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glBindVertexArray(0);
-
     SDL_Event e;
     bool quit = false;
 
     glEnable(GL_DEPTH_TEST);
 
     Shader testShader("./shaders/vertex.glsl", "./shaders/frag.glsl");
-    Camera mainCam(45.0f, (float)HEIGHT, (float)WIDTH, 0.1f, 100.0f, vec3(0.0f, 0.0f, -3.0f));
-    Model testModel("./models/testModel.model", 1);
+    Camera mainCam(45.0f, (float)HEIGHT, (float)WIDTH, 0.1f, 100.0f, vec3(0.0f, 0.0f, 3.0f));
+    Model testModel("./models/testModel.model", 0.03125f);
 
     mat4 model = mat4(1.0f);
 
@@ -191,21 +147,7 @@ int main(int argc, char* argv[]){
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        for(size_t x = 0; x < testModel.getPositions().size(); x++){
-            testShader.use();
-            testShader.setUniform("model", model);
-            testShader.setUniform("view", view);
-            testShader.setUniform("projection", projection);
-            testShader.setUniform("position", testModel.getPositions()[x]);
-            testShader.setUniform("color", testModel.getColors()[x]);
-
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-            glEnableVertexAttribArray(0);
-
-            glBindVertexArray(VAO);
-            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-            glBindVertexArray(0);
-        }
+        testModel.render(testShader, model, view, projection);
 
         SDL_Delay(5);
         SDL_GL_SwapWindow(window);
