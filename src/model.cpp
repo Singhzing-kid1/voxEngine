@@ -1,9 +1,11 @@
 #include "main.hpp"
 
-Model::Model(const char* modelPath, float size){
+Model::Model(const char* modelPath, float size, vec3 globalTransform){
     ifstream model(modelPath);
     string line;
     vector<string> data;
+
+    this->globalTransform = globalTransform;
 
     while(getline(model, line)){
         if(line != "##MODEL" && line != "##EOF"){
@@ -134,6 +136,7 @@ void Model::render(Shader shader, mat4 model, mat4 view, mat4 projection){
             shader.setUniform("view", view);
             shader.setUniform("projection", projection);
             shader.setUniform("position", this->position[x]);
+            shader.setUniform("globalTransform", this->globalTransform);
             shader.setUniform("color", this->color[x]);
 
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);

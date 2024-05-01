@@ -7,7 +7,7 @@ class Shader;
 
 class Model{
     public:
-        Model(const char*, float);
+        Model(const char*, float, vec3);
 
         vector<vec3> getPositions();
         vector<vec3> getColors();
@@ -24,6 +24,7 @@ class Model{
 
     vector<vec3> position;
     vector<vec3> color;
+    vec3 globalTransform;
 
     float* vertices;
     unsigned int* indices;

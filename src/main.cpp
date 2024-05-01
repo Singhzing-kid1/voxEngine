@@ -48,7 +48,7 @@ int main(int argc, char* argv[]){
 
     Shader testShader("./shaders/vertex.glsl", "./shaders/frag.glsl");
     Camera mainCam(45.0f, (float)HEIGHT, (float)WIDTH, 0.1f, 100.0f, vec3(0.0f, 0.0f, 3.0f));
-    Model testModel("./models/testModel.model", 0.03125f);
+    Model testModel("./models/testModel.model", 0.03125f, vec3(1, 0, 0));
 
     mat4 model = mat4(1.0f);
 
@@ -129,7 +129,7 @@ int main(int argc, char* argv[]){
             if(e.type == SDL_MOUSEMOTION){
                 accumX -= abs(e.motion.xrel) > 1 ? e.motion.xrel : 0;
                 accumY += abs(e.motion.yrel) > 1 ? e.motion.yrel : 0;
-                
+
                 SDL_GetMouseState(&mouseX, &mouseY);
 
                 float newMouseX = mouseX + e.motion.xrel;
