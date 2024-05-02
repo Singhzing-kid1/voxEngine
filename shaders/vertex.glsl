@@ -5,8 +5,10 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 uniform vec3 position;
-uniform vec3 globalTransform;
+uniform vec3 chunkSpaceTransform;
+uniform vec3 chunk;
+uniform float size;
 
 void main(){
-    gl_Position = projection * view * model * vec4(aPos + position + globalTransform, 1.0);
+    gl_Position = projection * view * model * vec4(aPos + chunk * 2 * 17 + chunkSpaceTransform + position * 2 * size, 1.0);
 }

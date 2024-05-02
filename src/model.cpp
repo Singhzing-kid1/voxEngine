@@ -1,11 +1,13 @@
 #include "main.hpp"
 
-Model::Model(const char* modelPath, float size, vec3 globalTransform){
+Model::Model(const char* modelPath, float size, vec3 chunkSpaceTransform, vec3 chunk){
     ifstream model(modelPath);
     string line;
     vector<string> data;
 
-    this->globalTransform = globalTransform;
+    this->chunkSpaceTransform = chunkSpaceTransform;
+    this->chunk = chunk;
+    this->size = size;
 
     while(getline(model, line)){
         if(line != "##MODEL" && line != "##EOF"){
@@ -44,8 +46,7 @@ Model::Model(const char* modelPath, float size, vec3 globalTransform){
         vec3 tempV;
         for(int x = 0; x < 3; x++){
             ss >> tempF;
-            tempF = tempF * (2.0f*size);
-            cout << tempF << endl;
+            tempF = tempF;
             tempV[x] = tempF;
         }
 
@@ -130,13 +131,17 @@ vector<vec3> Model::getColors(){
 }
 
 void Model::render(Shader shader, mat4 model, mat4 view, mat4 projection){
-            for(size_t x = 0; x < this->getPositions().size(); x++){
+        for(size_t x = 0; x < this->getPositions().size(); x++){
             shader.use();
             shader.setUniform("model", model);
             shader.setUniform("view", view);
             shader.setUniform("projection", projection);
+
             shader.setUniform("position", this->position[x]);
-            shader.setUniform("globalTransform", this->globalTransform);
+            shader.setUniform("chunkSpaceTransform", this->chunkSpaceTransform);
+            shader.setUniform("chunk", this->chunk);
+            shader.setUniform("size", this->size);
+
             shader.setUniform("color", this->color[x]);
 
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);

@@ -48,7 +48,8 @@ int main(int argc, char* argv[]){
 
     Shader testShader("./shaders/vertex.glsl", "./shaders/frag.glsl");
     Camera mainCam(45.0f, (float)HEIGHT, (float)WIDTH, 0.1f, 100.0f, vec3(0.0f, 0.0f, 3.0f));
-    Model testModel("./models/testModel.model", 0.03125f, vec3(1, 0, 0));
+    Model chunkZeroBorder("./models/chunkBorder.model", 1.0f, vec3(0, 0, 0), vec3(0, 0, 0));
+    Model testModel("./models/testModel.model", 1.0f, vec3(0, 0, 0), vec3(0, 0, 1));
 
     mat4 model = mat4(1.0f);
 
@@ -147,6 +148,7 @@ int main(int argc, char* argv[]){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         testModel.render(testShader, model, view, projection);
+        chunkZeroBorder.render(testShader, model, view, projection);
 
         SDL_Delay(5);
         SDL_GL_SwapWindow(window);
