@@ -10,5 +10,5 @@ uniform vec3 chunk;
 uniform float size;
 
 void main(){
-    gl_Position = projection * view * model * vec4(aPos + chunk * 2 * 17 + chunkSpaceTransform + position * 2 * size, 1.0);
+    gl_Position = projection * view * model * vec4(aPos + position * 2 * size + chunk * 3 * 17 + chunkSpaceTransform, 1.0);
 }
