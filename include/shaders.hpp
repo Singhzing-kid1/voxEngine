@@ -1,3 +1,13 @@
+/**
+ * @file shaders.hpp
+ * @author Veer Singh
+ * @brief Makes, compiling, building, sending data to/from, and using GLSL shaders.
+ * @version 0.1
+ * @date 2024-07-27
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ */
 #ifndef SHADER_HPP
 #define SHADER_HPP
 

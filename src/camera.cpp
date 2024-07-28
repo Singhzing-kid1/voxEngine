@@ -9,7 +9,7 @@ Camera::Camera(float fov, float height, float width, float nearPlane, float farP
     this->farPlane = farPlane;
     this->cameraPos = pos;
     this->cameraUp = vec3(0.0f, 1.0f, 0.0f);
-    this->cameraFront = vec3(0.0f, 0.0f, 1.0f);
+    this->cameraFront = vec3(0.0f, 0.0f, -1.0f);
 }
 
 vec3 Camera::getFrontVec(){

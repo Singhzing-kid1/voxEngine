@@ -1,3 +1,13 @@
+/**
+ * @file model.hpp
+ * @author Veer Singh
+ * @brief Class definition to be able to render, transfrom, translate, and manage models
+ * @version 0.0.3
+ * @date 2024-07-27
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ */
 #ifndef MODEL_HPP
 #define MODEL_HPP
 
@@ -5,12 +15,20 @@
 
 class Shader;
 
+/** 
+ * @param modelPath Path of model file saved to disk
+ * @param size Size of the model. Allows for scaling of a model.
+ * @param chunkSpaceTransform Origin point of the model inside a chunk.
+ * @param chunk XYZ coord of the chunk the model is in. 
+*/
 class Model{
     public:
         Model(const char*, float, vec3, vec3);
 
         vector<vec3> getPositions();
         vector<vec3> getColors();
+
+        vec3 getChunkCoord();
 
         unsigned int getVao();
 

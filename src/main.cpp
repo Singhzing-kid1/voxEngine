@@ -47,9 +47,13 @@ int main(int argc, char* argv[]){
     glEnable(GL_DEPTH_TEST);
 
     Shader testShader("./shaders/vertex.glsl", "./shaders/frag.glsl");
-    Camera mainCam(45.0f, (float)HEIGHT, (float)WIDTH, 0.1f, 100.0f, vec3(0.0f, 0.0f, 3.0f));
+    Camera mainCam(45.0f, (float)HEIGHT, (float)WIDTH, 0.1f, 10000.0f, vec3(0.0f, 0.0f, 3.0f));
     Model chunkZeroBorder("./models/chunkBorder.model", 1.0f, vec3(0, 0, 0), vec3(0, 0, 0));
-    Model testModel("./models/testModel.model", 0.5f, vec3(0, 0, 0), vec3(0, 0, 1));
+    Model testModel("./models/testModel.model", 0.5f, vec3(0, 0, 0), vec3(0, 0, 2));
+    vector<Model> models;
+
+    models.push_back(chunkZeroBorder);
+    models.push_back(testModel);
 
     mat4 model = mat4(1.0f);
 
@@ -59,7 +63,7 @@ int main(int argc, char* argv[]){
     mat4 projection;
     projection = perspective(mainCam.getFov(), mainCam.getAspect(), mainCam.getNear(), mainCam.getFar());
 
-    float cameraSpeed = 0.05f;
+    float cameraSpeed = 0.75f;
 
     float accumX = 0.0f, accumY = 0.0f;
     float lastX = 0.0, lastY = 0.0;
@@ -67,6 +71,8 @@ int main(int argc, char* argv[]){
     float xOffset = 0.0, yOffset = 0.0;
     float sensitivity = 0.5;
     float yaw = 0.0f, pitch = 0.0f;
+
+    int renderDistance = 2; // in chunks
 
     SDL_SetWindowGrab(window, SDL_TRUE);
 
@@ -131,7 +137,7 @@ int main(int argc, char* argv[]){
                 accumX -= abs(e.motion.xrel) > 1 ? e.motion.xrel : 0;
                 accumY += abs(e.motion.yrel) > 1 ? e.motion.yrel : 0;
 
-                cout << accumX << " " << accumY << endl;
+                //cout << accumX << " " << accumY << endl;
 
                 SDL_GetMouseState(&mouseX, &mouseY);
 
@@ -149,8 +155,17 @@ int main(int argc, char* argv[]){
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        testModel.render(testShader, model, view, projection);
-        chunkZeroBorder.render(testShader, model, view, projection);
+        //testModel.render(testShader, model, view, projection);
+        //chunkZeroBorder.render(testShader, model, view, projection);
+
+        cout << to_string(floor((mainCam.getPosVec() + (vec3(3.0f * 17.0f) / vec3(2.0f))) / vec3(3.0f * 17.0f))) << endl;
+
+        for(auto &m : models){
+            if(all(lessThanEqual(m.getChunkCoord(), floor((mainCam.getPosVec() + (vec3(3.0f * 17.0f) / vec3(2.0f))) / vec3(3.0f * 17.0f)) + vec3(renderDistance)))){
+                m.render(testShader, model, view, projection);
+            }
+
+        }
 
         SDL_Delay(5);
         SDL_GL_SwapWindow(window);

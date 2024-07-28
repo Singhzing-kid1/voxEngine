@@ -130,6 +130,10 @@ vector<vec3> Model::getColors(){
     return this->color;
 }
 
+vec3 Model::getChunkCoord(){
+    return this->chunk;
+}
+
 void Model::render(Shader shader, mat4 model, mat4 view, mat4 projection){
         for(size_t x = 0; x < this->getPositions().size(); x++){
             shader.use();

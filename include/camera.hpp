@@ -1,3 +1,14 @@
+/**
+ * @file camera.hpp
+ * @author Veer Singh
+ * @brief Class definition for a Camera Object
+ * @version 0.0.3
+ * @date 2024-07-27
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ */
+
 #ifndef CAMERA_HPP
 #define CAMERA_HPP
 
