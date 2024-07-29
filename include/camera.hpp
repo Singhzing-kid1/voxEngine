@@ -31,6 +31,15 @@ class Camera{
         void setPitch(float);
         void setYaw(float);
 
+        /**
+         * @brief Set the position of the Camera to a global coordinate.
+         * @param position vec3 of the position to set the camera too.
+         * 
+         * @note USED FOR DEBUGGING, could be used for a fast travel or tp system
+         * 
+         */
+        void setPos(vec3);
+
         void update();
 
         void moveCamera(string, float);

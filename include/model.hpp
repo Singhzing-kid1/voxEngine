@@ -20,15 +20,18 @@ class Shader;
  * @param size Size of the model. Allows for scaling of a model.
  * @param chunkSpaceTransform Origin point of the model inside a chunk.
  * @param chunk XYZ coord of the chunk the model is in. 
+ * @param shouldScalePositionBasedOnScaleOfVoxel determines wether or not the the spacing between voxels is scaled by the size of the voxel.
 */
 class Model{
     public:
-        Model(const char*, float, vec3, vec3);
+        Model(const char*, float, vec3, vec3, bool);
 
         vector<vec3> getPositions();
         vector<vec3> getColors();
 
         vec3 getChunkCoord();
+
+        bool getShouldScalePositionBool();
 
         unsigned int getVao();
 
@@ -44,6 +47,7 @@ class Model{
     vector<vec3> color;
     vec3 chunkSpaceTransform, chunk;
     float size;
+    bool shouldScalePosition;
 
     float* vertices;
     unsigned int* indices;

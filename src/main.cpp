@@ -46,14 +46,17 @@ int main(int argc, char* argv[]){
 
     glEnable(GL_DEPTH_TEST);
 
-    Shader testShader("./shaders/vertex.glsl", "./shaders/frag.glsl");
+    Shader testShader("./shaders/vertexWithSizeScaling.glsl", "./shaders/frag.glsl");
+    Shader noScalingShader("./shaders/vertexWithOutSizeScaling.glsl", "./shaders/frag.glsl");
     Camera mainCam(45.0f, (float)HEIGHT, (float)WIDTH, 0.1f, 10000.0f, vec3(0.0f, 0.0f, 3.0f));
-    Model chunkZeroBorder("./models/chunkBorder.model", 1.0f, vec3(0, 0, 0), vec3(0, 0, 0));
-    Model testModel("./models/testModel.model", 0.5f, vec3(0, 0, 0), vec3(0, 0, 2));
+    Model chunkZeroBorder("./models/chunkBorder.model", 0.5f, vec3(0, 0, 0), vec3(0, 0, 0), false);
+    Model testModel("./models/testModel.model", 1.0f, vec3(0, 0, 0), vec3(0, 0, 2), true);
+    Model points("./models/pointsOfChunk.model", .025f, vec3(0, 0, 0), vec3(0, 0, 0), false);
     vector<Model> models;
 
-    models.push_back(chunkZeroBorder);
+    models.push_back(points);
     models.push_back(testModel);
+    models.push_back(chunkZeroBorder);
 
     mat4 model = mat4(1.0f);
 
@@ -131,6 +134,18 @@ int main(int argc, char* argv[]){
                     mainCam.moveCamera("ad", -cameraSpeed);
                 }
 
+                if(e.key.keysym.scancode == SDL_SCANCODE_M){
+                    mainCam.setPos(vec3(0.0f, 0.0f, 17.0f));
+                }
+
+                if(e.key.keysym.scancode == SDL_SCANCODE_B){
+                    mainCam.setPos(vec3(0.0f, 17.0f, 0.0f));
+                }
+
+                
+                if(e.key.keysym.scancode == SDL_SCANCODE_N){
+                    mainCam.setPos(vec3(0.0f, 0.0f, -17.0f));
+                }
             }
 
             if(e.type == SDL_MOUSEMOTION){
@@ -158,11 +173,11 @@ int main(int argc, char* argv[]){
         //testModel.render(testShader, model, view, projection);
         //chunkZeroBorder.render(testShader, model, view, projection);
 
-        cout << to_string(floor((mainCam.getPosVec() + (vec3(3.0f * 17.0f) / vec3(2.0f))) / vec3(3.0f * 17.0f))) << endl;
+        cout << to_string(floor((mainCam.getPosVec() + vec3(17.0f)) / 34.0f)) << endl;
 
         for(auto &m : models){
-            if(all(lessThanEqual(m.getChunkCoord(), floor((mainCam.getPosVec() + (vec3(3.0f * 17.0f) / vec3(2.0f))) / vec3(3.0f * 17.0f)) + vec3(renderDistance)))){
-                m.render(testShader, model, view, projection);
+            if(all(lessThanEqual(m.getChunkCoord(), floor((mainCam.getPosVec() + vec3(17.0f)) / vec3(34.0f)) + vec3(renderDistance)))){
+                m.getShouldScalePositionBool() ? m.render(testShader, model, view, projection) : m.render(noScalingShader, model, view, projection);
             }
 
         }

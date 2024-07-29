@@ -1,6 +1,6 @@
 #include "main.hpp"
 
-Model::Model(const char* modelPath, float size, vec3 chunkSpaceTransform, vec3 chunk){
+Model::Model(const char* modelPath, float size, vec3 chunkSpaceTransform, vec3 chunk, bool shouldScalePositionBasedOnScaleOfVoxel){
     ifstream model(modelPath);
     string line;
     vector<string> data;
@@ -8,6 +8,7 @@ Model::Model(const char* modelPath, float size, vec3 chunkSpaceTransform, vec3 c
     this->chunkSpaceTransform = chunkSpaceTransform;
     this->chunk = chunk;
     this->size = size;
+    this->shouldScalePosition = shouldScalePositionBasedOnScaleOfVoxel;
 
     while(getline(model, line)){
         if(line != "##MODEL" && line != "##EOF"){
@@ -134,6 +135,10 @@ vec3 Model::getChunkCoord(){
     return this->chunk;
 }
 
+bool Model::getShouldScalePositionBool(){
+    return this->shouldScalePosition;
+}
+
 void Model::render(Shader shader, mat4 model, mat4 view, mat4 projection){
         for(size_t x = 0; x < this->getPositions().size(); x++){
             shader.use();
@@ -144,7 +149,8 @@ void Model::render(Shader shader, mat4 model, mat4 view, mat4 projection){
             shader.setUniform("position", this->position[x]);
             shader.setUniform("chunkSpaceTransform", this->chunkSpaceTransform);
             shader.setUniform("chunk", this->chunk);
-            shader.setUniform("size", this->size);
+
+            this->shouldScalePosition ? shader.setUniform("size", this->size) : (void)0;
 
             shader.setUniform("color", this->color[x]);
 

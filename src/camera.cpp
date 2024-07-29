@@ -60,6 +60,10 @@ void Camera::setYaw(float yaw){
     this->yaw = yaw;
 }
 
+void Camera::setPos(vec3 position){
+    this->transVec = position;
+}
+
 void Camera::update(){   
     this->calculateRightVec();
     this->calculateFrontVec();
