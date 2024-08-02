@@ -2,7 +2,7 @@
  * @file model.hpp
  * @author Veer Singh
  * @brief Class definition to be able to render, transfrom, translate, and manage models
- * @version 0.0.3
+ * @version 0.0.4
  * @date 2024-07-27
  * 
  * @copyright Copyright (c) 2024
@@ -24,12 +24,15 @@ class Shader;
 */
 class Model{
     public:
-        Model(const char*, float, vec3, vec3, bool);
+        Model(const char*, float, vec3, vec3, bool, string);
 
         vector<vec3> getPositions();
         vector<vec3> getColors();
 
         vec3 getChunkCoord();
+        void setChunkCoord(vec3);
+
+        string getId();
 
         bool getShouldScalePositionBool();
 
@@ -48,6 +51,7 @@ class Model{
     vec3 chunkSpaceTransform, chunk;
     float size;
     bool shouldScalePosition;
+    string ID;
 
     float* vertices;
     unsigned int* indices;

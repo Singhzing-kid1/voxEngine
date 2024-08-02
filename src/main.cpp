@@ -3,6 +3,14 @@
 float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
 
+bool checkIfVec3InVolume(vec3 point, vec3 camera,  float volumeHalfSideLength){
+    bool x = abs(point.x - camera.x) <= volumeHalfSideLength ? true : false;
+    bool y = abs(point.y - camera.y) <= volumeHalfSideLength ? true : false;
+    bool z = abs(point.z - camera.z) <= volumeHalfSideLength ? true : false;
+
+    return x && y && z;
+}
+
 int main(int argc, char* argv[]){
     SDL_Window* window;
     SDL_GLContext context;
@@ -49,9 +57,9 @@ int main(int argc, char* argv[]){
     Shader testShader("./shaders/vertexWithSizeScaling.glsl", "./shaders/frag.glsl");
     Shader noScalingShader("./shaders/vertexWithOutSizeScaling.glsl", "./shaders/frag.glsl");
     Camera mainCam(45.0f, (float)HEIGHT, (float)WIDTH, 0.1f, 10000.0f, vec3(0.0f, 0.0f, 3.0f));
-    Model chunkZeroBorder("./models/chunkBorder.model", 0.5f, vec3(0, 0, 0), vec3(0, 0, 0), false);
-    Model testModel("./models/testModel.model", 1.0f, vec3(0, 0, 0), vec3(0, 0, 2), true);
-    Model points("./models/pointsOfChunk.model", .025f, vec3(0, 0, 0), vec3(0, 0, 0), false);
+    Model chunkZeroBorder("./models/chunkBorder.model", 0.5f, vec3(0, 0, 0), vec3(0, 0, 0), false, "cZB");
+    Model testModel("./models/testModel.model", 1.0f, vec3(0, 0, 0), vec3(0, 0, 2), true, "tM");
+    Model points("./models/pointsOfChunk.model", .025f, vec3(0, 0, 0), vec3(0, 0, 0), false, "p");
     vector<Model> models;
 
     models.push_back(points);
@@ -68,16 +76,15 @@ int main(int argc, char* argv[]){
 
     float cameraSpeed = 0.75f;
 
-    float accumX = 0.0f, accumY = 0.0f;
-    float lastX = 0.0, lastY = 0.0;
+    double accumX = 0.0, accumY = 0.0;
     int mouseX, mouseY;
-    float xOffset = 0.0, yOffset = 0.0;
-    float sensitivity = 0.5;
-    float yaw = 0.0f, pitch = 0.0f;
+    float xOffset = 0.0f, yOffset = 0.0f, lastX, lastY;
+    float sensitivity = 0.25;
+    int yaw = 0, pitch = 0;
 
-    int renderDistance = 2; // in chunks
+    int renderDistance = 12; // in chunks
 
-    SDL_SetWindowGrab(window, SDL_TRUE);
+    SDL_SetRelativeMouseMode(SDL_TRUE);
 
     while(!quit){
         float currentFrame = SDL_GetTicks()/1000.0f;
@@ -90,8 +97,8 @@ int main(int argc, char* argv[]){
         lastX = accumX;
         lastY = accumY;
 
-        xOffset *= sensitivity;
-        yOffset *= sensitivity;
+        xOffset = floor(xOffset * sensitivity);
+        yOffset = floor(yOffset * sensitivity);
 
         yaw += xOffset;
         pitch += yOffset;
@@ -104,7 +111,30 @@ int main(int argc, char* argv[]){
         }
 
         mainCam.setYaw(yaw);
-        mainCam.setPitch(pitch);
+        mainCam.setPitch(pitch); 
+
+        //mainCam.smoothUpdate(yaw, pitch, deltaTime);
+
+        const  Uint8* state = SDL_GetKeyboardState(NULL);
+        
+        if(state[SDL_SCANCODE_W] && state[SDL_SCANCODE_D]){
+            mainCam.moveCamera(Camera::NORTHEAST, cameraSpeed);
+        } else if(state[SDL_SCANCODE_W] && state[SDL_SCANCODE_A]){
+            mainCam.moveCamera(Camera::NORTHWEST, cameraSpeed);
+        } else if(state[SDL_SCANCODE_S] && state[SDL_SCANCODE_D]){
+            mainCam.moveCamera(Camera::SOUTHEAST, cameraSpeed);
+        } else if(state[SDL_SCANCODE_S] && state[SDL_SCANCODE_A]){
+            mainCam.moveCamera(Camera::SOUTHWEST, cameraSpeed);
+        } else if(state[SDL_SCANCODE_W] && !state[SDL_SCANCODE_S]){
+            mainCam.moveCamera(Camera::NORTH, cameraSpeed);
+        } else if(state[SDL_SCANCODE_S] && !state[SDL_SCANCODE_W]){
+            mainCam.moveCamera(Camera::SOUTH, cameraSpeed);
+        } else if(state[SDL_SCANCODE_D] && !state[SDL_SCANCODE_A]){
+            mainCam.moveCamera(Camera::EAST, cameraSpeed);
+        } else if(state[SDL_SCANCODE_A] && !state[SDL_SCANCODE_D]){
+            mainCam.moveCamera(Camera::WEST, cameraSpeed);
+        }
+
 
         while(SDL_PollEvent(&e)){
             cameraSpeed = 2.5 * deltaTime;
@@ -116,22 +146,6 @@ int main(int argc, char* argv[]){
 
                 if(e.key.keysym.sym == SDLK_ESCAPE){
                     quit = true;
-                }
-
-                if(e.key.keysym.scancode == SDL_SCANCODE_W){
-                    mainCam.moveCamera("ws", cameraSpeed);
-                }
-
-                if(e.key.keysym.scancode == SDL_SCANCODE_S){
-                    mainCam.moveCamera("ws", -cameraSpeed);
-                }
-
-                if(e.key.keysym.scancode == SDL_SCANCODE_D){
-                    mainCam.moveCamera("ad", cameraSpeed);
-                }
-
-                if(e.key.keysym.scancode == SDL_SCANCODE_A){
-                    mainCam.moveCamera("ad", -cameraSpeed);
                 }
 
                 if(e.key.keysym.scancode == SDL_SCANCODE_M){
@@ -149,16 +163,14 @@ int main(int argc, char* argv[]){
             }
 
             if(e.type == SDL_MOUSEMOTION){
-                accumX -= abs(e.motion.xrel) > 1 ? e.motion.xrel : 0;
-                accumY += abs(e.motion.yrel) > 1 ? e.motion.yrel : 0;
-
-                //cout << accumX << " " << accumY << endl;
+                accumX -= e.motion.xrel;
+                accumY += e.motion.yrel;
 
                 SDL_GetMouseState(&mouseX, &mouseY);
 
                 float newMouseX = mouseX + e.motion.xrel;
                 float newMouseY = mouseY + e.motion.yrel;
-
+                
                 if(newMouseX < WIDTH/2 || newMouseX > WIDTH/2 || newMouseY < HEIGHT/2 || newMouseY > HEIGHT/2){
                     SDL_WarpMouseInWindow(window, HEIGHT/2, WIDTH/2);
                 }
@@ -170,17 +182,16 @@ int main(int argc, char* argv[]){
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        //testModel.render(testShader, model, view, projection);
-        //chunkZeroBorder.render(testShader, model, view, projection);
 
-        cout << to_string(floor((mainCam.getPosVec() + vec3(17.0f)) / 34.0f)) << endl;
 
         for(auto &m : models){
-            if(all(lessThanEqual(m.getChunkCoord(), floor((mainCam.getPosVec() + vec3(17.0f)) / vec3(34.0f)) + vec3(renderDistance)))){
-                m.getShouldScalePositionBool() ? m.render(testShader, model, view, projection) : m.render(noScalingShader, model, view, projection);
+            if(checkIfVec3InVolume(m.getChunkCoord(), floor((mainCam.getPosVec() + vec3(17.0f)) / 34.0f), renderDistance)){
+                m.getId() != "p" ? m.getShouldScalePositionBool() ? m.render(testShader, model, view, projection) : m.render(noScalingShader, model, view, projection) : (void)0;
             }
 
         }
+
+
 
         SDL_Delay(5);
         SDL_GL_SwapWindow(window);

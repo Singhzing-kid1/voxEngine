@@ -24,16 +24,37 @@ vec3 Camera::getUpVec(){
     return this->cameraUp;
 }
 
-void Camera::moveCamera(string axis, float scalar){
-
-    if(axis == "ad"){
-        this->transVec += this->cameraRight * scalar;
-    }
-    
-    if (axis == "ws"){
-        this->transVec += this->cameraFront * scalar;
-    }
-
+void Camera::moveCamera(Axis axis, float scalar){
+    switch(axis){
+        case NORTH:
+            this->transVec += this->cameraFront * scalar;
+            break;
+        case SOUTH:
+            this->transVec -= this->cameraFront * scalar;
+            break;
+        case EAST:
+            this->transVec += this->cameraRight * scalar;
+            break;
+        case WEST:
+            this->transVec -= this->cameraRight * scalar;
+            break;
+        case NORTHEAST:
+            this->transVec += this->cameraFront * scalar;
+            this->transVec += this->cameraRight * scalar;
+            break;
+        case NORTHWEST:
+            this->transVec += this->cameraFront * scalar;
+            this->transVec -= this->cameraRight * scalar;
+            break;
+        case SOUTHEAST:
+            this->transVec -= this->cameraFront * scalar;
+            this->transVec += this->cameraRight * scalar;           
+            break;
+        case SOUTHWEST:
+            this->transVec -= this->cameraFront * scalar;
+            this->transVec -= this->cameraRight * scalar;
+            break;
+    }       
 }
 
 float Camera::getFov(){
@@ -64,7 +85,8 @@ void Camera::setPos(vec3 position){
     this->transVec = position;
 }
 
-void Camera::update(){   
+void Camera::update(){
+    this->updateOrientation();
     this->calculateRightVec();
     this->calculateFrontVec();
     this->calculatePosVec();
@@ -72,10 +94,19 @@ void Camera::update(){
 
 // private
 
+void Camera::updateOrientation(){
+    float rYaw = radians(yaw);
+    float rPitch = radians(pitch);
+
+    quat qYaw = angleAxis(rYaw, vec3(0.0f, 1.0f, 0.0f));
+    quat qPitch = angleAxis(rPitch, vec3(1.0f, 0.0f, 0.0f));
+
+    cameraOrientation = normalize(qYaw * qPitch);
+}
+
+
 void Camera::calculateFrontVec(){
-    cameraFront.x = sin(radians(yaw)) * cos(radians(pitch));
-    cameraFront.y = sin(radians(pitch));
-    cameraFront.z = cos(radians(yaw)) * cos(radians(pitch));
+    cameraFront = normalize(rotate(cameraOrientation, vec3(0.0f, 0.0f, -1.0f)));
  }
 
 void Camera::calculatePosVec(){
@@ -83,7 +114,5 @@ void Camera::calculatePosVec(){
 }
 
 void Camera::calculateRightVec(){
-    cameraRight.x = sin(radians(yaw) - 3.14f/2.0f);
-    cameraRight.y = 0.0f;
-    cameraRight.z = cos(radians(yaw) - 3.14f/2.0f);
+    cameraRight = normalize(cross(cameraFront, cameraUp));
 }

@@ -1,6 +1,6 @@
 #include "main.hpp"
 
-Model::Model(const char* modelPath, float size, vec3 chunkSpaceTransform, vec3 chunk, bool shouldScalePositionBasedOnScaleOfVoxel){
+Model::Model(const char* modelPath, float size, vec3 chunkSpaceTransform, vec3 chunk, bool shouldScalePositionBasedOnScaleOfVoxel, string id){
     ifstream model(modelPath);
     string line;
     vector<string> data;
@@ -9,6 +9,7 @@ Model::Model(const char* modelPath, float size, vec3 chunkSpaceTransform, vec3 c
     this->chunk = chunk;
     this->size = size;
     this->shouldScalePosition = shouldScalePositionBasedOnScaleOfVoxel;
+    this->ID = id;
 
     while(getline(model, line)){
         if(line != "##MODEL" && line != "##EOF"){
@@ -133,6 +134,14 @@ vector<vec3> Model::getColors(){
 
 vec3 Model::getChunkCoord(){
     return this->chunk;
+}
+
+void Model::setChunkCoord(vec3 chunk){
+    this->chunk = chunk;
+}
+
+string Model::getId(){
+    return this->ID;
 }
 
 bool Model::getShouldScalePositionBool(){
