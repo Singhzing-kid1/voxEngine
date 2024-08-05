@@ -20,7 +20,7 @@ int main(int argc, char* argv[]){
         return 1;
     }
 
-    window = SDL_CreateWindow("v0.0.3-patch", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, HEIGHT, WIDTH, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    window = SDL_CreateWindow("v0.0.4", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, HEIGHT, WIDTH, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 
     if(window == nullptr){
         cout << "SDL could not create window. Error: " << SDL_GetError();
@@ -80,7 +80,7 @@ int main(int argc, char* argv[]){
     int mouseX, mouseY;
     float xOffset = 0.0f, yOffset = 0.0f, lastX, lastY;
     float sensitivity = 0.25;
-    int yaw = 0, pitch = 0;
+    float yaw = 0.0f, pitch = 0.0f;
 
     int renderDistance = 12; // in chunks
 
@@ -97,8 +97,8 @@ int main(int argc, char* argv[]){
         lastX = accumX;
         lastY = accumY;
 
-        xOffset = floor(xOffset * sensitivity);
-        yOffset = floor(yOffset * sensitivity);
+        xOffset *= sensitivity;
+        yOffset *= sensitivity;
 
         yaw += xOffset;
         pitch += yOffset;
@@ -171,9 +171,9 @@ int main(int argc, char* argv[]){
                 float newMouseX = mouseX + e.motion.xrel;
                 float newMouseY = mouseY + e.motion.yrel;
                 
-                if(newMouseX < WIDTH/2 || newMouseX > WIDTH/2 || newMouseY < HEIGHT/2 || newMouseY > HEIGHT/2){
+/*                 if(newMouseX < WIDTH/2 || newMouseX > WIDTH/2 || newMouseY < HEIGHT/2 || newMouseY > HEIGHT/2){
                     SDL_WarpMouseInWindow(window, HEIGHT/2, WIDTH/2);
-                }
+                } */
             }
         }
         mainCam.update();
