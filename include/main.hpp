@@ -2,7 +2,7 @@
  * @file main.hpp
  * @author Veer Singh
  * @brief All includes needed for this project to be able to run on Linux, or Windows.
- * @version 0.0.4
+ * @version 0.0.5
  * @date 2024-07-27
  * 
  * @copyright Copyright (c) 2024
@@ -27,6 +27,8 @@
 #include <sstream>
 #include <fstream>
 #include <string>
+#include <btBulletCollisionCommon.h>
+
 
 #ifdef _WIN32
 #include <windows.h>
@@ -36,6 +38,7 @@
 #define WIDTH 720
 
 #include "shaders.hpp"
+#include "player.hpp"
 #include "camera.hpp"
 #include "model.hpp"
 

@@ -11,6 +11,7 @@ bool checkIfVec3InVolume(vec3 point, vec3 camera,  float volumeHalfSideLength){
     return x && y && z;
 }
 
+
 int main(int argc, char* argv[]){
     SDL_Window* window;
     SDL_GLContext context;
@@ -31,6 +32,8 @@ int main(int argc, char* argv[]){
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 2);
 
     context = SDL_GL_CreateContext(window);
 
@@ -53,13 +56,28 @@ int main(int argc, char* argv[]){
     bool quit = false;
 
     glEnable(GL_DEPTH_TEST);
+    glLineWidth(1.0f);
+
+
+    btBroadphaseInterface* broadPhase = new btDbvtBroadphase();
+    btDefaultCollisionConfiguration* config = new btDefaultCollisionConfiguration();
+    btCollisionDispatcher* dispatch = new btCollisionDispatcher(config);
+
+    btCollisionWorld* collisionWorld = new btCollisionWorld(dispatch, broadPhase, config);
+    
+    debugDrawer* debugDrawerInstance = new debugDrawer();
+    debugDrawerInstance->setDebugMode(btIDebugDraw::DBG_DrawWireframe | btIDebugDraw::DBG_DrawAabb);
+    collisionWorld->setDebugDrawer(debugDrawerInstance);
 
     Shader testShader("./shaders/vertexWithSizeScaling.glsl", "./shaders/frag.glsl");
     Shader noScalingShader("./shaders/vertexWithOutSizeScaling.glsl", "./shaders/frag.glsl");
-    Camera mainCam(45.0f, (float)HEIGHT, (float)WIDTH, 0.1f, 10000.0f, vec3(0.0f, 0.0f, 3.0f));
-    Model chunkZeroBorder("./models/chunkBorder.model", 0.5f, vec3(0, 0, 0), vec3(0, 0, 0), false, "cZB");
-    Model testModel("./models/testModel.model", 1.0f, vec3(0, 0, 0), vec3(0, 0, 2), true, "tM");
-    Model points("./models/pointsOfChunk.model", .025f, vec3(0, 0, 0), vec3(0, 0, 0), false, "p");
+    // Camera mainCam(45.0f, (float)HEIGHT, (float)WIDTH, 0.1f, 10000.0f, vec3(0.0f, 0.0f, 3.0f));
+    Model chunkZeroBorder("./models/chunkBorder.model", 0.5f, vec3(0, 0, 0), vec3(0, 0, 0), false, "cZB", false, collisionWorld);
+    Model testModel("./models/testModel.model", 1.0f, vec3(0, 0, 0), vec3(0, 0, 0), true, "tM", true, collisionWorld);
+    Model points("./models/pointsOfChunk.model", .025f, vec3(0, 0, 0), vec3(0, 0, 0), false, "p", false, collisionWorld);
+
+    Player player(45.0f, (float)HEIGHT, (float)WIDTH, 0.1f, 10000.0f, vec3(0.0f, 0.0f, 12.0f), vec3(2.0f, 4.0f, 2.0f));
+
     vector<Model> models;
 
     models.push_back(points);
@@ -69,10 +87,12 @@ int main(int argc, char* argv[]){
     mat4 model = mat4(1.0f);
 
     mat4 view = mat4(1.0f);
-    view = translate(view, mainCam.getPosVec());
+    view = translate(view, player.getPosVec());
 
     mat4 projection;
-    projection = perspective(mainCam.getFov(), mainCam.getAspect(), mainCam.getNear(), mainCam.getFar());
+    projection = perspective(player.getFov(), player.getAspect(), player.getNear(), player.getFar());
+
+    bool camCollided = false;
 
     float cameraSpeed = 0.75f;
 
@@ -83,8 +103,9 @@ int main(int argc, char* argv[]){
     float yaw = 0.0f, pitch = 0.0f;
 
     int renderDistance = 12; // in chunks
-
+    
     SDL_SetRelativeMouseMode(SDL_TRUE);
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     while(!quit){
         float currentFrame = SDL_GetTicks()/1000.0f;
@@ -110,31 +131,31 @@ int main(int argc, char* argv[]){
             pitch = -89.0f;
         }
 
-        mainCam.setYaw(yaw);
-        mainCam.setPitch(pitch); 
+        player.setYaw(yaw);
+        player.setPitch(pitch); 
+        player.setDeltaTime(deltaTime);
 
         //mainCam.smoothUpdate(yaw, pitch, deltaTime);
 
         const  Uint8* state = SDL_GetKeyboardState(NULL);
         
         if(state[SDL_SCANCODE_W] && state[SDL_SCANCODE_D]){
-            mainCam.moveCamera(Camera::NORTHEAST, cameraSpeed);
+            player.movePlayer(Camera::NORTHEAST, cameraSpeed, collisionWorld);
         } else if(state[SDL_SCANCODE_W] && state[SDL_SCANCODE_A]){
-            mainCam.moveCamera(Camera::NORTHWEST, cameraSpeed);
+            player.movePlayer(Camera::NORTHWEST, cameraSpeed, collisionWorld);
         } else if(state[SDL_SCANCODE_S] && state[SDL_SCANCODE_D]){
-            mainCam.moveCamera(Camera::SOUTHEAST, cameraSpeed);
+            player.movePlayer(Camera::SOUTHEAST, cameraSpeed, collisionWorld);
         } else if(state[SDL_SCANCODE_S] && state[SDL_SCANCODE_A]){
-            mainCam.moveCamera(Camera::SOUTHWEST, cameraSpeed);
+            player.movePlayer(Camera::SOUTHWEST, cameraSpeed, collisionWorld);
         } else if(state[SDL_SCANCODE_W] && !state[SDL_SCANCODE_S]){
-            mainCam.moveCamera(Camera::NORTH, cameraSpeed);
+            player.movePlayer(Camera::NORTH, cameraSpeed, collisionWorld);
         } else if(state[SDL_SCANCODE_S] && !state[SDL_SCANCODE_W]){
-            mainCam.moveCamera(Camera::SOUTH, cameraSpeed);
+            player.movePlayer(Camera::SOUTH, cameraSpeed, collisionWorld);
         } else if(state[SDL_SCANCODE_D] && !state[SDL_SCANCODE_A]){
-            mainCam.moveCamera(Camera::EAST, cameraSpeed);
+            player.movePlayer(Camera::EAST, cameraSpeed, collisionWorld);
         } else if(state[SDL_SCANCODE_A] && !state[SDL_SCANCODE_D]){
-            mainCam.moveCamera(Camera::WEST, cameraSpeed);
+            player.movePlayer(Camera::WEST, cameraSpeed, collisionWorld);
         }
-
 
         while(SDL_PollEvent(&e)){
             cameraSpeed = 2.5 * deltaTime;
@@ -149,16 +170,16 @@ int main(int argc, char* argv[]){
                 }
 
                 if(e.key.keysym.scancode == SDL_SCANCODE_M){
-                    mainCam.setPos(vec3(0.0f, 0.0f, 17.0f));
+                    player.setPos(vec3(0.0f, 0.0f, 17.0f));
                 }
 
                 if(e.key.keysym.scancode == SDL_SCANCODE_B){
-                    mainCam.setPos(vec3(0.0f, 17.0f, 0.0f));
+                    player.setPos(vec3(0.0f, 17.0f, 0.0f));
                 }
 
                 
                 if(e.key.keysym.scancode == SDL_SCANCODE_N){
-                    mainCam.setPos(vec3(0.0f, 0.0f, -17.0f));
+                    player.setPos(vec3(0.0f, 0.0f, -17.0f));
                 }
             }
 
@@ -171,29 +192,27 @@ int main(int argc, char* argv[]){
                 float newMouseX = mouseX + e.motion.xrel;
                 float newMouseY = mouseY + e.motion.yrel;
                 
-/*                 if(newMouseX < WIDTH/2 || newMouseX > WIDTH/2 || newMouseY < HEIGHT/2 || newMouseY > HEIGHT/2){
+                if(newMouseX < WIDTH/2 || newMouseX > WIDTH/2 || newMouseY < HEIGHT/2 || newMouseY > HEIGHT/2){
                     SDL_WarpMouseInWindow(window, HEIGHT/2, WIDTH/2);
-                } */
+                } 
             }
         }
-        mainCam.update();
+        player.pUpdate(models, collisionWorld);
 
-        view = lookAt(mainCam.getPosVec(), mainCam.getFrontVec() + mainCam.getPosVec(), mainCam.getUpVec());
+        view = lookAt(player.getPosVec(), player.getFrontVec() + player.getPosVec(), player.getUpVec());
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
-
         for(auto &m : models){
-            if(checkIfVec3InVolume(m.getChunkCoord(), floor((mainCam.getPosVec() + vec3(17.0f)) / 34.0f), renderDistance)){
-                m.getId() != "p" ? m.getShouldScalePositionBool() ? m.render(testShader, model, view, projection) : m.render(noScalingShader, model, view, projection) : (void)0;
+            if(checkIfVec3InVolume(m.getChunkCoord(), floor((player.getPlayerPos() + vec3(17.0f)) / 34.0f), renderDistance)){
+                m.getShouldScalePositionBool() ? m.render(testShader, model, view, projection) : m.render(noScalingShader, model, view, projection);
             }
 
+            m.getId() == "p" ? m.setChunkCoord(floor((player.getPlayerPos() + vec3(17.0f)) / 34.0f)) : (void)0;
         }
 
+        collisionWorld->debugDrawWorld();
 
-
-        SDL_Delay(5);
         SDL_GL_SwapWindow(window);
     }
 

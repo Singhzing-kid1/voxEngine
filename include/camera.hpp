@@ -2,7 +2,7 @@
  * @file camera.hpp
  * @author Veer Singh
  * @brief Class definition for a Camera Object
- * @version 0.0.4
+ * @version 0.0.5
  * @date 2024-07-27
  * 
  * @copyright Copyright (c) 2024
@@ -47,9 +47,6 @@ class Camera{
         void moveCamera(Axis, float);
 
     private:
-
-        float pitch = 0.0f;
-        float yaw = 0.0f;
         float deltaTime = 0.0f;
         float smoothingFactor = 0.1;
 
@@ -61,15 +58,8 @@ class Camera{
         float aspect;
         float nearPlane;
         float farPlane;
-
-        vec3 transVec = vec3(0.0f);
         
         quat cameraOrientation;
-
-        vec3 cameraFront;
-        vec3 cameraPos;
-        vec3 cameraUp;
-        vec3 cameraRight;
 
         void calculateTranslationVec();
 
@@ -80,7 +70,17 @@ class Camera{
         void calculatePosVec();
         void calculateRightVec();
 
+        vec3 cameraUp;
 
+
+    protected:
+        vec3 cameraPos;
+        vec3 cameraRight;
+        vec3 cameraFront;
+        vec3 transVec = vec3(0.0f);
+
+        float pitch = 0.0f;
+        float yaw = 0.0f;
 
 };
 

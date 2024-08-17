@@ -25,36 +25,39 @@ vec3 Camera::getUpVec(){
 }
 
 void Camera::moveCamera(Axis axis, float scalar){
-    switch(axis){
+    vec3 frontNoY = normalize(vec3(cameraFront.x, 0.0f, cameraFront.z));
+    vec3 rightNoY = normalize(vec3(cameraRight.x, 0.0f, cameraRight.z));
+
+    switch (axis) {
         case NORTH:
-            this->transVec += this->cameraFront * scalar;
+            this->transVec += frontNoY * scalar;
             break;
         case SOUTH:
-            this->transVec -= this->cameraFront * scalar;
+            this->transVec -= frontNoY * scalar;
             break;
         case EAST:
-            this->transVec += this->cameraRight * scalar;
+            this->transVec += rightNoY * scalar;
             break;
         case WEST:
-            this->transVec -= this->cameraRight * scalar;
+            this->transVec -= rightNoY * scalar;
             break;
         case NORTHEAST:
-            this->transVec += this->cameraFront * scalar;
-            this->transVec += this->cameraRight * scalar;
+            this->transVec += frontNoY * scalar;
+            this->transVec += rightNoY * scalar;
             break;
         case NORTHWEST:
-            this->transVec += this->cameraFront * scalar;
-            this->transVec -= this->cameraRight * scalar;
+            this->transVec += frontNoY * scalar;
+            this->transVec -= rightNoY * scalar;
             break;
         case SOUTHEAST:
-            this->transVec -= this->cameraFront * scalar;
-            this->transVec += this->cameraRight * scalar;           
+            this->transVec -= frontNoY * scalar;
+            this->transVec += rightNoY * scalar;
             break;
         case SOUTHWEST:
-            this->transVec -= this->cameraFront * scalar;
-            this->transVec -= this->cameraRight * scalar;
+            this->transVec -= frontNoY * scalar;
+            this->transVec -= rightNoY * scalar;
             break;
-    }       
+    }      
 }
 
 float Camera::getFov(){

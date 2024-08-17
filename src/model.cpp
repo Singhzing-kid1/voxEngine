@@ -1,6 +1,6 @@
 #include "main.hpp"
 
-Model::Model(const char* modelPath, float size, vec3 chunkSpaceTransform, vec3 chunk, bool shouldScalePositionBasedOnScaleOfVoxel, string id){
+Model::Model(const char* modelPath, float size, vec3 chunkSpaceTransform, vec3 chunk, bool shouldScalePositionBasedOnScaleOfVoxel, string id, bool canCollide, btCollisionWorld* collisionWorld){
     ifstream model(modelPath);
     string line;
     vector<string> data;
@@ -10,6 +10,7 @@ Model::Model(const char* modelPath, float size, vec3 chunkSpaceTransform, vec3 c
     this->size = size;
     this->shouldScalePosition = shouldScalePositionBasedOnScaleOfVoxel;
     this->ID = id;
+    this->canCollide = canCollide;
 
     while(getline(model, line)){
         if(line != "##MODEL" && line != "##EOF"){
@@ -51,7 +52,6 @@ Model::Model(const char* modelPath, float size, vec3 chunkSpaceTransform, vec3 c
             tempF = tempF;
             tempV[x] = tempF;
         }
-
         this->position.push_back(tempV);
     }
 
@@ -68,6 +68,22 @@ Model::Model(const char* modelPath, float size, vec3 chunkSpaceTransform, vec3 c
             tempV[x] = tempF;
         }
         this->color.push_back(tempV);
+    }
+
+
+    for(const auto &p : this->position){
+        btVector3 halfSize(size, size, size);
+        btCollisionShape* boxShape = new btBoxShape(halfSize);
+
+        btTransform transform;
+        transform.setIdentity();
+        transform.setOrigin(btVector3(p.x, p.y, p.z) * 2 * size + btVector3(chunk.x, chunk.y, chunk.z) * 34 + btVector3(chunkSpaceTransform.x, chunkSpaceTransform.y, chunkSpaceTransform.z));
+
+        btCollisionObject* collisionObject = new btCollisionObject();
+        collisionObject->setCollisionShape(boxShape);
+        collisionObject->setWorldTransform(transform);
+
+        canCollide ? collisionWorld->addCollisionObject(collisionObject) : (void)0;
     }
 
     float vertices[] = {
@@ -118,6 +134,8 @@ Model::Model(const char* modelPath, float size, vec3 chunkSpaceTransform, vec3 c
 
     glBindVertexArray(0);
 
+
+
 }
 
 unsigned int Model::getVao(){
@@ -146,6 +164,28 @@ string Model::getId(){
 
 bool Model::getShouldScalePositionBool(){
     return this->shouldScalePosition;
+}
+
+bool Model::getCanCollide(){
+    return this->canCollide;
+}
+
+vector<vec3> Model::getVoxelPointsInGlobal(){
+    vector<vec3> result;
+    for(auto p : this->position){
+        vec3 out;
+        out.x = p.x * 2 * this->size + this->chunk.x * 34 + this->chunkSpaceTransform.x;
+        out.y = p.y * 2 * this->size + this->chunk.y * 34 + this->chunkSpaceTransform.y;
+        out.z = p.z * 2 * this->size + this->chunk.z * 34 + this->chunkSpaceTransform.z;
+
+        result.push_back(out);
+    }
+
+    return result;
+}
+
+float Model::getSize(){
+    return this->size;
 }
 
 void Model::render(Shader shader, mat4 model, mat4 view, mat4 projection){

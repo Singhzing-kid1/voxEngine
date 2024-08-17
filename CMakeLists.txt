@@ -50,6 +50,10 @@ target_link_libraries(main
     $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
 
+find_package(Bullet REQUIRED)
+target_link_libraries(main PRIVATE ${BULLET_LIBRARIES})
+target_include_directories(main PRIVATE ${BULLET_INCLUDE_DIRS})
+
 # Enable AddressSanitizer
 # if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 #     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer -g")
