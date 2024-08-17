@@ -21,7 +21,7 @@ int main(int argc, char* argv[]){
         return 1;
     }
 
-    window = SDL_CreateWindow("v0.0.4", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, HEIGHT, WIDTH, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    window = SDL_CreateWindow("v0.0.5", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, HEIGHT, WIDTH, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 
     if(window == nullptr){
         cout << "SDL could not create window. Error: " << SDL_GetError();
@@ -64,10 +64,6 @@ int main(int argc, char* argv[]){
     btCollisionDispatcher* dispatch = new btCollisionDispatcher(config);
 
     btCollisionWorld* collisionWorld = new btCollisionWorld(dispatch, broadPhase, config);
-    
-    debugDrawer* debugDrawerInstance = new debugDrawer();
-    debugDrawerInstance->setDebugMode(btIDebugDraw::DBG_DrawWireframe | btIDebugDraw::DBG_DrawAabb);
-    collisionWorld->setDebugDrawer(debugDrawerInstance);
 
     Shader testShader("./shaders/vertexWithSizeScaling.glsl", "./shaders/frag.glsl");
     Shader noScalingShader("./shaders/vertexWithOutSizeScaling.glsl", "./shaders/frag.glsl");
@@ -210,8 +206,6 @@ int main(int argc, char* argv[]){
 
             m.getId() == "p" ? m.setChunkCoord(floor((player.getPlayerPos() + vec3(17.0f)) / 34.0f)) : (void)0;
         }
-
-        collisionWorld->debugDrawWorld();
 
         SDL_GL_SwapWindow(window);
     }
