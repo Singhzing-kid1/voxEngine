@@ -24,7 +24,7 @@ class Engine{
     public:
         Engine(int, int, const char*);
         float deltaTime, lastFrame;
-        inputData eventHandling();
+        void eventHandling(inputData*);
 
         void initRendering(vec3, float, float, float, float);
 

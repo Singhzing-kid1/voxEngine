@@ -11,11 +11,13 @@ class Player : public Camera {
 
         void updatePlayer(float, const Uint8*, float, float);
 
+        vec3 position;
+
         void movePlayer(Axis, float);
 
     private:
         vec4 size;
-        vec3 position, velocity, prevPos, playerTranslationVec;
+        vec3 velocity, prevPos, playerTranslationVec;
         float deltaTime, speed;
 };
 

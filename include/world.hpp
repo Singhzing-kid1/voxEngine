@@ -12,7 +12,7 @@ class World{
 
         void init();
         void update();
-        void render(mat4, mat4, mat4, Shader);
+        void render(mat4, mat4, mat4, Shader, vec3);
 
     private:
         struct Chunk{
@@ -21,13 +21,23 @@ class World{
             vector<Vec3s> verticies;
             vector<unsigned int> indicies;
             vector<Vec3s> normals;
+            Coord chunkPos;
             bool needsUpdate, newChunk;
+        };
+        
+        struct worldCell {
+            Coord coord;
+            int height;
+            worldCell(Coord _coord, int _height) : coord(_coord), height(_height) {}
         };
 
         int chunkSize;
         int worldHeight;
 
         vector<Chunk> chunks;
+
+        bool isSurfaceVoxel(Coord, FloatGrid::Ptr);
+        Vec3s voxelToWorld(Coord, Coord, float, float);
 
         Chunk generateChunkMesh(Chunk);
         Chunk updateChunk(Chunk);

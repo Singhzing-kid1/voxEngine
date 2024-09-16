@@ -26,24 +26,48 @@ void World::init() {
 
     FloatGrid::Accessor accessor = chunk.voxelGrid->getAccessor();
 
-    int height = 8;     // Let's create some height variation
+    queue<worldCell> queue;
 
-    
-    for(int x = 0; x < chunkSize; x++){
-        for(int z = 0; z < chunkSize; z++){
-            for(int y = 0; y < height; y++){
-                Coord xyz(x, y, z);
-                if (y < (height / 2)) {
-                    accessor.setValueOn(xyz, 1.0f);  // Inside
-                } else {
-                    accessor.setValueOn(xyz, -1.0f); // Outside
+    int height = 10;
+    Coord start(0, height, 0);
+    accessor.setValueOn(start, 1.0f);
+    queue.push(worldCell(start, height));
+
+    while(!queue.empty()){
+        worldCell current = queue.front();
+        queue.pop();
+
+        int currentHeight = current.height;
+
+        for(int y = 0; y < currentHeight; y++){
+            Coord setToHeight(current.coord.x(), y, current.coord.z());
+            accessor.setValueOn(setToHeight, 1.0f);
+        }
+
+        if(currentHeight <= 0) continue;
+
+        vector<worldCell> neighbors = {
+            worldCell(Coord(current.coord.x() + 1, 0, current.coord.z()), currentHeight - 1),  // Right
+            worldCell(Coord(current.coord.x(), 0, current.coord.z() + 1), currentHeight - 1),  // Down
+            worldCell(Coord(current.coord.x() - 1, 0, current.coord.z()), currentHeight - 1),  // Left
+            worldCell(Coord(current.coord.x(), 0, current.coord.z() - 1), currentHeight - 1)   // Up
+        };
+
+        for(worldCell& neighbor : neighbors){
+            if (neighbor.coord.x() >= 0 && neighbor.coord.x() < chunkSize && neighbor.coord.z() >= 0 && neighbor.coord.z() < chunkSize) {
+                Coord neighborCoord(neighbor.coord.x(), neighbor.height, neighbor.coord.z());
+                if (accessor.getValue(neighborCoord) == -1) {
+                    accessor.setValueOn(neighborCoord, 1.0f);
+                    
+                    queue.push(neighbor);
                 }
             }
         }
-    }
+    } 
+
 
     chunk.needsUpdate = true;
-    chunk.newChunk = true;
+    chunk.chunkPos = Coord(0, 0, 0);
 
     chunks.push_back(chunk);
 }
@@ -53,23 +77,25 @@ void World::update() {
         if (chunk.needsUpdate) {
             generateChunkMesh(chunk);
             Chunk data;
-            if(chunk.newChunk){
-                data = generateChunkMesh(chunk);
-                data = setupMeshBuffers(data);
-            }
+
+            data = generateChunkMesh(chunk);
+            data = setupMeshBuffers(data);
+
             chunk = data;
             chunk.needsUpdate = false;
         }
     }
 }
 
-void World::render(mat4 model, mat4 view, mat4 projection, Shader shader) {
+void World::render(mat4 model, mat4 view, mat4 projection, Shader shader, vec3 cameraPos) {
     for (auto& chunk : chunks) {
         shader.use();
         shader.setUniform("view", view);
         shader.setUniform("projection", projection);
         shader.setUniform("model", model);
         shader.setUniform("color", vec3(1.0f, 1.0f, 1.0f));
+        shader.setUniform("lightPosition", vec3(8, 5, 5));
+        shader.setUniform("viewPos", cameraPos);
 
         glBindVertexArray(chunk.vao);
         glDrawElements(GL_TRIANGLES, chunk.indicies.size(), GL_UNSIGNED_INT, 0);
@@ -78,37 +104,103 @@ void World::render(mat4 model, mat4 view, mat4 projection, Shader shader) {
 }
 
 World::Chunk World::generateChunkMesh(Chunk chunk) {
-    vector<Vec3s> points;
-    vector<Vec4I> quads;
-
     Chunk data = chunk;
 
-    tools::volumeToMesh(*data.voxelGrid, points, quads);
+    FloatGrid::Accessor accessor = data.voxelGrid->getAccessor();
 
-    for (const auto& quad : quads) {
-        data.indicies.push_back(quad[0]);
-        data.indicies.push_back(quad[1]);
-        data.indicies.push_back(quad[2]);
-        data.indicies.push_back(quad[0]);
-        data.indicies.push_back(quad[2]);
-        data.indicies.push_back(quad[3]);
+    auto addQuad = [&](const Vec3s& v0, const Vec3s& v1, const Vec3s& v2, const Vec3s& v3, Vec3s normal){
+        GLuint idxStart = data.verticies.size();
+
+        data.normals.push_back(normal);
+        data.normals.push_back(normal);
+        data.normals.push_back(normal);
+        data.normals.push_back(normal);
+
+        data.verticies.push_back(v0);
+        data.verticies.push_back(v1);
+        data.verticies.push_back(v2);
+        data.verticies.push_back(v3);
+
+        data.indicies.push_back(idxStart + 0);
+        data.indicies.push_back(idxStart + 1);
+        data.indicies.push_back(idxStart + 2);
+    
+        data.indicies.push_back(idxStart + 0);
+        data.indicies.push_back(idxStart + 3);
+        data.indicies.push_back(idxStart + 1);
+    };
+
+
+    for(auto iter = data.voxelGrid->beginValueOn(); iter; ++iter){
+        const Coord& coord = iter.getCoord();
+        if (accessor.getValue(coord) != 1.0f) continue;
+
+        Vec3s voxelCenter = voxelToWorld(coord, data.chunkPos, 1.0f, 16);
+
+        if(isSurfaceVoxel(coord, data.voxelGrid)){
+            if (accessor.getValue(coord.offsetBy(1, 0, 0)) == -1.0f) {
+                addQuad(
+                    voxelCenter + Vec3s(0.5f, -0.5f, -0.5f),
+                    voxelCenter + Vec3s(0.5f,  0.5f,  0.5f),
+                    voxelCenter + Vec3s(0.5f, -0.5f,  0.5f),
+                    voxelCenter + Vec3s(0.5f,  0.5f, -0.5f),
+                    Vec3s(1.0f, 0.0f, 0.0f)
+                );
+            }
+            
+            if (accessor.getValue(coord.offsetBy(-1, 0, 0)) == -1.0f) {
+                addQuad(
+                    voxelCenter + Vec3s(-0.5f, -0.5f, -0.5f),
+                    voxelCenter + Vec3s(-0.5f,  0.5f,  0.5f),
+                    voxelCenter + Vec3s(-0.5f,  0.5f, -0.5f),
+                    voxelCenter + Vec3s(-0.5f, -0.5f,  0.5f),
+                    Vec3s(-1.0f, 0.0f, 0.0f)
+                );
+            }
+            
+            if (accessor.getValue(coord.offsetBy(0, 1, 0)) == -1.0f) {
+                addQuad(
+                    voxelCenter + openvdb::Vec3s(-0.5f, 0.5f, -0.5f),
+                    voxelCenter + openvdb::Vec3s( 0.5f, 0.5f,  0.5f),
+                    voxelCenter + openvdb::Vec3s( 0.5f, 0.5f, -0.5f),
+                    voxelCenter + openvdb::Vec3s(-0.5f, 0.5f,  0.5f),
+                    Vec3s(0.0f, 1.0f, 0.0f)
+                );
+            }
+
+            if (accessor.getValue(coord.offsetBy(0, -1, 0)) == -1.0f) {
+                addQuad(
+                    voxelCenter + Vec3s(-0.5f, -0.5f, -0.5f),
+                    voxelCenter + Vec3s( 0.5f, -0.5f,  0.5f),
+                    voxelCenter + Vec3s(-0.5f, -0.5f,  0.5f),
+                    voxelCenter + Vec3s( 0.5f, -0.5f, -0.5f),
+                    Vec3s(0.0f, -1.0f, 0.0f)
+                );
+            }
+            
+            if (accessor.getValue(coord.offsetBy(0, 0, 1)) == -1.0f) {
+                addQuad(
+                    voxelCenter + Vec3s(-0.5f, -0.5f, 0.5f),
+                    voxelCenter + Vec3s( 0.5f,  0.5f, 0.5f),
+                    voxelCenter + Vec3s(-0.5f,  0.5f, 0.5f),
+                    voxelCenter + Vec3s( 0.5f, -0.5f, 0.5f),
+                    Vec3s(0.0f, 0.0f, -1.0f)
+                );
+            }
+
+            if (accessor.getValue(coord.offsetBy(0, 0, -1)) == -1.0f) {
+                addQuad(
+                    voxelCenter + Vec3s(-0.5f, -0.5f, -0.5f),
+                    voxelCenter + Vec3s( 0.5f,  0.5f, -0.5f),
+                    voxelCenter + Vec3s( 0.5f, -0.5f, -0.5f),
+                    voxelCenter + Vec3s(-0.5f,  0.5f, -0.5f),
+                    Vec3s(0.0f, 0.0f, -1.0f)
+                );
+            }
+        }
     }
 
-    data.verticies = points;
 
-    vector<Vec3s> normals(points.size(), Vec3s(0.0f, 0.0f, 0.0f));
-
-/*     for(size_t i = 0; i < data.indicies.size(); i+=3){
-        Vec3s v1 = points[data.indicies[i+1]] - points[data.indicies[i]];
-        Vec3s v2 = points[data.indicies[1+2]] - points[data.indicies[i]];
-        Vec3s normal = v1.cross(v2).unit();
-        normals[i] += normal;
-        normals[i + 1] += normal;
-        normals[i + 2] += normal;
-    } */
-
-    data.normals = normals;
-    
     return data;
 }
 
@@ -126,13 +218,13 @@ World::Chunk World::setupMeshBuffers(Chunk chunk) {
 
     glBufferSubData(GL_ARRAY_BUFFER, 0, data.verticies.size() * sizeof(Vec3s), data.verticies.data());
 
- /*    glBufferSubData(GL_ARRAY_BUFFER, data.verticies.size() * sizeof(Vec3s), data.normals.size() * sizeof(Vec3s), data.normals.data()); */
+    glBufferSubData(GL_ARRAY_BUFFER, data.verticies.size() * sizeof(Vec3s), data.normals.size() * sizeof(Vec3s), data.normals.data());
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0);
     glEnableVertexAttribArray(0);
 
- /*    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) (data.verticies.size() * sizeof(Vec3s)));
-    glEnableVertexAttribArray(1); */
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) (data.verticies.size() * sizeof(Vec3s)));
+    glEnableVertexAttribArray(1);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.indicies.size() * sizeof(unsigned int), data.indicies.data(), GL_STATIC_DRAW);
@@ -142,4 +234,46 @@ World::Chunk World::setupMeshBuffers(Chunk chunk) {
     data.newChunk = false;
 
     return data;
+}
+
+bool World::isSurfaceVoxel(Coord coord, FloatGrid::Ptr voxelGrid){
+    FloatGrid::Accessor accessor = voxelGrid->getAccessor();
+
+    float currentVoxelValue = accessor.getValue(coord);
+
+    vector<Coord> directions = {Coord(0, 0, 1),
+                                Coord(0, 1, 0),
+                                Coord(1, 0, 0),
+                                Coord(0, 0, -1),
+                                Coord(0, -1, 0),
+                                Coord(-1, 0, 0)};
+
+    for(auto direction : directions){
+        Coord offset;
+
+        if((coord.x() >= 0 || coord.y() >= 0 || coord.z() >= 0)){
+            offset = coord.offsetBy(direction.x(), direction.y(), direction.z());
+
+            if(accessor.getValue(offset) == -1){
+                return true;
+            }
+    
+
+        }
+    }
+
+    return false;
+}
+
+
+Vec3s World::voxelToWorld(Coord coord, Coord chunkPos, float voxelSize, float chunkSize){
+    Vec3i voxelCoord = coord.asVec3i();
+    Vec3s chunkPosCoord = chunkPos.asVec3s(); 
+    Vec3s worldPos;
+
+    worldPos.x() = chunkPos.x() * chunkSize + voxelCoord.x() * voxelSize;
+    worldPos.y() = chunkPos.y() * chunkSize + voxelCoord.y() * voxelSize;
+    worldPos.z() = chunkPos.z() * chunkSize + voxelCoord.z() * voxelSize;
+
+    return worldPos;
 }

@@ -32,7 +32,7 @@ class Camera{
     protected:
         vec3 pos, up, front, right, translationVec;
         //   1,   2,   3,     4,     5 <-- ints;
-        float pitch = 0.0f, yaw = 0.0f;
+        float pitch = 0.0f, yaw = 90.0f;
 };
 
 #endif

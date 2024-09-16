@@ -52,10 +52,9 @@ vec3 Camera::getItem(int item){
     }
 }
 
-void Camera::setAngles(float xOffset, float yOffset){
-    this->yaw += xOffset;
-    this->pitch += yOffset;
-    pitch = std::clamp(pitch, -89.0f, 89.0f);
+void Camera::setAngles(float yaw, float pitch){
+    this->yaw = yaw;
+    this->pitch = pitch;
 }
 
 void Camera::moveCamera(Camera::Axis axis, float power){

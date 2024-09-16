@@ -7,7 +7,7 @@ Player::Player(float fov, float height, float width, float nearPlane, float farP
     this->speed = speed;
 }
 
-void Player::updatePlayer(float deltaTime, const Uint8* state, float xOffset, float yOffset){
+void Player::updatePlayer(float deltaTime, const Uint8* state, float yaw, float pitch){
     this->deltaTime = deltaTime;
 
     if(state[SDL_SCANCODE_W] && state[SDL_SCANCODE_D]){
@@ -30,7 +30,7 @@ void Player::updatePlayer(float deltaTime, const Uint8* state, float xOffset, fl
 
     position = playerTranslationVec;
     translationVec = playerTranslationVec;
-    this->setAngles(xOffset, yOffset);
+    this->setAngles(yaw, pitch);
     this->update(deltaTime);
 }
 

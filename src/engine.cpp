@@ -47,19 +47,17 @@ Engine::Engine(int height, int width, const char* title){
     }
 
     glEnable(GL_DEPTH_TEST);
-
-    SDL_SetRelativeMouseMode(SDL_TRUE);
 }
 
-inputData Engine::eventHandling(){
-    inputData data;
-    data.state = SDL_GetKeyboardState(NULL);
+
+void Engine::eventHandling(inputData* data){
+    data->state = SDL_GetKeyboardState(NULL);
     float currentFrame = SDL_GetTicks()/1000.0f;
     deltaTime = currentFrame - lastFrame;
     lastFrame = currentFrame;
 
-    data.xOffset = accumX - lastX;
-    data.yOffset = lastY - accumY;
+    data->xOffset = accumX - lastX;
+    data->yOffset = lastY - accumY;
 
     lastX = accumX;
     lastY = accumY;
@@ -67,12 +65,12 @@ inputData Engine::eventHandling(){
     while(SDL_PollEvent(&e)){
         switch(e.type){
             case SDL_QUIT:
-                data.shouldQuit = false;
+                data->shouldQuit = false;
                 break;
 
             case SDL_KEYDOWN:
                 if(e.key.keysym.sym == SDLK_ESCAPE){
-                    data.shouldQuit = true;
+                    data->shouldQuit = true;
                 }
                 break;
 
@@ -92,10 +90,11 @@ inputData Engine::eventHandling(){
         }
     }
 
-    return data;
 }
 
 void Engine::initRendering(vec3 pos, float fov, float aspect, float nearPlane, float farPlane){
+    SDL_SetRelativeMouseMode(SDL_TRUE);
+
     view = translate(view, pos);
     projection = perspective(fov, aspect, nearPlane, farPlane);
 }

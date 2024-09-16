@@ -18,6 +18,8 @@
 #include <cmath>
 #include <algorithm>
 #include <vector>
+#include <time.h>
+#include <queue>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -50,6 +52,8 @@
 #include "shader.hpp"
 #include "world.hpp"
 #pragma endregion
+
+#define pass (void)0;
 
 // namespace simplifications
 
