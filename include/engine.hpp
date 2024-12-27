@@ -1,9 +1,9 @@
 /**
  * @file engine.hpp
  * @author Veer Singh
- * @brief definition of the engine class. handles window creation and input handling.
- * @version 0.0.6
- * @date 2024-09-02
+ * @brief handles window and vulkan instance creation and input handling
+ * @version 0.0.7
+ * @date 2024-12-01
  * 
  * @copyright Copyright (c) 2024
  * 
@@ -13,24 +13,33 @@
 
 #include "main.hpp"
 
-typedef struct{
+struct QueueFamilyIndices {
+    optional<uint32_t> graphicsFamily;
+    optional<uint32_t> presentFamily;
+
+    bool isComplete() {
+        return graphicsFamily.has_value() && presentFamily.has_value();
+    }
+};
+
+struct SwapChainSupportDetails {
+    VkSurfaceCapabilitiesKHR capabilities;
+    vector<VkSurfaceFormatKHR> formats;
+    vector<VkPresentModeKHR> presentModes;
+};
+
+struct InputData {
     float xOffset = 0.0f, yOffset = 0.0f;
     bool shouldQuit = false;
     const Uint8* state;
-} inputData;
+};
 
 class Engine{
-
     public:
         Engine(int, int, const char*);
-        float deltaTime, lastFrame;
-        void eventHandling(inputData*);
+        ~Engine();
 
-        void initRendering(vec3, float, float, float, float);
-
-        void swap();
-
-        mat4 model = mat4(1.0f), view = mat4(1.0f), projection;
+        void eventHandling(InputData*);
 
         int width, height;
 
@@ -38,13 +47,28 @@ class Engine{
         SDL_Event e;
 
         SDL_Window* window;
-        SDL_GLContext context;
 
-        double accumX = 0.0, accumY = 0.0;
-        int mouseX, mouseY;
-        float lastX, lastY;
+        VkInstance instance;
+        VkSurfaceKHR surface;
+        VkPhysicalDevice pDevice;
+        VkDevice device;
+        VkQueue queue;
+
+        const vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+
+        void createInstance();
+        void createSurface();
+        void pickPhysicalDevice();
+        void createLogicalDevice();
+
+        bool isSuitableDevice(VkPhysicalDevice);
+        bool checkDeviceExtensionSupport(VkPhysicalDevice);
+        QueueFamilyIndices findQueueFamilyIndices(VkPhysicalDevice);
+        SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice);
+
+
+        
+
 };
-
-
 
 #endif

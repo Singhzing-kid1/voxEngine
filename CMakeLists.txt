@@ -22,11 +22,9 @@ add_executable(main ${HEADER_FILES} ${SOURCE_FILES})
 find_package(glm REQUIRED)
 target_link_libraries(main PRIVATE glm::glm)
 
-find_package(OpenGL REQUIRED)
-target_link_libraries(main PRIVATE OpenGL::GL)
-
-find_package(GLEW REQUIRED)
-target_link_libraries(main PRIVATE GLEW::GLEW)
+find_package(Vulkan REQUIRED)
+include_directories(${Vulkan_INCLUDE_DIRS})
+target_link_libraries(main PRIVATE Vulkan::Vulkan)
 
 find_package(OpenVDB REQUIRED)
 target_link_libraries(main PRIVATE OpenVDB::openvdb)

@@ -1,104 +1,212 @@
 /**
  * @file engine.cpp
  * @author Veer Singh
- * @brief implementation of the engine class. handles window creation and input handling.
- * @version 0.1
- * @date 2024-09-02
+ * @brief main engine class; handles window creation/deletion, vulkan setup and takedown and input handling
+ * @version 0.0.7
+ * @date 2024-12-22
  * 
  * @copyright Copyright (c) 2024
  * 
  */
 #include "main.hpp"
 
-Engine::Engine(int height, int width, const char* title){
+
+Engine::Engine(int width, int height, const char* title){
     this->width = width;
     this->height = height;
 
-    if(SDL_Init(SDL_INIT_VIDEO) < 0){
-        cout << "could not init SDL2. Error: " << SDL_GetError();
-    }
+    if(SDL_Init(SDL_INIT_VIDEO) < 0) cout << "could not init SDL2. Error: " << SDL_GetError();
 
-    window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN);
 
-    if(window == nullptr){
-        cout << "could not create Window. Error: " << SDL_GetError();
-    }
+    if(window == nullptr) cout << "could not create SDL2 window. Error: " << SDL_GetError();
 
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
-    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 2);
-
-    context = SDL_GL_CreateContext(window);
-
-    if(context == nullptr){
-        cout << "could not create openGL context. Error: " << SDL_GetError();
-    }
-
-    SDL_GL_SetSwapInterval(0);
-
-    glewExperimental = GL_TRUE;
-    GLenum glewError = glewInit();
-
-    if(glewError != GLEW_OK){
-        cout << "could not init GLEW. Error: " << glewGetErrorString(glewError);
-    }
-
-    glEnable(GL_DEPTH_TEST);
+    createInstance();
+    createSurface();
+    pickPhysicalDevice();
+    createLogicalDevice();
 }
 
+Engine::~Engine(){
+    vkDestroyDevice(device, nullptr);
+    vkDestroySurfaceKHR(instance, surface, nullptr);
+    vkDestroyInstance(instance, nullptr);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+}
 
-void Engine::eventHandling(inputData* data){
-    data->state = SDL_GetKeyboardState(NULL);
-    float currentFrame = SDL_GetTicks()/1000.0f;
-    deltaTime = currentFrame - lastFrame;
-    lastFrame = currentFrame;
-
-    data->xOffset = accumX - lastX;
-    data->yOffset = lastY - accumY;
-
-    lastX = accumX;
-    lastY = accumY;
-
+void Engine::eventHandling(InputData* data){
     while(SDL_PollEvent(&e)){
         switch(e.type){
             case SDL_QUIT:
-                data->shouldQuit = false;
+                data->shouldQuit = true;
                 break;
 
             case SDL_KEYDOWN:
-                if(e.key.keysym.sym == SDLK_ESCAPE){
-                    data->shouldQuit = true;
-                }
+                if(e.key.keysym.sym == SDLK_ESCAPE) data->shouldQuit = true;
                 break;
+        }
+    }
+}
 
-            case SDL_MOUSEMOTION:
-                accumX -= e.motion.xrel;
-                accumY += e.motion.yrel;
+void Engine::createInstance(){
+    VkApplicationInfo appInfo{};
+    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    appInfo.pApplicationName = "voxEngine test 0.0.7";
+    appInfo.applicationVersion = VK_MAKE_VERSION(0, 0, 7);
+    appInfo.pEngineName = "voxEngine";
+    appInfo.engineVersion = VK_MAKE_VERSION(0, 0, 7);
+    appInfo.apiVersion = VK_API_VERSION_1_0;
 
-                SDL_GetMouseState(&mouseX, &mouseY);
+    VkInstanceCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    createInfo.pApplicationInfo = &appInfo;
 
-                float newMouseX = mouseX + e.motion.xrel;
-                float newMouseY = mouseY + e.motion.yrel;
-                
-                if(newMouseX < width/2 || newMouseX > width/2 || newMouseY < height/2 || newMouseY > height/2){
-                    SDL_WarpMouseInWindow(window, height/2, width/2);
-                } 
+    uint32_t extensionCount;
+    SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, nullptr);
+    vector<const char*> extensions(extensionCount);
+    SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, extensions.data());
 
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+    createInfo.ppEnabledExtensionNames = extensions.data();
+
+    if(vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) cout << "failed to creat vulkan instance"; 
+
+}
+
+void Engine::createSurface(){
+    if(!SDL_Vulkan_CreateSurface(window, instance, &surface)) cout << "failed to create vulkan surface";
+}
+
+void Engine::pickPhysicalDevice(){
+    uint32_t deviceCount = 0;
+    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+
+    if(deviceCount == 0) cout << "no GPU's with vulkan support";
+
+    vector<VkPhysicalDevice> devices(deviceCount);
+    vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data()); 
+
+    for(const auto& device : devices){
+        if(isSuitableDevice(device)){
+            pDevice = device;
+            break;
         }
     }
 
+    if(pDevice == VK_NULL_HANDLE){
+        cout << "failed to find suitable GPU";
+    }
 }
 
-void Engine::initRendering(vec3 pos, float fov, float aspect, float nearPlane, float farPlane){
-    SDL_SetRelativeMouseMode(SDL_TRUE);
+void Engine::createLogicalDevice(){
+    VkDeviceQueueCreateInfo queueCreateInfo{};
+    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo.queueFamilyIndex = 0;
+    queueCreateInfo.queueCount = 1;
+    
+    float queuePriority = 1.0f;
+    queueCreateInfo.pQueuePriorities = &queuePriority;
 
-    view = translate(view, pos);
-    projection = perspective(fov, aspect, nearPlane, farPlane);
+    VkPhysicalDeviceFeatures deviceFeatures{};
+
+    VkDeviceCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    createInfo.pQueueCreateInfos = &queueCreateInfo;
+    createInfo.queueCreateInfoCount = 1;
+    createInfo.pEnabledFeatures = &deviceFeatures;
+
+    if(vkCreateDevice(pDevice, &createInfo, nullptr, &device) != VK_SUCCESS){
+        cout << "failed to create logical device";
+    }
+
+    vkGetDeviceQueue(device, 0, 0, &queue);    
 }
 
-void Engine::swap(){
-    SDL_GL_SwapWindow(window);
+bool Engine::isSuitableDevice(VkPhysicalDevice device){
+    QueueFamilyIndices indices = findQueueFamilyIndices(device);
+
+    bool extensionsSupported = checkDeviceExtensionSupport(device);
+
+    bool swapChainAdequate = false;
+    if(extensionsSupported){
+        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
+        swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+    }
+
+    VkPhysicalDeviceFeatures supportedFeatures;
+    vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
+
+    return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
+}
+
+QueueFamilyIndices Engine::findQueueFamilyIndices(VkPhysicalDevice device){
+    QueueFamilyIndices indices;
+
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+    vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+    int i = 0;
+
+    for(const auto& queueFamily : queueFamilies) {
+        if(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT){
+            indices.graphicsFamily = i;
+        }
+
+        VkBool32 presentSupport = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+
+        if(presentSupport){
+            indices.presentFamily = i;
+        }
+
+        if(indices.isComplete()){
+            break;
+        }
+
+        i++;
+    }
+
+    return indices;
+}
+
+bool Engine::checkDeviceExtensionSupport(VkPhysicalDevice device){
+    uint32_t extensionCount;
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+    vector<VkExtensionProperties> aExtensions(extensionCount);
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, aExtensions.data());
+
+    set<string> extensions(deviceExtensions.begin(), deviceExtensions.end());
+
+    for(const auto& extension : aExtensions){
+        extensions.erase(extension.extensionName);
+    }
+
+    return extensions.empty();
+}
+
+SwapChainSupportDetails Engine::querySwapChainSupport(VkPhysicalDevice device){
+    SwapChainSupportDetails details;
+
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+
+    uint32_t formatCount;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+
+    if (formatCount != 0){
+        details.formats.resize(formatCount);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+    }
+
+    uint32_t presentCount;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentCount, nullptr);
+
+    if(presentCount != 0){
+        details.presentModes.resize(presentCount);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentCount, details.presentModes.data());
+    }
+
+    return details;   
 }
