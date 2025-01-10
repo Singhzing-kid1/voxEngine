@@ -1,11 +1,11 @@
 /**
  * @file main.hpp
  * @author Veer Singh
- * @brief all includes needed for this project
+ * @brief 
  * @version 0.0.7
- * @date 2024-12-01
+ * @date 2025-01-10
  * 
- * @copyright Copyright (c) 2024
+ * @copyright Copyright (c) 2025
  * 
  */
 
@@ -13,20 +13,28 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-#include <optional>
-#include <set>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <cmath>
+#include <stdexcept>
 
 #ifdef _WIN32
 #include <windows.h>
 #endif
+#pragma endregion
 
 #pragma region non-std includes
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_vulkan.h>
-#include <vulkan/vulkan.h>
+#include <GL/glew.h>
+#include <GL/gl.h>
+#include <SDL2/SDL_opengl.h> 
+
+#pragma endregion
 
 #pragma region custom headers
-#include "engine.hpp"
+
+#pragma endregion 
 
 // namespace simplifications
 
