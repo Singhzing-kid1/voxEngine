@@ -15,4 +15,4 @@ going back to openGL
 
 0.0.7 will be openGL w/ openDB for voxel storage and bullet physics for collisions :) <--- might use rigid bodies ;) well see.
 
-
+Gonna try to get this (0.0.7) out for end of March.
