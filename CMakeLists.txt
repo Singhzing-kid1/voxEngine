@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 3.10)
 
 project(voxEngine)
 
@@ -24,6 +24,9 @@ target_link_libraries(main PRIVATE glm::glm)
 
 find_package(OpenGL REQUIRED)
 target_link_libraries(main PRIVATE OpenGL::GL)
+
+find_package(GLEW REQUIRED)
+target_link_libraries(main PRIVATE GLEW::GLEW)
 
 find_package(OpenVDB REQUIRED)
 target_link_libraries(main PRIVATE OpenVDB::openvdb)

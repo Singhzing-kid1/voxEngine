@@ -1,0 +1,17 @@
+# ninja log v6
+22	4158	7647478193087042	CMakeFiles/main.dir/src/shader.cpp.obj	e549febfb34985d3
+20	4171	7647478193061915	CMakeFiles/main.dir/src/player.cpp.obj	bed109486c9a5e60
+11	3241	7647554423628354	CMakeFiles/main.dir/src/main.cpp.obj	4ae8f5ddac115c39
+14	4181	7647478193011643	CMakeFiles/main.dir/src/engine.cpp.obj	12c97f6ee848a192
+11	4184	7647478192976461	CMakeFiles/main.dir/src/camera.cpp.obj	279703244cb8e0b9
+12	7654	7647571517690240	CMakeFiles/main.dir/src/world.cpp.obj	92f5eb03951c47c5
+7654	7974	7647571594105138	main.exe	4db6140a5e97bacb
+23	3741	7647571890057821	CMakeFiles/main.dir/src/player.cpp.obj	bed109486c9a5e60
+25	3805	7647571890077926	CMakeFiles/main.dir/src/shader.cpp.obj	e549febfb34985d3
+17	3812	7647571889987450	CMakeFiles/main.dir/src/camera.cpp.obj	279703244cb8e0b9
+19	3833	7647571890017617	CMakeFiles/main.dir/src/engine.cpp.obj	12c97f6ee848a192
+22	3844	7647571890037718	CMakeFiles/main.dir/src/main.cpp.obj	4ae8f5ddac115c39
+27	8249	7647571890093008	CMakeFiles/main.dir/src/world.cpp.obj	92f5eb03951c47c5
+8249	8563	7647571972310431	main.exe	4db6140a5e97bacb
+12	3264	7647572384322116	CMakeFiles/main.dir/src/main.cpp.obj	4ae8f5ddac115c39
+3264	3586	7647572416849467	main.exe	4db6140a5e97bacb
