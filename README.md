@@ -16,3 +16,5 @@ going back to openGL
 0.0.7 will be openGL w/ openDB for voxel storage and bullet physics for collisions :) <--- might use rigid bodies ;) well see.
 
 Gonna try to get this (0.0.7) out for end of March.
+
+0.0.7 almost done. trying to sort out so e optimization stuff with parallelization of syncing the world and meshing the world. might also implement a version of a greedy mesher.
