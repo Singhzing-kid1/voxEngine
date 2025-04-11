@@ -60,7 +60,7 @@ Blosc_LIBRARY_DEBUG:FILEPATH=Blosc_LIBRARY_DEBUG-NOTFOUND
 Blosc_LIBRARY_RELEASE:FILEPATH=C:/msys64/mingw64/lib/libblosc.dll.a
 
 //The directory containing a CMake configuration file for Boost.
-Boost_DIR:PATH=C:/msys64/mingw64/lib/cmake/Boost-1.86.0
+Boost_DIR:PATH=C:/msys64/mingw64/lib/cmake/Boost-1.87.0
 
 //Path to a program.
 CMAKE_ADDR2LINE:FILEPATH=C:/msys64/mingw64/bin/addr2line.exe
@@ -361,6 +361,24 @@ OPENGL_gl_LIBRARY:STRING=opengl32
 //GLU library for win32
 OPENGL_glu_LIBRARY:STRING=glu32
 
+//CXX compiler flags for OpenMP parallelization
+OpenMP_CXX_FLAGS:STRING=-fopenmp
+
+//CXX compiler libraries for OpenMP parallelization
+OpenMP_CXX_LIB_NAMES:STRING=gomp;mingwthrd
+
+//C compiler flags for OpenMP parallelization
+OpenMP_C_FLAGS:STRING=-fopenmp
+
+//C compiler libraries for OpenMP parallelization
+OpenMP_C_LIB_NAMES:STRING=gomp;mingwthrd
+
+//Path to the gomp library for OpenMP
+OpenMP_gomp_LIBRARY:FILEPATH=C:/msys64/mingw64/lib/libgomp.dll.a
+
+//Path to the mingwthrd library for OpenMP
+OpenMP_mingwthrd_LIBRARY:FILEPATH=C:/msys64/mingw64/lib/libmingwthrd.a
+
 //The directory containing a CMake configuration file for OpenVDB.
 OpenVDB_DIR:PATH=C:/msys64/mingw64/lib/cmake/OpenVDB
 
@@ -389,124 +407,124 @@ ZLIB_LIBRARY_DEBUG:FILEPATH=ZLIB_LIBRARY_DEBUG-NOTFOUND
 ZLIB_LIBRARY_RELEASE:FILEPATH=C:/msys64/mingw64/lib/libz.dll.a
 
 //The directory containing a CMake configuration file for boost_array.
-boost_array_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_array-1.86.0
+boost_array_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_array-1.87.0
 
 //The directory containing a CMake configuration file for boost_assert.
-boost_assert_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_assert-1.86.0
+boost_assert_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_assert-1.87.0
 
 //The directory containing a CMake configuration file for boost_bind.
-boost_bind_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_bind-1.86.0
+boost_bind_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_bind-1.87.0
 
 //The directory containing a CMake configuration file for boost_concept_check.
-boost_concept_check_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_concept_check-1.86.0
+boost_concept_check_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_concept_check-1.87.0
 
 //The directory containing a CMake configuration file for boost_config.
-boost_config_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_config-1.86.0
+boost_config_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_config-1.87.0
 
 //The directory containing a CMake configuration file for boost_container_hash.
-boost_container_hash_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_container_hash-1.86.0
+boost_container_hash_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_container_hash-1.87.0
 
 //The directory containing a CMake configuration file for boost_conversion.
-boost_conversion_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_conversion-1.86.0
+boost_conversion_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_conversion-1.87.0
 
 //The directory containing a CMake configuration file for boost_core.
-boost_core_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_core-1.86.0
+boost_core_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_core-1.87.0
 
 //The directory containing a CMake configuration file for boost_describe.
-boost_describe_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_describe-1.86.0
+boost_describe_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_describe-1.87.0
 
 //The directory containing a CMake configuration file for boost_detail.
-boost_detail_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_detail-1.86.0
+boost_detail_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_detail-1.87.0
 
 //The directory containing a CMake configuration file for boost_dynamic_bitset.
-boost_dynamic_bitset_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_dynamic_bitset-1.86.0
+boost_dynamic_bitset_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_dynamic_bitset-1.87.0
 
 //The directory containing a CMake configuration file for boost_function.
-boost_function_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_function-1.86.0
+boost_function_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_function-1.87.0
 
 //The directory containing a CMake configuration file for boost_function_types.
-boost_function_types_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_function_types-1.86.0
+boost_function_types_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_function_types-1.87.0
 
 //The directory containing a CMake configuration file for boost_functional.
-boost_functional_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_functional-1.86.0
+boost_functional_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_functional-1.87.0
 
 //The directory containing a CMake configuration file for boost_fusion.
-boost_fusion_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_fusion-1.86.0
+boost_fusion_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_fusion-1.87.0
 
 //The directory containing a CMake configuration file for boost_headers.
-boost_headers_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_headers-1.86.0
+boost_headers_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_headers-1.87.0
 
 //The directory containing a CMake configuration file for boost_integer.
-boost_integer_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_integer-1.86.0
+boost_integer_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_integer-1.87.0
 
 //The directory containing a CMake configuration file for boost_io.
-boost_io_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_io-1.86.0
+boost_io_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_io-1.87.0
 
 //The directory containing a CMake configuration file for boost_iostreams.
-boost_iostreams_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_iostreams-1.86.0-shared
+boost_iostreams_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_iostreams-1.87.0-shared
 
 //The directory containing a CMake configuration file for boost_iterator.
-boost_iterator_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_iterator-1.86.0
+boost_iterator_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_iterator-1.87.0
 
 //The directory containing a CMake configuration file for boost_move.
-boost_move_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_move-1.86.0
+boost_move_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_move-1.87.0
 
 //The directory containing a CMake configuration file for boost_mp11.
-boost_mp11_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_mp11-1.86.0
+boost_mp11_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_mp11-1.87.0
 
 //The directory containing a CMake configuration file for boost_mpl.
-boost_mpl_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_mpl-1.86.0
+boost_mpl_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_mpl-1.87.0
 
 //The directory containing a CMake configuration file for boost_numeric_conversion.
-boost_numeric_conversion_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_numeric_conversion-1.86.0
+boost_numeric_conversion_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_numeric_conversion-1.87.0
 
 //The directory containing a CMake configuration file for boost_optional.
-boost_optional_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_optional-1.86.0
+boost_optional_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_optional-1.87.0
 
 //The directory containing a CMake configuration file for boost_predef.
-boost_predef_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_predef-1.86.0
+boost_predef_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_predef-1.87.0
 
 //The directory containing a CMake configuration file for boost_preprocessor.
-boost_preprocessor_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_preprocessor-1.86.0
+boost_preprocessor_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_preprocessor-1.87.0
 
 //The directory containing a CMake configuration file for boost_random.
-boost_random_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_random-1.86.0-shared
+boost_random_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_random-1.87.0-shared
 
 //The directory containing a CMake configuration file for boost_range.
-boost_range_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_range-1.86.0
+boost_range_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_range-1.87.0
 
 //The directory containing a CMake configuration file for boost_regex.
-boost_regex_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_regex-1.86.0
+boost_regex_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_regex-1.87.0
 
 //The directory containing a CMake configuration file for boost_smart_ptr.
-boost_smart_ptr_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_smart_ptr-1.86.0
+boost_smart_ptr_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_smart_ptr-1.87.0
 
 //The directory containing a CMake configuration file for boost_static_assert.
-boost_static_assert_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_static_assert-1.86.0
+boost_static_assert_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_static_assert-1.87.0
 
 //The directory containing a CMake configuration file for boost_system.
-boost_system_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_system-1.86.0
+boost_system_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_system-1.87.0
 
 //The directory containing a CMake configuration file for boost_throw_exception.
-boost_throw_exception_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_throw_exception-1.86.0
+boost_throw_exception_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_throw_exception-1.87.0
 
 //The directory containing a CMake configuration file for boost_tuple.
-boost_tuple_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_tuple-1.86.0
+boost_tuple_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_tuple-1.87.0
 
 //The directory containing a CMake configuration file for boost_type_traits.
-boost_type_traits_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_type_traits-1.86.0
+boost_type_traits_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_type_traits-1.87.0
 
 //The directory containing a CMake configuration file for boost_typeof.
-boost_typeof_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_typeof-1.86.0
+boost_typeof_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_typeof-1.87.0
 
 //The directory containing a CMake configuration file for boost_utility.
-boost_utility_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_utility-1.86.0
+boost_utility_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_utility-1.87.0
 
 //The directory containing a CMake configuration file for boost_variant2.
-boost_variant2_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_variant2-1.86.0
+boost_variant2_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_variant2-1.87.0
 
 //The directory containing a CMake configuration file for boost_winapi.
-boost_winapi_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_winapi-1.86.0
+boost_winapi_DIR:PATH=C:/msys64/mingw64/lib/cmake/boost_winapi-1.87.0
 
 //The directory containing a CMake configuration file for glm.
 glm_DIR:PATH=C:/msys64/mingw64/share/glm
@@ -751,11 +769,17 @@ FIND_PACKAGE_MESSAGE_DETAILS_Bullet:INTERNAL=[C:/msys64/mingw64/lib/libBulletDyn
 //Details about finding GLEW
 FIND_PACKAGE_MESSAGE_DETAILS_GLEW:INTERNAL=[C:/msys64/mingw64/lib/cmake/glew/glew-config.cmake][v()]
 //Details about finding LibLZMA
-FIND_PACKAGE_MESSAGE_DETAILS_LibLZMA:INTERNAL=[C:/msys64/mingw64/lib/liblzma.dll.a][C:/msys64/mingw64/include][1][1][1][v5.6.3()]
+FIND_PACKAGE_MESSAGE_DETAILS_LibLZMA:INTERNAL=[C:/msys64/mingw64/lib/liblzma.dll.a][C:/msys64/mingw64/include][1][1][1][v5.8.1()]
 //Details about finding OpenGL
 FIND_PACKAGE_MESSAGE_DETAILS_OpenGL:INTERNAL=[opengl32][c ][v()]
+//Details about finding OpenMP
+FIND_PACKAGE_MESSAGE_DETAILS_OpenMP:INTERNAL=[TRUE][TRUE][c ][v4.5()]
+//Details about finding OpenMP_C
+FIND_PACKAGE_MESSAGE_DETAILS_OpenMP_C:INTERNAL=[-fopenmp][C:/msys64/mingw64/lib/libgomp.dll.a][C:/msys64/mingw64/lib/libmingwthrd.a][v4.5()]
+//Details about finding OpenMP_CXX
+FIND_PACKAGE_MESSAGE_DETAILS_OpenMP_CXX:INTERNAL=[-fopenmp][C:/msys64/mingw64/lib/libgomp.dll.a][C:/msys64/mingw64/lib/libmingwthrd.a][v4.5()]
 //Details about finding OpenVDB
-FIND_PACKAGE_MESSAGE_DETAILS_OpenVDB:INTERNAL=[C:/msys64/mingw64/include][C:/msys64/mingw64/lib/libopenvdb.dll.a][cfound components: openvdb ][v11.0.0()]
+FIND_PACKAGE_MESSAGE_DETAILS_OpenVDB:INTERNAL=[C:/msys64/mingw64/include][C:/msys64/mingw64/lib/libopenvdb.dll.a][cfound components: openvdb ][v12.0.0()]
 //Details about finding ZLIB
 FIND_PACKAGE_MESSAGE_DETAILS_ZLIB:INTERNAL=[C:/msys64/mingw64/lib/libz.dll.a][C:/msys64/mingw64/include][c ][v1.3.1()]
 //ADVANCED property for variable: GLEW_LIBRARY_DEBUG
@@ -776,6 +800,30 @@ LIBLZMA_LIBRARY_RELEASE-ADVANCED:INTERNAL=1
 OPENGL_gl_LIBRARY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: OPENGL_glu_LIBRARY
 OPENGL_glu_LIBRARY-ADVANCED:INTERNAL=1
+//Result of TRY_COMPILE
+OpenMP_COMPILE_RESULT_CXX_fopenmp:INTERNAL=TRUE
+//Result of TRY_COMPILE
+OpenMP_COMPILE_RESULT_C_fopenmp:INTERNAL=TRUE
+//ADVANCED property for variable: OpenMP_CXX_FLAGS
+OpenMP_CXX_FLAGS-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: OpenMP_CXX_LIB_NAMES
+OpenMP_CXX_LIB_NAMES-ADVANCED:INTERNAL=1
+//CXX compiler's OpenMP specification date
+OpenMP_CXX_SPEC_DATE:INTERNAL=201511
+//ADVANCED property for variable: OpenMP_C_FLAGS
+OpenMP_C_FLAGS-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: OpenMP_C_LIB_NAMES
+OpenMP_C_LIB_NAMES-ADVANCED:INTERNAL=1
+//C compiler's OpenMP specification date
+OpenMP_C_SPEC_DATE:INTERNAL=201511
+//Result of TRY_COMPILE
+OpenMP_SPECTEST_CXX_:INTERNAL=TRUE
+//Result of TRY_COMPILE
+OpenMP_SPECTEST_C_:INTERNAL=TRUE
+//ADVANCED property for variable: OpenMP_gomp_LIBRARY
+OpenMP_gomp_LIBRARY-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: OpenMP_mingwthrd_LIBRARY
+OpenMP_mingwthrd_LIBRARY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: ZLIB_INCLUDE_DIR
 ZLIB_INCLUDE_DIR-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: ZLIB_LIBRARY_DEBUG

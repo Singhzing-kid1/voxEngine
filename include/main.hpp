@@ -20,6 +20,10 @@
 #include <vector>
 #include <time.h>
 #include <queue>
+#include <future>
+#include <random>
+#include <omp.h>
+#include <map>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -43,6 +47,9 @@
 #include <glm/gtx/quaternion.hpp>
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/VolumeToMesh.h>
+#include <openvdb/tools/Clip.h>
+#include <openvdb/tools/GridTransformer.h>
+#include <openvdb/math/BBox.h>
 #pragma endregion
 
 #pragma region custom headers

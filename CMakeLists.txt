@@ -41,3 +41,8 @@ target_link_libraries(main
 find_package(Bullet REQUIRED)
 target_link_libraries(main PRIVATE ${BULLET_LIBRARIES})
 target_include_directories(main PRIVATE ${BULLET_INCLUDE_DIRS})
+
+find_package(OpenMP REQUIRED)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(main PUBLIC OpenMP::OpenMP_CXX)
+endif()

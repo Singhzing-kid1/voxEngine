@@ -1,37 +1,37 @@
 [
 {
   "directory": "C:/projects/voxEngine/build",
-  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DBOOST_IOSTREAMS_DYN_LINK -DBOOST_IOSTREAMS_NO_LIB -DBOOST_RANDOM_DYN_LINK -DBOOST_RANDOM_NO_LIB -DIMATH_DLL -DNOMINMAX -DOPENVDB_ABI_VERSION_NUMBER=11 -DOPENVDB_DLL -DOPENVDB_USE_DELAYED_LOADING -DTBB_USE_DEBUG -D_USE_MATH_DEFINES -D_WIN32 -IC:/projects/voxEngine/include -IC:/msys64/mingw64/include/bullet -isystem C:/msys64/mingw64/include/Imath -isystem C:/msys64/mingw64/include/SDL2 -g -Wa,-mbig-obj -o CMakeFiles\\main.dir\\src\\camera.cpp.obj -c C:\\projects\\voxEngine\\src\\camera.cpp",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DBOOST_IOSTREAMS_DYN_LINK -DBOOST_IOSTREAMS_NO_LIB -DBOOST_RANDOM_DYN_LINK -DBOOST_RANDOM_NO_LIB -DIMATH_DLL -DNOMINMAX -DOPENVDB_ABI_VERSION_NUMBER=12 -DOPENVDB_DLL -DOPENVDB_USE_DELAYED_LOADING -DTBB_USE_DEBUG -D_USE_MATH_DEFINES -D_WIN32 -IC:/projects/voxEngine/include -IC:/msys64/mingw64/include/bullet -isystem C:/msys64/mingw64/include/Imath -isystem C:/msys64/mingw64/include/SDL2 -g -Wa,-mbig-obj -fopenmp -o CMakeFiles\\main.dir\\src\\camera.cpp.obj -c C:\\projects\\voxEngine\\src\\camera.cpp",
   "file": "C:\\projects\\voxEngine\\src\\camera.cpp",
   "output": "CMakeFiles\\main.dir\\src\\camera.cpp.obj"
 },
 {
   "directory": "C:/projects/voxEngine/build",
-  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DBOOST_IOSTREAMS_DYN_LINK -DBOOST_IOSTREAMS_NO_LIB -DBOOST_RANDOM_DYN_LINK -DBOOST_RANDOM_NO_LIB -DIMATH_DLL -DNOMINMAX -DOPENVDB_ABI_VERSION_NUMBER=11 -DOPENVDB_DLL -DOPENVDB_USE_DELAYED_LOADING -DTBB_USE_DEBUG -D_USE_MATH_DEFINES -D_WIN32 -IC:/projects/voxEngine/include -IC:/msys64/mingw64/include/bullet -isystem C:/msys64/mingw64/include/Imath -isystem C:/msys64/mingw64/include/SDL2 -g -Wa,-mbig-obj -o CMakeFiles\\main.dir\\src\\engine.cpp.obj -c C:\\projects\\voxEngine\\src\\engine.cpp",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DBOOST_IOSTREAMS_DYN_LINK -DBOOST_IOSTREAMS_NO_LIB -DBOOST_RANDOM_DYN_LINK -DBOOST_RANDOM_NO_LIB -DIMATH_DLL -DNOMINMAX -DOPENVDB_ABI_VERSION_NUMBER=12 -DOPENVDB_DLL -DOPENVDB_USE_DELAYED_LOADING -DTBB_USE_DEBUG -D_USE_MATH_DEFINES -D_WIN32 -IC:/projects/voxEngine/include -IC:/msys64/mingw64/include/bullet -isystem C:/msys64/mingw64/include/Imath -isystem C:/msys64/mingw64/include/SDL2 -g -Wa,-mbig-obj -fopenmp -o CMakeFiles\\main.dir\\src\\engine.cpp.obj -c C:\\projects\\voxEngine\\src\\engine.cpp",
   "file": "C:\\projects\\voxEngine\\src\\engine.cpp",
   "output": "CMakeFiles\\main.dir\\src\\engine.cpp.obj"
 },
 {
   "directory": "C:/projects/voxEngine/build",
-  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DBOOST_IOSTREAMS_DYN_LINK -DBOOST_IOSTREAMS_NO_LIB -DBOOST_RANDOM_DYN_LINK -DBOOST_RANDOM_NO_LIB -DIMATH_DLL -DNOMINMAX -DOPENVDB_ABI_VERSION_NUMBER=11 -DOPENVDB_DLL -DOPENVDB_USE_DELAYED_LOADING -DTBB_USE_DEBUG -D_USE_MATH_DEFINES -D_WIN32 -IC:/projects/voxEngine/include -IC:/msys64/mingw64/include/bullet -isystem C:/msys64/mingw64/include/Imath -isystem C:/msys64/mingw64/include/SDL2 -g -Wa,-mbig-obj -o CMakeFiles\\main.dir\\src\\main.cpp.obj -c C:\\projects\\voxEngine\\src\\main.cpp",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DBOOST_IOSTREAMS_DYN_LINK -DBOOST_IOSTREAMS_NO_LIB -DBOOST_RANDOM_DYN_LINK -DBOOST_RANDOM_NO_LIB -DIMATH_DLL -DNOMINMAX -DOPENVDB_ABI_VERSION_NUMBER=12 -DOPENVDB_DLL -DOPENVDB_USE_DELAYED_LOADING -DTBB_USE_DEBUG -D_USE_MATH_DEFINES -D_WIN32 -IC:/projects/voxEngine/include -IC:/msys64/mingw64/include/bullet -isystem C:/msys64/mingw64/include/Imath -isystem C:/msys64/mingw64/include/SDL2 -g -Wa,-mbig-obj -fopenmp -o CMakeFiles\\main.dir\\src\\main.cpp.obj -c C:\\projects\\voxEngine\\src\\main.cpp",
   "file": "C:\\projects\\voxEngine\\src\\main.cpp",
   "output": "CMakeFiles\\main.dir\\src\\main.cpp.obj"
 },
 {
   "directory": "C:/projects/voxEngine/build",
-  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DBOOST_IOSTREAMS_DYN_LINK -DBOOST_IOSTREAMS_NO_LIB -DBOOST_RANDOM_DYN_LINK -DBOOST_RANDOM_NO_LIB -DIMATH_DLL -DNOMINMAX -DOPENVDB_ABI_VERSION_NUMBER=11 -DOPENVDB_DLL -DOPENVDB_USE_DELAYED_LOADING -DTBB_USE_DEBUG -D_USE_MATH_DEFINES -D_WIN32 -IC:/projects/voxEngine/include -IC:/msys64/mingw64/include/bullet -isystem C:/msys64/mingw64/include/Imath -isystem C:/msys64/mingw64/include/SDL2 -g -Wa,-mbig-obj -o CMakeFiles\\main.dir\\src\\player.cpp.obj -c C:\\projects\\voxEngine\\src\\player.cpp",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DBOOST_IOSTREAMS_DYN_LINK -DBOOST_IOSTREAMS_NO_LIB -DBOOST_RANDOM_DYN_LINK -DBOOST_RANDOM_NO_LIB -DIMATH_DLL -DNOMINMAX -DOPENVDB_ABI_VERSION_NUMBER=12 -DOPENVDB_DLL -DOPENVDB_USE_DELAYED_LOADING -DTBB_USE_DEBUG -D_USE_MATH_DEFINES -D_WIN32 -IC:/projects/voxEngine/include -IC:/msys64/mingw64/include/bullet -isystem C:/msys64/mingw64/include/Imath -isystem C:/msys64/mingw64/include/SDL2 -g -Wa,-mbig-obj -fopenmp -o CMakeFiles\\main.dir\\src\\player.cpp.obj -c C:\\projects\\voxEngine\\src\\player.cpp",
   "file": "C:\\projects\\voxEngine\\src\\player.cpp",
   "output": "CMakeFiles\\main.dir\\src\\player.cpp.obj"
 },
 {
   "directory": "C:/projects/voxEngine/build",
-  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DBOOST_IOSTREAMS_DYN_LINK -DBOOST_IOSTREAMS_NO_LIB -DBOOST_RANDOM_DYN_LINK -DBOOST_RANDOM_NO_LIB -DIMATH_DLL -DNOMINMAX -DOPENVDB_ABI_VERSION_NUMBER=11 -DOPENVDB_DLL -DOPENVDB_USE_DELAYED_LOADING -DTBB_USE_DEBUG -D_USE_MATH_DEFINES -D_WIN32 -IC:/projects/voxEngine/include -IC:/msys64/mingw64/include/bullet -isystem C:/msys64/mingw64/include/Imath -isystem C:/msys64/mingw64/include/SDL2 -g -Wa,-mbig-obj -o CMakeFiles\\main.dir\\src\\shader.cpp.obj -c C:\\projects\\voxEngine\\src\\shader.cpp",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DBOOST_IOSTREAMS_DYN_LINK -DBOOST_IOSTREAMS_NO_LIB -DBOOST_RANDOM_DYN_LINK -DBOOST_RANDOM_NO_LIB -DIMATH_DLL -DNOMINMAX -DOPENVDB_ABI_VERSION_NUMBER=12 -DOPENVDB_DLL -DOPENVDB_USE_DELAYED_LOADING -DTBB_USE_DEBUG -D_USE_MATH_DEFINES -D_WIN32 -IC:/projects/voxEngine/include -IC:/msys64/mingw64/include/bullet -isystem C:/msys64/mingw64/include/Imath -isystem C:/msys64/mingw64/include/SDL2 -g -Wa,-mbig-obj -fopenmp -o CMakeFiles\\main.dir\\src\\shader.cpp.obj -c C:\\projects\\voxEngine\\src\\shader.cpp",
   "file": "C:\\projects\\voxEngine\\src\\shader.cpp",
   "output": "CMakeFiles\\main.dir\\src\\shader.cpp.obj"
 },
 {
   "directory": "C:/projects/voxEngine/build",
-  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DBOOST_IOSTREAMS_DYN_LINK -DBOOST_IOSTREAMS_NO_LIB -DBOOST_RANDOM_DYN_LINK -DBOOST_RANDOM_NO_LIB -DIMATH_DLL -DNOMINMAX -DOPENVDB_ABI_VERSION_NUMBER=11 -DOPENVDB_DLL -DOPENVDB_USE_DELAYED_LOADING -DTBB_USE_DEBUG -D_USE_MATH_DEFINES -D_WIN32 -IC:/projects/voxEngine/include -IC:/msys64/mingw64/include/bullet -isystem C:/msys64/mingw64/include/Imath -isystem C:/msys64/mingw64/include/SDL2 -g -Wa,-mbig-obj -o CMakeFiles\\main.dir\\src\\world.cpp.obj -c C:\\projects\\voxEngine\\src\\world.cpp",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DBOOST_IOSTREAMS_DYN_LINK -DBOOST_IOSTREAMS_NO_LIB -DBOOST_RANDOM_DYN_LINK -DBOOST_RANDOM_NO_LIB -DIMATH_DLL -DNOMINMAX -DOPENVDB_ABI_VERSION_NUMBER=12 -DOPENVDB_DLL -DOPENVDB_USE_DELAYED_LOADING -DTBB_USE_DEBUG -D_USE_MATH_DEFINES -D_WIN32 -IC:/projects/voxEngine/include -IC:/msys64/mingw64/include/bullet -isystem C:/msys64/mingw64/include/Imath -isystem C:/msys64/mingw64/include/SDL2 -g -Wa,-mbig-obj -fopenmp -o CMakeFiles\\main.dir\\src\\world.cpp.obj -c C:\\projects\\voxEngine\\src\\world.cpp",
   "file": "C:\\projects\\voxEngine\\src\\world.cpp",
   "output": "CMakeFiles\\main.dir\\src\\world.cpp.obj"
 }

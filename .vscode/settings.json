@@ -9,6 +9,8 @@
         "variant": "cpp",
         "iostream": "cpp",
         "complex": "cpp",
-        "cmath": "cpp"
+        "cmath": "cpp",
+        "atomic": "cpp",
+        "future": "cpp"
     }
 }

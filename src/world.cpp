@@ -14,7 +14,7 @@ World::World(float voxelSize, int worldDimension, int worldHeight, int renderDis
         for(int z = 0; z < 100; z++){
             Coord voxel = start.offsetBy(x, 0, z);
 
-            accessor.setValue(voxel, 1.0f);
+            accessor.setValueOn(voxel, 1.0f);
         }
     }
 
@@ -27,8 +27,7 @@ void World::render(mat4 model, mat4 view, mat4 projection, Shader shader, vec3 c
     shader.setUniform("view", view);
     shader.setUniform("projection", projection);
     shader.setUniform("model", model);
-    shader.setUniform("color", vec3(1.0f, 1.0f, 1.0f));
-    shader.setUniform("lightPosition", vec3(8, 5, 5));
+    shader.setUniform("lightPosition", vec3(0, 5, 0));
     shader.setUniform("viewPos", cameraPos);
 
     glBindVertexArray(region.vao);
@@ -36,47 +35,23 @@ void World::render(mat4 model, mat4 view, mat4 projection, Shader shader, vec3 c
     glBindVertexArray(0);
 }
 
-void World::update(vec3 playerPos, int time){
-    sync(playerPos);
-
-    if(region.updateRegion){
-        genRegionMesh();
-        setupMeshBuffers();
-
-        region.updateRegion = false;
-    }
+void World::update(vec3 playerPos){
+    genRegionMesh();
+    setupMeshBuffers();
 }
 
-void World::sync(vec3 playerPos){
+void World::sync(vec3 playerPos, int time){
+    Coord player(playerPos.x, playerPos.y, playerPos.z);
+    Coord min(player - Coord(renderDist/2)), max(player + Coord(renderDist/2)); 
+    BBoxd regionSelect(min.asVec3d(), max.asVec3d());
 
-    if((abs(playerPos.x - region.regionPos.x()) >= (renderDist/4)  || abs(playerPos.z - region.regionPos.z()) >= (renderDist/4) || abs(playerPos.y - region.regionPos.y()) >= (renderDist /4)) || newWorld){
-        FloatGrid::Accessor worldAccess = world->getAccessor();
-        FloatGrid::Accessor regionAccess = region.regionGrid->getAccessor();
-
-        Coord start(round(playerPos.x) - (renderDist / 2), floor(playerPos.y) - (renderDist / 2), floor(playerPos.z) - (renderDist / 2));
-        Coord _start(-(renderDist / 2), -(renderDist / 2), -(renderDist / 2));
-
-        for(int x = 0; x < renderDist; x++){
-            for(int y = 0; y < renderDist; y++){
-                for(int z = 0; z < renderDist; z++){
-                    Coord voxel = start.offsetBy(x, y, z);
-                    Coord _voxel = _start.offsetBy(x, y, z);
-
-                    regionAccess.setValue(_voxel, worldAccess.getValue(voxel));
-                }
-            }
-        }
-
-        region.regionPos = Coord(playerPos.x, playerPos.y, playerPos.z);
-        region.updateRegion = true;
-
-        newWorld = newWorld ? !newWorld : newWorld;
-    }
+    region.regionGrid = tools::clip(*world, regionSelect); 
+    
+    region.regionPos = Coord(playerPos.x, 0, playerPos.z);
 }
 
-bool World::isSurfaceVoxel(Coord coord, FloatGrid::Ptr grid){
-    FloatGrid::Accessor accessor = region.regionGrid->getAccessor();
-
+World::Mesh World::isSurfaceVoxel(Coord coord, FloatGrid::Accessor accessor){
+    Mesh mesh;
     float value = accessor.getValue(coord);
 
     vector<Coord> directions = {Coord(0, 0, 1),
@@ -87,20 +62,16 @@ bool World::isSurfaceVoxel(Coord coord, FloatGrid::Ptr grid){
                                 Coord(-1, 0, 0)};
 
     for(auto direction : directions){
-        Coord offset;
+        Coord offset = coord.offsetBy(direction.x(), direction.y(), direction.z());
 
-        if((coord.x() >= 0 || coord.y() >= 0 || coord.z() >= 0)){
-            offset = coord.offsetBy(direction.x(), direction.y(), direction.z());
-
-            if(accessor.getValue(offset) == -1){
-                return true;
-            }
-    
-
+        if(accessor.getValue(offset) == -1){
+            mesh.isSurface == true;
+            mesh.directions.push_back(direction);
         }
     }
+    
 
-    return false;
+    return mesh;
 }
 
 vec3 World::voxelToWorld(Coord coord, Coord regionPos, float voxelSize){
@@ -112,105 +83,38 @@ vec3 World::voxelToWorld(Coord coord, Coord regionPos, float voxelSize){
 
 void World::genRegionMesh(){
     FloatGrid::Accessor accessor = region.regionGrid->getAccessor();
-
-    vector<vec3> _verts, _normals;
+    vector<vec3> _verts, _norms, _colors;
     vector<unsigned int> _inds;
 
-    auto addQuad = [&](const vec3& v0, const vec3& v1, const vec3& v2, const vec3& v3, vec3 normal){
-        GLuint idxStart = _verts.size();
-
-        _normals.push_back(normal);
-        _normals.push_back(normal);
-        _normals.push_back(normal);
-        _normals.push_back(normal);
-
-        _verts.push_back(v0);
-        _verts.push_back(v1);
-        _verts.push_back(v2);
-        _verts.push_back(v3);
-
-        _inds.push_back(idxStart + 0);
-        _inds.push_back(idxStart + 1);
-        _inds.push_back(idxStart + 2);
-
-        _inds.push_back(idxStart + 0);
-        _inds.push_back(idxStart + 3);
-        _inds.push_back(idxStart + 1);
-    };
-
-
     for(auto iter = region.regionGrid->beginValueOn(); iter; ++iter){
-        const Coord& coord = iter.getCoord();
-        if (accessor.getValue(coord) != 1.0f) continue;
+        Coord voxel = iter.getCoord();
+        Mesh mesh = isSurfaceVoxel(voxel, accessor);
 
-        vec3 voxelCenter = voxelToWorld(coord, region.regionPos, voxelSize);
+        vec3 cyan(0, 1, 1);
+        vec3 magenta(1, 0, 1);
+        vec3 yellow(1, 1, 0);
+        vec3 black(0, 0, 0);
 
+        vec3 voxelCenter = voxelToWorld(voxel, region.regionPos, voxelSize);
+        if(mesh.isSurface){
+            for(auto direction : mesh.directions){
+                GLuint idxStart = _verts.size();
+                vec3 normal = vec3(direction.asVec3s().x(), direction.asVec3s().y(), direction.asVec3s().z());
+                vector<vec3> face = faces[direction];
 
-        if(isSurfaceVoxel(coord, region.regionGrid)){
-            if (accessor.getValue(coord.offsetBy(1, 0, 0)) == -1.0f) {
-                addQuad(
-                    voxelCenter + vec3(0.5f, -0.5f, -0.5f),
-                    voxelCenter + vec3(0.5f,  0.5f,  0.5f),
-                    voxelCenter + vec3(0.5f, -0.5f,  0.5f),
-                    voxelCenter + vec3(0.5f,  0.5f, -0.5f),
-                    vec3(1.0f, 0.0f, 0.0f)
-                );     
-            }
-            
-            if (accessor.getValue(coord.offsetBy(-1, 0, 0)) == -1.0f) {
-                addQuad(
-                    voxelCenter + vec3(-0.5f, -0.5f, -0.5f),
-                    voxelCenter + vec3(-0.5f,  0.5f,  0.5f),
-                    voxelCenter + vec3(-0.5f,  0.5f, -0.5f),
-                    voxelCenter + vec3(-0.5f, -0.5f,  0.5f),
-                    vec3(-1.0f, 0.0f, 0.0f)
-                );
-            }
-            
-            if (accessor.getValue(coord.offsetBy(0, 1, 0)) == -1.0f) {
-                addQuad(
-                    voxelCenter + vec3(-0.5f, 0.5f, -0.5f),
-                    voxelCenter + vec3( 0.5f, 0.5f,  0.5f),
-                    voxelCenter + vec3( 0.5f, 0.5f, -0.5f),
-                    voxelCenter + vec3(-0.5f, 0.5f,  0.5f),
-                    vec3(0.0f, 1.0f, 0.0f)
-                );
-            }
+                _norms.insert(_norms.end(), {normal, normal, normal, normal});                
+                _verts.insert(_verts.end(), {voxelCenter + (face[0] * (voxelSize / 2)), voxelCenter +  (face[1] * (voxelSize / 2)), voxelCenter +  (face[2] * (voxelSize / 2)), voxelCenter +  (face[3] * (voxelSize / 2))});
+                _inds.insert(_inds.end(), {idxStart + 0, idxStart + 1, idxStart + 2, idxStart + 0, idxStart + 3, idxStart + 1});
 
-            if (accessor.getValue(coord.offsetBy(0, -1, 0)) == -1.0f) {
-                addQuad(
-                    voxelCenter + vec3(-0.5f, -0.5f, -0.5f),
-                    voxelCenter + vec3( 0.5f, -0.5f,  0.5f),
-                    voxelCenter + vec3(-0.5f, -0.5f,  0.5f),
-                    voxelCenter + vec3( 0.5f, -0.5f, -0.5f),
-                    vec3(0.0f, -1.0f, 0.0f)
-                );
-            }
-            
-            if (accessor.getValue(coord.offsetBy(0, 0, 1)) == -1.0f) {
-                addQuad(
-                    voxelCenter + vec3(-0.5f, -0.5f, 0.5f),
-                    voxelCenter + vec3( 0.5f,  0.5f, 0.5f),
-                    voxelCenter + vec3(-0.5f,  0.5f, 0.5f),
-                    voxelCenter + vec3( 0.5f, -0.5f, 0.5f),
-                    vec3(0.0f, 0.0f, -1.0f)
-                );
-            }
-
-            if (accessor.getValue(coord.offsetBy(0, 0, -1)) == -1.0f) {
-                addQuad(
-                    voxelCenter + vec3(-0.5f, -0.5f, -0.5f),
-                    voxelCenter + vec3( 0.5f,  0.5f, -0.5f),
-                    voxelCenter + vec3( 0.5f, -0.5f, -0.5f),
-                    voxelCenter + vec3(-0.5f,  0.5f, -0.5f),
-                    vec3(0.0f, 0.0f, -1.0f)
-                );
-            }
+                _colors.insert(_colors.end(), {cyan, magenta, yellow, black});
+            }   
         }
     }
+
     region.verts.assign(_verts.begin(), _verts.end());
     region.inds.assign(_inds.begin(), _inds.end());
-    region.normals.assign(_normals.begin(), _normals.end());
+    region.normals.assign(_norms.begin(), _norms.end());
+    region.colors.assign(_colors.begin(), _colors.end());
 }
 
 
@@ -222,17 +126,22 @@ void World::setupMeshBuffers(){
     glBindVertexArray(region.vao);
 
     glBindBuffer(GL_ARRAY_BUFFER, region.vbo);
-    glBufferData(GL_ARRAY_BUFFER, region.verts.size() * sizeof(vec3) * 2, nullptr, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, (region.verts.size() + region.normals.size() + region.colors.size()) * sizeof(vec3), nullptr, GL_STATIC_DRAW);
 
     glBufferSubData(GL_ARRAY_BUFFER, 0, region.verts.size() * sizeof(vec3), region.verts.data());
 
     glBufferSubData(GL_ARRAY_BUFFER, region.verts.size() * sizeof(vec3), region.normals.size() * sizeof(vec3), region.normals.data());
+
+    glBufferSubData(GL_ARRAY_BUFFER, (region.verts.size() + region.normals.size()) * sizeof(vec3), region.colors.size() * sizeof(vec3), region.colors.data());
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0);
     glEnableVertexAttribArray(0);
 
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) (region.verts.size() * sizeof(vec3)));
     glEnableVertexAttribArray(1);
+
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) ((region.verts.size() + region.normals.size()) * sizeof(vec3)));
+    glEnableVertexAttribArray(2);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, region.ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, region.inds.size() * sizeof(unsigned int), region.inds.data(), GL_STATIC_DRAW);
