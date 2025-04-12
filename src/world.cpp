@@ -14,12 +14,9 @@ World::World(float voxelSize, int worldDimension, int worldHeight, int renderDis
         for(int z = 0; z < 100; z++){
             Coord voxel = start.offsetBy(x, 0, z);
 
-            accessor.setValueOn(voxel, 1.0f);
+            accessor.setValueOnly(voxel, 1.0f);
         }
     }
-
-    region.regionGrid = FloatGrid::create(-1.0f);
-    region.regionGrid->setTransform(math::Transform::createLinearTransform(voxelSize));
 }
 
 void World::render(mat4 model, mat4 view, mat4 projection, Shader shader, vec3 cameraPos){
@@ -30,24 +27,29 @@ void World::render(mat4 model, mat4 view, mat4 projection, Shader shader, vec3 c
     shader.setUniform("lightPosition", vec3(0, 5, 0));
     shader.setUniform("viewPos", cameraPos);
 
-    glBindVertexArray(region.vao);
-    glDrawElements(GL_TRIANGLES, region.inds.size(), GL_UNSIGNED_INT, 0);
+    glBindVertexArray(vao);
+    glDrawElements(GL_TRIANGLES, inds.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 }
 
-void World::update(vec3 playerPos){
+void World::update(){
     genRegionMesh();
     setupMeshBuffers();
 }
 
-void World::sync(vec3 playerPos, int time){
-    Coord player(playerPos.x, playerPos.y, playerPos.z);
-    Coord min(player - Coord(renderDist/2)), max(player + Coord(renderDist/2)); 
-    BBoxd regionSelect(min.asVec3d(), max.asVec3d());
+void World::sync(vec3 playerPos){
+        Coord player(playerPos.x / voxelSize, playerPos.y / voxelSize, playerPos.z / voxelSize);
+        Coord min(player - Coord(renderDist/2)), max(player + Coord(renderDist/2));
 
-    region.regionGrid = tools::clip(*world, regionSelect); 
-    
-    region.regionPos = Coord(playerPos.x, 0, playerPos.z);
+        CoordBBox bbox(min, max);
+
+        tools::foreach(world->beginValueAll(), [&](const FloatGrid::ValueAllIter& iter){
+            if(bbox.isInside(iter.getCoord()) && iter.getValue() != -1.0f){
+                iter.setActiveState(true);
+            } else if(iter.getValue() != -1.0f) {
+                iter.setActiveState(false);
+            }
+        });
 }
 
 World::Mesh World::isSurfaceVoxel(Coord coord, FloatGrid::Accessor accessor){
@@ -74,19 +76,18 @@ World::Mesh World::isSurfaceVoxel(Coord coord, FloatGrid::Accessor accessor){
     return mesh;
 }
 
-vec3 World::voxelToWorld(Coord coord, Coord regionPos, float voxelSize){
+vec3 World::voxelToWorld(Coord coord, float voxelSize){
     Vec3i _coord = coord.asVec3i();
-    Vec3s _regionPos = regionPos.asVec3s();
 
-    return vec3(_regionPos.x() + _coord.x() * voxelSize, _regionPos.y() + _coord.y() * voxelSize, _regionPos.z() + _coord.z() * voxelSize);
+    return vec3(_coord.x() * voxelSize, _coord.y() * voxelSize, _coord.z() * voxelSize);
 }
 
 void World::genRegionMesh(){
-    FloatGrid::Accessor accessor = region.regionGrid->getAccessor();
+    FloatGrid::Accessor accessor = world->getAccessor();
     vector<vec3> _verts, _norms, _colors;
     vector<unsigned int> _inds;
 
-    for(auto iter = region.regionGrid->beginValueOn(); iter; ++iter){
+    for(auto iter = world->beginValueOn(); iter; ++iter){
         Coord voxel = iter.getCoord();
         Mesh mesh = isSurfaceVoxel(voxel, accessor);
 
@@ -95,7 +96,7 @@ void World::genRegionMesh(){
         vec3 yellow(1, 1, 0);
         vec3 black(0, 0, 0);
 
-        vec3 voxelCenter = voxelToWorld(voxel, region.regionPos, voxelSize);
+        vec3 voxelCenter = voxelToWorld(voxel, voxelSize);
         if(mesh.isSurface){
             for(auto direction : mesh.directions){
                 GLuint idxStart = _verts.size();
@@ -111,40 +112,40 @@ void World::genRegionMesh(){
         }
     }
 
-    region.verts.assign(_verts.begin(), _verts.end());
-    region.inds.assign(_inds.begin(), _inds.end());
-    region.normals.assign(_norms.begin(), _norms.end());
-    region.colors.assign(_colors.begin(), _colors.end());
+    verts.assign(_verts.begin(), _verts.end());
+    inds.assign(_inds.begin(), _inds.end());
+    normals.assign(_norms.begin(), _norms.end());
+    colors.assign(_colors.begin(), _colors.end());
 }
 
 
 void World::setupMeshBuffers(){
-    glGenVertexArrays(1, &region.vao);
-    glGenBuffers(1, &region.vbo);
-    glGenBuffers(1, &region.ebo);
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
 
-    glBindVertexArray(region.vao);
+    glBindVertexArray(vao);
 
-    glBindBuffer(GL_ARRAY_BUFFER, region.vbo);
-    glBufferData(GL_ARRAY_BUFFER, (region.verts.size() + region.normals.size() + region.colors.size()) * sizeof(vec3), nullptr, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, (verts.size() + normals.size() + colors.size()) * sizeof(vec3), nullptr, GL_STATIC_DRAW);
 
-    glBufferSubData(GL_ARRAY_BUFFER, 0, region.verts.size() * sizeof(vec3), region.verts.data());
+    glBufferSubData(GL_ARRAY_BUFFER, 0, verts.size() * sizeof(vec3), verts.data());
 
-    glBufferSubData(GL_ARRAY_BUFFER, region.verts.size() * sizeof(vec3), region.normals.size() * sizeof(vec3), region.normals.data());
+    glBufferSubData(GL_ARRAY_BUFFER, verts.size() * sizeof(vec3), normals.size() * sizeof(vec3), normals.data());
 
-    glBufferSubData(GL_ARRAY_BUFFER, (region.verts.size() + region.normals.size()) * sizeof(vec3), region.colors.size() * sizeof(vec3), region.colors.data());
+    glBufferSubData(GL_ARRAY_BUFFER, (verts.size() + normals.size()) * sizeof(vec3), colors.size() * sizeof(vec3), colors.data());
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0);
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) (region.verts.size() * sizeof(vec3)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) (verts.size() * sizeof(vec3)));
     glEnableVertexAttribArray(1);
 
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) ((region.verts.size() + region.normals.size()) * sizeof(vec3)));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) ((verts.size() + normals.size()) * sizeof(vec3)));
     glEnableVertexAttribArray(2);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, region.ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, region.inds.size() * sizeof(unsigned int), region.inds.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, inds.size() * sizeof(unsigned int), inds.data(), GL_STATIC_DRAW);
 
     glBindVertexArray(0);
 }

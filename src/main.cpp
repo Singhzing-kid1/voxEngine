@@ -15,7 +15,7 @@ int main(int argc, char* argv[]){
 
     Player mainPlayer(45, main.height, main.width, 0.1f, 1000.0f, vec3(0.0f, 1.0f, 0.0f), vec4(1.0f, 1.0f, 3.0f, 1.0f), 2.5f);
     Shader shader("./shaders/vertex.glsl", "./shaders/fragment.glsl");
-    World world(0.5, 20, 20, 5);
+    World world(0.5, 20, 20, 21);
     main.initRendering(mainPlayer.getItem(1), mainPlayer.getItem(1.0f), mainPlayer.getItem(2.0f), mainPlayer.getItem(3.0f), mainPlayer.getItem(4.0f));
 
     glEnable(GL_CULL_FACE);
@@ -27,10 +27,12 @@ int main(int argc, char* argv[]){
 
     float pitch = 0.0f , yaw = 90.0f;
 
-    world.sync(vec3(0), main.lastFrame);
+    world.sync(mainPlayer.position);
+    world.update();
 
     while(!quit){
         main.eventHandling(&data);
+        world.sync(mainPlayer.position);
 
         pitch += data.yOffset;
         yaw += data.xOffset;
@@ -47,12 +49,11 @@ int main(int argc, char* argv[]){
         main.view = lookAt(mainPlayer.getItem(1), mainPlayer.getItem(3) + mainPlayer.getItem(1), mainPlayer.getItem(2));
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        world.update(mainPlayer.position);
 
         world.render(main.model, main.view, main.projection, shader, mainPlayer.position);
 
         main.swap();
-        world.sync(mainPlayer.position, main.lastFrame);
+        world.update();
         quit = data.shouldQuit;
     }
 
