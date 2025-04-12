@@ -1,3 +1,0 @@
-C:/projects/voxEngine/build/CMakeFiles/main.dir
-C:/projects/voxEngine/build/CMakeFiles/edit_cache.dir
-C:/projects/voxEngine/build/CMakeFiles/rebuild_cache.dir
