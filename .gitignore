@@ -1,2 +1,9 @@
 build/
 .vscode/
+build/.ninja_deps
+build/.ninja_log
+build/build.ninja
+build/CMakeCache.txt
+build/main.exe
+build/CMakeFiles/main.dir/src/main.cpp.obj
+build/CMakeFiles/main.dir/src/world.cpp.obj
