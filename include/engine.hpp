@@ -33,6 +33,7 @@ class Engine{
         mat4 model = mat4(1.0f), view = mat4(1.0f), projection;
 
         int width, height;
+        btCollisionWorld* collisionWorld;
 
     private:
         SDL_Event e;
@@ -41,8 +42,8 @@ class Engine{
         SDL_GLContext context;
 
         double accumX = 0.0, accumY = 0.0;
-        int mouseX, mouseY;
-        float lastX, lastY;
+        int mouseX = 0, mouseY = 0;
+        float lastX = 0.0f, lastY = 0.0f;
 };
 
 

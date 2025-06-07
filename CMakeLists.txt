@@ -17,6 +17,9 @@ file(GLOB SOURCE_FILES "./src/*.cpp")
 file(GLOB SHADER_SOURCE_FILES "./shaders/*.glsl")
 file(COPY ${SHADER_SOURCE_FILES} DESTINATION "shaders")
 
+file(GLOB FONT_SOURCE_FILES "./fonts/*.ttf")
+file(COPY ${FONT_SOURCE_FILES} DESTINATION "fonts")
+
 add_executable(main ${HEADER_FILES} ${SOURCE_FILES})
 
 find_package(glm REQUIRED)
@@ -37,6 +40,9 @@ target_link_libraries(main
     $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
     $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
+
+find_package(SDL2_ttf REQUIRED)
+target_link_libraries(main PRIVATE SDL2_ttf::SDL2_ttf)
 
 find_package(Bullet REQUIRED)
 target_link_libraries(main PRIVATE ${BULLET_LIBRARIES})

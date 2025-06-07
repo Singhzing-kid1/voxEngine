@@ -35,6 +35,8 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <SDL2/SDL_opengl.h>
+#include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_pixels.h>
 #include <glm/glm.hpp>
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -50,14 +52,19 @@
 #include <openvdb/tools/Clip.h>
 #include <openvdb/tools/GridTransformer.h>
 #include <openvdb/math/BBox.h>
+#include <btBulletCollisionCommon.h>
+
 #pragma endregion
 
 #pragma region custom headers
+#include "debug.hpp"
 #include "engine.hpp"
 #include "player.hpp"
 #include "camera.hpp"
 #include "shader.hpp"
 #include "world.hpp"
+#include "perlin.hpp"
+#include "ui.hpp"
 #pragma endregion
 
 #define pass (void)0;
@@ -67,5 +74,6 @@
 using namespace std;
 using namespace glm;
 using namespace openvdb;
+using namespace siv;
 
 

@@ -18,14 +18,19 @@ Engine::Engine(int height, int width, const char* title){
         cout << "could not init SDL2. Error: " << SDL_GetError();
     }
 
+    if(TTF_Init() < 0){
+        cout << "could not init SDL2 ttf support: " << TTF_GetError();
+    }
+
     window = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 
     if(window == nullptr){
         cout << "could not create Window. Error: " << SDL_GetError();
     }
 
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
@@ -46,7 +51,13 @@ Engine::Engine(int height, int width, const char* title){
         cout << "could not init GLEW. Error: " << glewGetErrorString(glewError);
     }
 
-    glEnable(GL_DEPTH_TEST);
+    
+
+    btBroadphaseInterface* broadPhase = new btDbvtBroadphase();
+    btDefaultCollisionConfiguration* config = new btDefaultCollisionConfiguration();
+    btCollisionDispatcher* dispatch = new btCollisionDispatcher(config);
+
+    collisionWorld = new btCollisionWorld(dispatch, broadPhase, config);
 }
 
 

@@ -7,7 +7,7 @@ Player::Player(float fov, float height, float width, float nearPlane, float farP
     this->speed = speed;
 }
 
-void Player::updatePlayer(float deltaTime, const Uint8* state, float yaw, float pitch){
+void Player::updatePlayer(float deltaTime, const Uint8* state, float yaw, float pitch, btCollisionWorld* collisionWorld){
     this->deltaTime = deltaTime;
 
     if(state[SDL_SCANCODE_W] && state[SDL_SCANCODE_D]){
@@ -73,3 +73,4 @@ void Player::movePlayer(Axis axis, float power){
 
     playerTranslationVec += plannedMovement; 
 }
+
