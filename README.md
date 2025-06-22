@@ -18,3 +18,9 @@ going back to openGL
 Gonna try to get this (0.0.7) out for end of March.
 
 0.0.7 almost done. trying to sort out so e optimization stuff with parallelization of syncing the world and meshing the world. might also implement a version of a greedy mesher.
+
+
+
+## For you summer of making people
+
+i have used AI on this project, mostly to find information, debug, and occasionally write some code :). feel free to download any of the previous versions for yourself and check it out <3
