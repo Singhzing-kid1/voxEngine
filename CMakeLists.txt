@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 project(voxEngine)
 
 set(OpenGL_GL_PREFERENCE GLVND)
@@ -14,8 +18,12 @@ include_directories(include)
 file(GLOB HEADER_FILES "./include/*.hpp")
 file(GLOB SOURCE_FILES "./src/*.cpp")
 
-file(GLOB SHADER_SOURCE_FILES "./shaders/*.glsl")
-file(COPY ${SHADER_SOURCE_FILES} DESTINATION "shaders")
+file(GLOB SHADER_VERTEX_SOURCE_FILES "./shaders/*.vert")
+file(GLOB SHADER_FRAGMENT_SOURCE_FILES "./shaders/*.frag")
+file(GLOB SHADER_COMPUTE_SOURCE_FILES "./shaders/*.comp")
+file(COPY ${SHADER_VERTEX_SOURCE_FILES} DESTINATION "shaders")
+file(COPY ${SHADER_FRAGMENT_SOURCE_FILES} DESTINATION "shaders")
+file(COPY ${SHADER_COMPUTE_SOURCE_FILES} DESTINATION "shaders")
 
 file(GLOB FONT_SOURCE_FILES "./fonts/*.ttf")
 file(COPY ${FONT_SOURCE_FILES} DESTINATION "fonts")
@@ -30,9 +38,6 @@ target_link_libraries(main PRIVATE OpenGL::GL)
 
 find_package(GLEW REQUIRED)
 target_link_libraries(main PRIVATE GLEW::GLEW)
-
-find_package(OpenVDB REQUIRED)
-target_link_libraries(main PRIVATE OpenVDB::openvdb)
 
 find_package(SDL2 CONFIG REQUIRED)
 target_link_libraries(main

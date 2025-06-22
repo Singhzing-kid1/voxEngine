@@ -1,30 +1,8 @@
 #include "main.hpp"
 
 Shader::Shader(const char* vertexPath, const char* fragmentPath){
-    std::string vertString;
-    std::string fragString;
-    ifstream vertex;
-    ifstream fragment;
-
-    vertex.exceptions(ifstream::failbit | ifstream::badbit);
-    fragment.exceptions(ifstream::failbit | ifstream::badbit);
-
-    try{
-        vertex.open(vertexPath);
-        fragment.open(fragmentPath);
-        stringstream vertexStream, fragmentStream;
-
-        vertexStream << vertex.rdbuf();
-        fragmentStream << fragment.rdbuf();
-
-        vertex.close();
-        fragment.close();
-
-        vertString = vertexStream.str();
-        fragString = fragmentStream.str();
-    } catch(ifstream::failure e){
-        cout << "could not read shaders\n";
-    }
+    std::string vertString = readCode(vertexPath);
+    std::string fragString = readCode(fragmentPath);
 
     const char* vertCode = vertString.c_str();
     const char* fragCode = fragString.c_str();
@@ -34,20 +12,20 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath){
     char infoLog[512];
 
     vert = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vert, 1, &vertCode, NULL);
+    glShaderSource(vert, 1, &vertCode, nullptr);
     glCompileShader(vert);
     glGetShaderiv(vert, GL_COMPILE_STATUS, &success);
     if(!success){
-        glGetShaderInfoLog(vert, 512, NULL, infoLog);
+        glGetShaderInfoLog(vert, 512, nullptr, infoLog);
         cout << "vertex could not compile: " << infoLog << "\n";
     }
 
     frag = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(frag, 1, &fragCode, NULL);
+    glShaderSource(frag, 1, &fragCode, nullptr);
     glCompileShader(frag);
     glGetShaderiv(frag, GL_COMPILE_STATUS, &success);
     if(!success){
-        glGetShaderInfoLog(frag, 512, NULL, infoLog);
+        glGetShaderInfoLog(frag, 512, nullptr, infoLog);
         cout << "fragment could not compile: " << infoLog << "\n";
     }
 
@@ -57,7 +35,7 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath){
     glLinkProgram(ID);
     glGetProgramiv(ID, GL_LINK_STATUS, &success);
     if(!success){
-        glGetProgramInfoLog(ID, 512, NULL, infoLog);
+        glGetProgramInfoLog(ID, 512, nullptr, infoLog);
         cout << "shader program could not link: " << infoLog << "\n";
     }
 
@@ -66,6 +44,8 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath){
 
 
 }
+
+Shader::Shader(){}
 
 void Shader::use(){
     glUseProgram(ID);
@@ -93,4 +73,26 @@ void Shader::setUniform(std::string name, float data){
 
 void Shader::setUniform(std::string name, bool data){
     glUniform1i(glGetUniformLocation(ID, name.c_str()), (int)data);
+}
+
+std::string Shader::readCode(const char* path){
+    std::string shader;
+    ifstream code;
+
+    code.exceptions(ifstream::failbit | ifstream::badbit);
+
+    try{
+        code.open(path);
+        stringstream shaderStream;
+
+        shaderStream << code.rdbuf();
+
+        code.close();
+
+        shader = shaderStream.str();
+    } catch(ifstream::failure e){
+        cout << "could not read shader source\n";
+    }
+
+    return shader;
 }

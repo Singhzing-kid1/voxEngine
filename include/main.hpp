@@ -47,20 +47,15 @@
 #include <glm/ext/vector_relational.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
-#include <openvdb/openvdb.h>
-#include <openvdb/tools/VolumeToMesh.h>
-#include <openvdb/tools/Clip.h>
-#include <openvdb/tools/GridTransformer.h>
-#include <openvdb/math/BBox.h>
 #include <btBulletCollisionCommon.h>
 
 #pragma endregion
 
 #pragma region custom headers
-#include "debug.hpp"
 #include "engine.hpp"
 #include "player.hpp"
 #include "camera.hpp"
+#include "gpuCompute.hpp"
 #include "shader.hpp"
 #include "world.hpp"
 #include "perlin.hpp"
@@ -68,12 +63,12 @@
 #pragma endregion
 
 #define pass (void)0;
+#define String std::string
 
 // namespace simplifications
 
 using namespace std;
 using namespace glm;
-using namespace openvdb;
 using namespace siv;
 
 

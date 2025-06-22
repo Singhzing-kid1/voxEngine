@@ -22,12 +22,41 @@ typedef struct{
 class Engine{
 
     public:
+        /**
+         * @brief Construct a new Engine object
+         * 
+         * @param height height of window
+         * @param width width of window
+         * @param title title of window
+         * 
+         */
         Engine(int, int, const char*);
         float deltaTime, lastFrame;
+
+        /**
+         * @brief handles input events
+         * 
+         * @param data pointer to an instance of the inputData struct
+         * 
+         */
         void eventHandling(inputData*);
 
+        /**
+         * @brief creates the view and projection matricies
+         * 
+         * @param pos position of player
+         * @param fov field of view
+         * @param aspect aspect ratio of window
+         * @param nearPlane near plane
+         * @param farPlane far plane
+         * 
+         */
         void initRendering(vec3, float, float, float, float);
-
+        
+        /**
+         * @brief updates the SDL2 window with the openGL framebuffer
+         * 
+         */
         void swap();
 
         mat4 model = mat4(1.0f), view = mat4(1.0f), projection;
