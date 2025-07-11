@@ -59,8 +59,11 @@ int UI::addElement(ElementType type, int x, int y){
 }
 
 void UI::editElement(int id, vec2 pos, SDL_Color color, std::string text = ""){
-    elements[id].surface = TTF_RenderUTF8_Blended(font, text.c_str(), color);
-    elements[id].pos = pos;
+    if(elements.at(id).surface){
+        SDL_FreeSurface(elements.at(id).surface);
+    }
+    elements.at(id).surface = TTF_RenderUTF8_Blended(font, text.c_str(), color);
+    elements.at(id).pos = pos;
 }
 
 void UI::update(){
