@@ -9,8 +9,6 @@ UI::~UI(){
     for(auto& element : elements){
         SDL_FreeSurface(element.surface);
     }
-
-    elements.clear();
 }
 
 
