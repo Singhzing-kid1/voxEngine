@@ -13,10 +13,6 @@ project(voxEngine)
 set(OpenGL_GL_PREFERENCE GLVND)
 cmake_policy(SET CMP0167 NEW)
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    add_compile_options(-Wa,-mbig-obj)
-endif()
-
 include_directories(include)
 
 file(GLOB HEADER_FILES "./include/*.hpp")
