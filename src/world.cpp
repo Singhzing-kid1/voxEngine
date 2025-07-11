@@ -114,7 +114,6 @@ bool Chunk::checkOutOfBounds(vec3 coord){
     return coord.x < 0 || coord.y < 0 || coord.z < 0 || coord.x >= CHUNK_SIZE || coord.y >= CHUNK_SIZE || coord.z >= CHUNK_SIZE;
 }
 
-
 World::World(float voxelSize, int worldDimension, int worldHeight, int renderDist, String seed) : worldHeight(worldHeight), worldDimension(worldDimension), renderDist(renderDist) {
     unsigned int seed1, seed2, seed3;
     int len = seed.length() / 3;

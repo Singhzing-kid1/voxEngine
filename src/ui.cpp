@@ -1,6 +1,5 @@
 #include "main.hpp"
 
-
 UI::UI(int width, int height, TTF_Font* font) : width(width), height(height), font(font){
     projection = ortho(0.0f, (float)width, 0.0f, (float)height);
 }
@@ -8,6 +7,9 @@ UI::UI(int width, int height, TTF_Font* font) : width(width), height(height), fo
 UI::~UI(){
     for(auto& element : elements){
         SDL_FreeSurface(element.surface);
+        glDeleteVertexArrays(1, &element.vao);
+        glDeleteBuffers(1, &element.vbo);
+        glDeleteBuffers(1, &element.ebo);
     }
 }
 
@@ -38,6 +40,7 @@ void UI::render(Shader shader){
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
         glDrawElements(GL_TRIANGLES, element.inds.size(), GL_UNSIGNED_INT, 0);
+        glDeleteTextures(1, &texture);
         glBindVertexArray(0);
     }
 }

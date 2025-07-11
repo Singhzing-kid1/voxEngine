@@ -40,7 +40,7 @@ int main(int argc, char* argv[]){
 
     int fpsUI = debug.addElement(UI::ElementType::TEXT, " ", color, 0, 125); // add element for FPS display
     int rendererUI = debug.addElement(UI::ElementType::TEXT, (std::string)reinterpret_cast<const char*>(glGetString(GL_RENDERER)), color, 0, 150); // add element to show current renderer(GPU)
-    int versionUI = debug.addElement(UI::ElementType::TEXT, (std::string)reinterpret_cast<const char*>(glGetString(GL_VERSION)), color, 0, 175); // add element to show OpenGL version and graphics driver version
+    int versionUI = debug.addElement(UI::ElementType::TEXT, (std::string)reinterpret_cast<const char*>(glGetString(GL_VERSION)), color, 0, 175); // add element to show OpenGL version and graphics driver version 
 
     engine.initRendering(mainPlayer.getItem(1), mainPlayer.getItem(1.0f), mainPlayer.getItem(2.0f), mainPlayer.getItem(3.0f), mainPlayer.getItem(4.0f)); // initialize rendering
 
@@ -85,17 +85,17 @@ int main(int argc, char* argv[]){
         float wUpdateTime = (SDL_GetTicks64()/1000.0f) - worldUStart;
         float debugUStart = (SDL_GetTicks64()/1000.0f);
         debug.update(); // updaye the debug UI (creats UI meshes)
-        float dUpdateTime = (SDL_GetTicks64()/1000.0f) - debugUStart;
+        float dUpdateTime = (SDL_GetTicks64()/1000.0f) - debugUStart; 
         
         float worldRStart = (SDL_GetTicks64()/1000.0f);
         world.render(engine.model, engine.view, engine.projection, shader, mainPlayer.position); // render the world
         float wRenderTime = (SDL_GetTicks64()/1000.0f) - worldRStart;
         float debugRStart = (SDL_GetTicks64()/1000.0f);
         debug.render(textShader); // render UI
-        float dRenderTime = (SDL_GetTicks64()/1000.0f) - debugRStart;
+        float dRenderTime = (SDL_GetTicks64()/1000.0f) - debugRStart; 
 
         // update the deltaTime UI element with the current deltaTime
-        stringstream buffer;
+         stringstream buffer;
         buffer << floor(engine.deltaTime * 1000.0f) << " ms";
         debug.editElement(deltaTimeUI, vec2(0, 0), color, buffer.str()); 
 
@@ -118,7 +118,7 @@ int main(int argc, char* argv[]){
         // update the fps UI element with the current fps 
         buffer.str(std::string());
         buffer << floor(1 / engine.deltaTime) << "fps";
-        debug.editElement(fpsUI, vec2(0, 125), color, buffer.str());   
+        debug.editElement(fpsUI, vec2(0, 125), color, buffer.str());  
 
         engine.swap(); // swap framebuffers
 
