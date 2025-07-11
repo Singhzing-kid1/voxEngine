@@ -11,8 +11,6 @@ UI::~UI(){
     }
 
     elements.clear();
-    
-    TTF_CloseFont(font);
 }
 
 
