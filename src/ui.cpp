@@ -1,13 +1,13 @@
 #include "main.hpp"
 
 
-UI::UI(int width, int height) : width(width), height(height){
+UI::UI(int width, int height, TTF_Font* font) : width(width), height(height), font(font){
     projection = ortho(0.0f, (float)width, 0.0f, (float)height);
 }
 
 
 void UI::render(Shader shader){
-    for(auto element : elements){
+    for(const auto& element : elements){
         glDisable(GL_DEPTH_TEST);
         unsigned int texture;
         glGenTextures(1, &texture);
@@ -36,8 +36,8 @@ void UI::render(Shader shader){
     }
 }
 
-int UI::addElement(ElementType type, std::string text, TTF_Font* font, SDL_Color color, int x, int y){
-    int id = elements.size() + 1;
+int UI::addElement(ElementType type, std::string text, SDL_Color color, int x, int y){
+    int id = elements.size();
     uiElement element;
     element.surface = TTF_RenderUTF8_Blended(font, text.c_str(), color);
     if(!element.surface) cout << TTF_GetError();    
@@ -58,9 +58,9 @@ int UI::addElement(ElementType type, int x, int y){
     return 0;
 }
 
-void UI::editElement(int id, vec2 pos, TTF_Font* font, SDL_Color color, std::string text = ""){
-    elements[id - 1].surface = TTF_RenderUTF8_Blended(font, text.c_str(), color);
-    elements[id - 1].pos = pos;
+void UI::editElement(int id, vec2 pos, SDL_Color color, std::string text = ""){
+    elements[id].surface = TTF_RenderUTF8_Blended(font, text.c_str(), color);
+    elements[id].pos = pos;
 }
 
 void UI::update(){
@@ -69,7 +69,7 @@ void UI::update(){
 }
 
 void UI::genMesh(){
-    for(auto element : elements){
+    for(auto& element : elements){
         vector<vec2> _verts, _texs;
         vector<unsigned int> _inds;
 
@@ -86,15 +86,15 @@ void UI::genMesh(){
         _texs.insert(_texs.end(), {vec2(0,0), vec2(0,1), vec2(1,0), vec2(1,1)});
         _inds.insert(_inds.end(), {idxStart + 0, idxStart + 1, idxStart + 2, idxStart + 1, idxStart + 3, idxStart + 2});
 
-        elements[element.ID - 1].verts.assign(_verts.begin(), _verts.end());
-        elements[element.ID - 1].texs.assign(_texs.begin(), _texs.end());
-        elements[element.ID - 1].inds.assign(_inds.begin(), _inds.end());
+        element.verts.assign(_verts.begin(), _verts.end());
+        element.texs.assign(_texs.begin(), _texs.end());
+        element.inds.assign(_inds.begin(), _inds.end());
     }
 
 }
 
 void UI::updateBuffers(){
-    for(auto element : elements){
+    for(const auto& element : elements){
         glBindVertexArray(element.vao);
 
         glBindBuffer(GL_ARRAY_BUFFER, element.vbo);

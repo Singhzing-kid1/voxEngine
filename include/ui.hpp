@@ -13,7 +13,7 @@ class UI{
          * @param width width of screen
          * @param height height of screen
          */
-        UI(int, int);
+        UI(int, int, TTF_Font*);
 
         enum ElementType {TEXT, BUTTON, BORDER};
 
@@ -38,7 +38,7 @@ class UI{
          * 
          * @return int
          */
-        int addElement(ElementType, std::string, TTF_Font*, SDL_Color, int, int);
+        int addElement(ElementType, std::string, SDL_Color, int, int);
         int addElement(ElementType, int, int);
 
         /**
@@ -51,7 +51,7 @@ class UI{
          * @param text text to be rendered
          * 
          */
-        void editElement(int, vec2, TTF_Font*, SDL_Color, std::string);
+        void editElement(int, vec2, SDL_Color, std::string);
 
         /**
          * @brief update the mesh and buffers
@@ -69,6 +69,8 @@ class UI{
             vector<vec2> verts, texs;
             vector<unsigned int> inds;
         };
+
+        TTF_Font* font;
 
         mat4 projection;
 

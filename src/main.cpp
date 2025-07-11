@@ -31,16 +31,16 @@ int main(int argc, char* argv[]){
 
     World world(0.001f, 100, 64, 25, "asdkjfhsadkfjhekjlahsdlkjdfheljkshadf21230984322"); // g7Kp1zQw8vR3xJt5LmSd2Xy9BnHa4UcEoTfS | world init
 
-    UI debug(main.width, main.height); // create debug UI
-    int deltaTimeUI = debug.addElement(UI::ElementType::TEXT, " ", TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, 0, 0); // add element for deltaTime display
-    int deltaTimeWorldUpdate = debug.addElement(UI::ElementType::TEXT, " ", TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, 0, 25);
-    int deltaTimeDebugUpdate = debug.addElement(UI::ElementType::TEXT, " ", TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, 0, 50);
-    int deltaTimeWorldDraw = debug.addElement(UI::ElementType::TEXT, " ", TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, 0, 75);
-    int deltaTimeDebugDraw = debug.addElement(UI::ElementType::TEXT, " ", TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, 0, 100);
+    UI debug(main.width, main.height, TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15)); // create debug UI
+    int deltaTimeUI = debug.addElement(UI::ElementType::TEXT, " ", color, 0, 0); // add element for deltaTime display
+    int deltaTimeWorldUpdate = debug.addElement(UI::ElementType::TEXT, " ", color, 0, 25);
+    int deltaTimeDebugUpdate = debug.addElement(UI::ElementType::TEXT, " ", color, 0, 50);
+    int deltaTimeWorldDraw = debug.addElement(UI::ElementType::TEXT, " ", color, 0, 75);
+    int deltaTimeDebugDraw = debug.addElement(UI::ElementType::TEXT, " ", color, 0, 100);
 
-    int fpsUI = debug.addElement(UI::ElementType::TEXT, " ", TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, 0, 125); // add element for FPS display
-    int rendererUI = debug.addElement(UI::ElementType::TEXT, (std::string)reinterpret_cast<const char*>(glGetString(GL_RENDERER)), TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, 0, 150); // add element to show current renderer(GPU)
-    int versionUI = debug.addElement(UI::ElementType::TEXT, (std::string)reinterpret_cast<const char*>(glGetString(GL_VERSION)), TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, 0, 175); // add element to show OpenGL version and graphics driver version
+    int fpsUI = debug.addElement(UI::ElementType::TEXT, " ", color, 0, 125); // add element for FPS display
+    int rendererUI = debug.addElement(UI::ElementType::TEXT, (std::string)reinterpret_cast<const char*>(glGetString(GL_RENDERER)), color, 0, 150); // add element to show current renderer(GPU)
+    int versionUI = debug.addElement(UI::ElementType::TEXT, (std::string)reinterpret_cast<const char*>(glGetString(GL_VERSION)), color, 0, 175); // add element to show OpenGL version and graphics driver version
 
     main.initRendering(mainPlayer.getItem(1), mainPlayer.getItem(1.0f), mainPlayer.getItem(2.0f), mainPlayer.getItem(3.0f), mainPlayer.getItem(4.0f)); // initialize rendering
 
@@ -97,28 +97,28 @@ int main(int argc, char* argv[]){
         // update the deltaTime UI element with the current deltaTime
         stringstream buffer;
         buffer << floor(main.deltaTime * 1000.0f) << " ms";
-        debug.editElement(deltaTimeUI, vec2(0, 0), TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, buffer.str()); 
+        debug.editElement(deltaTimeUI, vec2(0, 0), color, buffer.str()); 
 
         buffer.str(std::string());
         buffer << "world update: " << floor(wUpdateTime * 1000.0f) << "ms";
-        debug.editElement(deltaTimeWorldUpdate, vec2(0, 25), TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, buffer.str());   
+        debug.editElement(deltaTimeWorldUpdate, vec2(0, 25), color, buffer.str());   
 
         buffer.str(std::string());
         buffer << "debug update: " << floor(dUpdateTime * 1000.0f) << "ms";
-        debug.editElement(deltaTimeDebugUpdate, vec2(0, 50), TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, buffer.str());   
+        debug.editElement(deltaTimeDebugUpdate, vec2(0, 50), color, buffer.str());   
 
         buffer.str(std::string());
         buffer << "world draw: " << floor(wRenderTime * 1000.0f) << "ms";
-        debug.editElement(deltaTimeWorldDraw, vec2(0, 75), TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, buffer.str());   
+        debug.editElement(deltaTimeWorldDraw, vec2(0, 75), color, buffer.str());   
 
         buffer.str(std::string());
         buffer << "debug draw: " << floor(dRenderTime * 1000.0f) << "ms";
-        debug.editElement(deltaTimeDebugDraw, vec2(0, 100), TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, buffer.str());   
+        debug.editElement(deltaTimeDebugDraw, vec2(0, 100), color, buffer.str());   
 
         // update the fps UI element with the current fps 
         buffer.str(std::string());
         buffer << floor(1 / main.deltaTime) << "fps";
-        debug.editElement(fpsUI, vec2(0, 125), TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, buffer.str());   
+        debug.editElement(fpsUI, vec2(0, 125), color, buffer.str());   
 
         main.swap(); // swap framebuffers
 
