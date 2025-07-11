@@ -5,6 +5,16 @@ UI::UI(int width, int height, TTF_Font* font) : width(width), height(height), fo
     projection = ortho(0.0f, (float)width, 0.0f, (float)height);
 }
 
+UI::~UI(){
+    for(auto& element : elements){
+        SDL_FreeSurface(element.surface);
+    }
+
+    elements.clear();
+    
+    TTF_CloseFont(font);
+}
+
 
 void UI::render(Shader shader){
     for(const auto& element : elements){
@@ -59,9 +69,7 @@ int UI::addElement(ElementType type, int x, int y){
 }
 
 void UI::editElement(int id, vec2 pos, SDL_Color color, std::string text = ""){
-    if(elements.at(id).surface){
-        SDL_FreeSurface(elements.at(id).surface);
-    }
+    SDL_FreeSurface(elements.at(id).surface);
     elements.at(id).surface = TTF_RenderUTF8_Blended(font, text.c_str(), color);
     elements.at(id).pos = pos;
 }

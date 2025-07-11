@@ -14,6 +14,7 @@ class UI{
          * @param height height of screen
          */
         UI(int, int, TTF_Font*);
+        ~UI();
 
         enum ElementType {TEXT, BUTTON, BORDER};
 

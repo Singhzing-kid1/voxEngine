@@ -31,6 +31,7 @@ class Engine{
          * 
          */
         Engine(int, int, const char*);
+        ~Engine();
         float deltaTime, lastFrame;
 
         /**

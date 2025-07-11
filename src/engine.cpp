@@ -58,8 +58,21 @@ Engine::Engine(int height, int width, const char* title){
     btCollisionDispatcher* dispatch = new btCollisionDispatcher(config);
 
     collisionWorld = new btCollisionWorld(dispatch, broadPhase, config);
+
+    delete dispatch;
+    delete config;
+    delete broadPhase;
 }
 
+Engine::~Engine(){
+    delete collisionWorld;
+
+    SDL_GL_DeleteContext(context);
+    SDL_DestroyWindow(window);
+
+    TTF_Quit();
+    SDL_Quit();
+}
 
 void Engine::eventHandling(inputData* data){
     data->state = SDL_GetKeyboardState(NULL);

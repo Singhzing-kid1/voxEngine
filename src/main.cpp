@@ -19,10 +19,10 @@ extern "C" {  //temporary to force computer to use Nvidia GPU or AMD GPU over in
 #endif
 
 int main(int argc, char* argv[]){
-    Engine main(1080, 1920, "v0.0.8 pre-release"); // init engine class
+    Engine engine(1080, 1920, "v0.0.8 pre-release"); // init engine class
     SDL_Color color = {255, 255, 255, 255}; // white color for UI text
 
-    Player mainPlayer(45, main.height, main.width, 0.1f, 1000.0f, vec3(0.0f, 5.0f, 0.0f), vec4(1.0f, 1.0f, 3.0f, 1.0f), 2.5f); // create player
+    Player mainPlayer(45, engine.height, engine.width, 0.1f, 1000.0f, vec3(0.0f, 5.0f, 0.0f), vec4(1.0f, 1.0f, 3.0f, 1.0f), 2.5f); // create player
 
     Shader shader("./shaders/vertex.vert", "./shaders/fragment.frag");  // terrain shader
     Shader textShader("./shaders/textVert.vert", "./shaders/textFrag.frag"); // ui shader
@@ -31,7 +31,7 @@ int main(int argc, char* argv[]){
 
     World world(0.001f, 100, 64, 25, "asdkjfhsadkfjhekjlahsdlkjdfheljkshadf21230984322"); // g7Kp1zQw8vR3xJt5LmSd2Xy9BnHa4UcEoTfS | world init
 
-    UI debug(main.width, main.height, TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15)); // create debug UI
+    UI debug(engine.width, engine.height, TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15)); // create debug UI
     int deltaTimeUI = debug.addElement(UI::ElementType::TEXT, " ", color, 0, 0); // add element for deltaTime display
     int deltaTimeWorldUpdate = debug.addElement(UI::ElementType::TEXT, " ", color, 0, 25);
     int deltaTimeDebugUpdate = debug.addElement(UI::ElementType::TEXT, " ", color, 0, 50);
@@ -42,7 +42,7 @@ int main(int argc, char* argv[]){
     int rendererUI = debug.addElement(UI::ElementType::TEXT, (std::string)reinterpret_cast<const char*>(glGetString(GL_RENDERER)), color, 0, 150); // add element to show current renderer(GPU)
     int versionUI = debug.addElement(UI::ElementType::TEXT, (std::string)reinterpret_cast<const char*>(glGetString(GL_VERSION)), color, 0, 175); // add element to show OpenGL version and graphics driver version
 
-    main.initRendering(mainPlayer.getItem(1), mainPlayer.getItem(1.0f), mainPlayer.getItem(2.0f), mainPlayer.getItem(3.0f), mainPlayer.getItem(4.0f)); // initialize rendering
+    engine.initRendering(mainPlayer.getItem(1), mainPlayer.getItem(1.0f), mainPlayer.getItem(2.0f), mainPlayer.getItem(3.0f), mainPlayer.getItem(4.0f)); // initialize rendering
 
     glEnable(GL_CULL_FACE); // enable backface culling and specify direction of front face
     glCullFace(GL_BACK);
@@ -59,7 +59,7 @@ int main(int argc, char* argv[]){
     float pitch = 0.0f , yaw = 0.0f;
 
     while(!quit){
-        main.eventHandling(&data); // input handling
+        engine.eventHandling(&data); // input handling
 
         // calculate pitch and yaw based on mouse movement
         pitch += data.yOffset;
@@ -73,10 +73,10 @@ int main(int argc, char* argv[]){
         }
 
         // update the player position/orientation
-        mainPlayer.updatePlayer(main.deltaTime, data.state, yaw, pitch, main.collisionWorld);
+        mainPlayer.updatePlayer(engine.deltaTime, data.state, yaw, pitch, engine.collisionWorld);
 
         // update the view matrix based on player orientaion
-        main.view = lookAt(mainPlayer.getItem(1), mainPlayer.getItem(3) + mainPlayer.getItem(1), mainPlayer.getItem(2));
+        engine.view = lookAt(mainPlayer.getItem(1), mainPlayer.getItem(3) + mainPlayer.getItem(1), mainPlayer.getItem(2));
         
         // clear the screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -88,7 +88,7 @@ int main(int argc, char* argv[]){
         float dUpdateTime = (SDL_GetTicks64()/1000.0f) - debugUStart;
         
         float worldRStart = (SDL_GetTicks64()/1000.0f);
-        world.render(main.model, main.view, main.projection, shader, mainPlayer.position); // render the world
+        world.render(engine.model, engine.view, engine.projection, shader, mainPlayer.position); // render the world
         float wRenderTime = (SDL_GetTicks64()/1000.0f) - worldRStart;
         float debugRStart = (SDL_GetTicks64()/1000.0f);
         debug.render(textShader); // render UI
@@ -96,7 +96,7 @@ int main(int argc, char* argv[]){
 
         // update the deltaTime UI element with the current deltaTime
         stringstream buffer;
-        buffer << floor(main.deltaTime * 1000.0f) << " ms";
+        buffer << floor(engine.deltaTime * 1000.0f) << " ms";
         debug.editElement(deltaTimeUI, vec2(0, 0), color, buffer.str()); 
 
         buffer.str(std::string());
@@ -117,13 +117,16 @@ int main(int argc, char* argv[]){
 
         // update the fps UI element with the current fps 
         buffer.str(std::string());
-        buffer << floor(1 / main.deltaTime) << "fps";
+        buffer << floor(1 / engine.deltaTime) << "fps";
         debug.editElement(fpsUI, vec2(0, 125), color, buffer.str());   
 
-        main.swap(); // swap framebuffers
+        engine.swap(); // swap framebuffers
 
         quit = data.shouldQuit; // check if reached a quit condition
     }
+
+    debug.~UI();
+    engine.~Engine();
 
     return 0;
 }
