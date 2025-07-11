@@ -22,14 +22,14 @@ int main(int argc, char* argv[]){
     Engine main(1080, 1920, "v0.0.8 pre-release"); // init engine class
     SDL_Color color = {255, 255, 255, 255}; // white color for UI text
 
-    Player mainPlayer(45, main.height, main.width, 0.1f, 1000.0f, vec3(0.0f, 32.0f, 0.0f), vec4(1.0f, 1.0f, 3.0f, 1.0f), 2.5f); // create player
+    Player mainPlayer(45, main.height, main.width, 0.1f, 1000.0f, vec3(0.0f, 5.0f, 0.0f), vec4(1.0f, 1.0f, 3.0f, 1.0f), 2.5f); // create player
 
     Shader shader("./shaders/vertex.vert", "./shaders/fragment.frag");  // terrain shader
     Shader textShader("./shaders/textVert.vert", "./shaders/textFrag.frag"); // ui shader
 
     Compute computeShader("./shaders/testComp.comp"); // test compute shader
 
-    World world(1.0f, 100, 20, 4, "asdkjfhsadkfjhekjlahsdlkjdfheljkshadf21230984322"); // g7Kp1zQw8vR3xJt5LmSd2Xy9BnHa4UcEoTfS | world init
+    World world(0.001f, 100, 64, 25, "asdkjfhsadkfjhekjlahsdlkjdfheljkshadf21230984322"); // g7Kp1zQw8vR3xJt5LmSd2Xy9BnHa4UcEoTfS | world init
 
     UI debug(main.width, main.height); // create debug UI
     int deltaTimeUI = debug.addElement(UI::ElementType::TEXT, " ", TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, 0, 0); // add element for deltaTime display
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]){
         // clear the screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         float worldUStart = (SDL_GetTicks64()/1000.0f);
-        world.update(); // update the world (creates mesh)
+        world.update(mainPlayer.position); // update the world (creates mesh)
         float wUpdateTime = (SDL_GetTicks64()/1000.0f) - worldUStart;
         float debugUStart = (SDL_GetTicks64()/1000.0f);
         debug.update(); // updaye the debug UI (creats UI meshes)
@@ -96,28 +96,28 @@ int main(int argc, char* argv[]){
 
         // update the deltaTime UI element with the current deltaTime
         stringstream buffer;
-        buffer << main.deltaTime * 1000.0f << " ms";
+        buffer << floor(main.deltaTime * 1000.0f) << " ms";
         debug.editElement(deltaTimeUI, vec2(0, 0), TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, buffer.str()); 
 
         buffer.str(std::string());
-        buffer << "world update: " << wUpdateTime * 1000.0f << "ms";
+        buffer << "world update: " << floor(wUpdateTime * 1000.0f) << "ms";
         debug.editElement(deltaTimeWorldUpdate, vec2(0, 25), TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, buffer.str());   
 
         buffer.str(std::string());
-        buffer << "debug update: " << dUpdateTime * 1000.0f << "ms";
+        buffer << "debug update: " << floor(dUpdateTime * 1000.0f) << "ms";
         debug.editElement(deltaTimeDebugUpdate, vec2(0, 50), TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, buffer.str());   
 
         buffer.str(std::string());
-        buffer << "world draw: " << wRenderTime * 1000.0f << "ms";
+        buffer << "world draw: " << floor(wRenderTime * 1000.0f) << "ms";
         debug.editElement(deltaTimeWorldDraw, vec2(0, 75), TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, buffer.str());   
 
         buffer.str(std::string());
-        buffer << "debug draw: " << dRenderTime * 1000.0f << "ms";
+        buffer << "debug draw: " << floor(dRenderTime * 1000.0f) << "ms";
         debug.editElement(deltaTimeDebugDraw, vec2(0, 100), TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, buffer.str());   
 
         // update the fps UI element with the current fps 
         buffer.str(std::string());
-        buffer << (1 / main.deltaTime) << "fps";
+        buffer << floor(1 / main.deltaTime) << "fps";
         debug.editElement(fpsUI, vec2(0, 125), TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15), color, buffer.str());   
 
         main.swap(); // swap framebuffers

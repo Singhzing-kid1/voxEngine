@@ -4,7 +4,7 @@
 #include "main.hpp"
 
 #define CHUNK_SIZE 32
-#define VOXEL_SIZE 1
+#define VOXEL_SIZE 0.05
 
 class Shader;
 
@@ -30,18 +30,13 @@ struct Mesh{
     vector<unsigned int> inds;
 };
 
-struct Voxel{
-    Voxel(int value) : value(value) {}
-    Voxel() {}
+struct Box{
+    Box(vec3 min, vec3 max) : min(min), max(max) {}
 
-    int value = -1;
-
-    vector<vec3> neighbors = {vec3(0, 0, 1),
-                                vec3(0, 1, 0),
-                                vec3(1, 0, 0),
-                                vec3(0, 0, -1),
-                                vec3(0, -1, 0),
-                                vec3(-1, 0, 0)};
+    vec3 min, max;
+    bool isInside(vec3 position){
+        return all(lessThanEqual(min, position)) || all(greaterThanEqual(position, max));
+    }
 };
 
 class Chunk{
@@ -50,27 +45,39 @@ class Chunk{
 
         static constexpr float halfVoxelSize = (float)VOXEL_SIZE * 0.5f;
 
-        void genMesh();
+        enum class VOXEL {EMPTY = -1,
+                          HOTDRY = 1, 
+                          HOTNORM = 2, 
+                          HOTWET = 3, 
+                          NORMDRY = 4, 
+                          NORM = 5, 
+                          NORMWET = 6, 
+                          COLDDRY = 7, 
+                          COLDNORM = 8, 
+                          COLDWET = 9};
+
+        void genMesh(const vector<Chunk>&);
         Mesh getMesh(int);
 
-        vector<vector<vector<Voxel>>> grid;
+        vector<VOXEL> grid;
 
         vec3 origin;
         bool dirty = true;
+        bool buffered = false;
 
         Mesh mesh;
 
     private:
         map<int, Mesh> lods;
+
+        worldGenInfo genInfo;
+        int worldHeight;
         
-        unordered_map<vec3, vector<vec3>, vecHash> faces {
-            {vec3(0, 0, 1), {vec3(-1, -1, 1), vec3(1, 1, 1), vec3(-1, 1, 1), vec3(1, -1, 1)}}, 
-            {vec3(0, 1, 0), {vec3(-1, 1, -1), vec3(1, 1, 1), vec3(1, 1, -1), vec3(-1, 1, 1)}},
-            {vec3(1, 0, 0), {vec3(1, -1, -1), vec3(1, 1, 1), vec3(1, -1, 1), vec3(1, 1, -1)}},
-            {vec3(0, 0, -1), {vec3(-1, -1, -1), vec3(1, 1, -1), vec3(1, -1, -1), vec3(-1, 1, -1)}},
-            {vec3(0, -1, 0), {vec3(-1, -1, -1),vec3(1, -1, 1), vec3(-1, -1, 1), vec3(1, -1, -1)}},
-            {vec3(-1, 0, 0), {vec3(-1, -1, -1), vec3(-1, 1, 1), vec3(-1, 1, -1), vec3(-1, -1, 1)}}
-        };
+        static const unordered_map<vec3, vector<vec3>, vecHash> faces; 
+
+        static const map<VOXEL, vec3> blockType;
+
+        static const vector<vec3> neighbors; 
 
         bool checkOutOfBounds(vec3);
 };
