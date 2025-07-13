@@ -5,7 +5,7 @@ UI::UI(int width, int height, TTF_Font* font) : width(width), height(height), fo
 }
 
 UI::~UI(){
-    for(auto& element : elements){
+    for(auto element : elements){
         SDL_FreeSurface(element.surface);
         glDeleteVertexArrays(1, &element.vao);
         glDeleteBuffers(1, &element.vbo);

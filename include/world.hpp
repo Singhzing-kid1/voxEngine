@@ -130,7 +130,6 @@ class World{
         thread reqThread;
         thread bufThread;
 
-
         bool running = true;
 
     private:
@@ -148,7 +147,9 @@ class World{
         Mesh worldMesh;
         
         atomic<bool> buffered{false};
+        atomic<bool> startMeshing{false};
         bool edited = false;
+        bool firstTime = true;
 
         int worldHeight, worldDimension, renderDist;
         vec3 lastPlayerPos = vec3(0);

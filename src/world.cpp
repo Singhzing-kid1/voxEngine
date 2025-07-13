@@ -133,7 +133,7 @@ World::World(float voxelSize, int worldDimension, int worldHeight, int renderDis
     renderBox = Box(round((playerPos / (float)CHUNK_SIZE) - (float)renderDist), round((playerPos / (float)CHUNK_SIZE) + (float)renderDist));
 
 
-    for(int x = 0; x < renderDist; x++){
+/*    for(int x = 0; x < renderDist; x++){
             for(int z = 0; z < renderDist; z++){
                 cout << roundf(((float)((x * renderDist) + z) / (float)(renderDist * renderDist)) * 100.0f) << "% generating: (" << x << ", " << z << ")\n";
                 lock_guard<mutex> lock(requestQueueMutex);
@@ -141,7 +141,12 @@ World::World(float voxelSize, int worldDimension, int worldHeight, int renderDis
                 requests.push({REQUEST::CHUNKCREATE, vec3(x, 1, z)});
                 requests.push({REQUEST::CHUNKCREATE, vec3(x, 2, z)});
             }
-    }
+    } */
+
+    lock_guard<mutex> lock(requestQueueMutex);
+    requests.push({REQUEST::CHUNKCREATE, vec3(0, 1, 0)});
+    
+    requestQueueCV.notify_one();
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -176,15 +181,21 @@ void World::render(mat4 model, mat4 view, mat4 projection, Shader shader, vec3 c
 void World::update(vec3 playerPos) {
     vec3 _playerPos = round(playerPos / (float)CHUNK_SIZE);
     bvec3 moved = greaterThanEqual(abs(_playerPos - lastPlayerPos), vec3(3.0f)); // remove magic numbers
-    if(any(moved) || edited){
+    if(any(moved) || edited || firstTime){
+        firstTime = false;
         renderBox.min = round((playerPos / (float)CHUNK_SIZE) - (float)renderDist);
         renderBox.max = round((playerPos / (float)CHUNK_SIZE) + (float)renderDist);
+        unordered_map<vec3, Chunk, vecHash> _world;
+        {
+            lock_guard<mutex> lock(worldMutex);
+            _world = world;
+        }
         for(int x = renderBox.min.x; x <  renderBox.max.x; x++){
             for(int y = renderBox.min.y; y <  renderBox.max.y; y++){
                 for(int z = renderBox.min.z; z <  renderBox.max.z; z++){
                     vec3 coord = vec3(x, y, z);
-                    auto it = world.find(coord);
-                    if(it != world.end()){
+                    auto it = _world.find(coord);
+                    if(it != _world.end()){
                         if(!it->second.dirty) continue;
                         lock_guard<mutex> lock(requestQueueMutex);
                         requests.push({REQUEST::GENERATEMESH, coord});
@@ -197,6 +208,7 @@ void World::update(vec3 playerPos) {
                 }
             }
         }
+        requestQueueCV.notify_one();
     }
 }
 
@@ -206,6 +218,8 @@ void World::requestManager(){
         requestQueueCV.wait(lock, [this] { return !requests.empty() || !running;});
 
         if(!running) break;
+
+        cout << "here req\n";
 
         for(int iter = 0; iter < requestsPerFrame; iter++){
             auto& request = requests.front();
@@ -234,20 +248,30 @@ void World::requestManager(){
             lock.lock();
             requests.pop();
         }
+
+        startMeshing.store(true, memory_order_release);
+        startMeshing.notify_one();
     }
 }
 
 void World::prepAndCombineMeshes() {
     while(running){
         if(buffered.load()) continue;
+
+        startMeshing.wait(false, memory_order_acquire);
+        if(!running) break;
+        startMeshing.store(false, memory_order_release);
+
         size_t lastVertsSize = 0;
 
         vector<Chunk*> chunksToBuffer;
         {
             lock_guard<mutex> lock(renderableMutex);
+            if(renderable.empty()) continue;
             chunksToBuffer = renderable;
         }
 
+        cout << "here mesh\n";
         Mesh _mesh;
 
         for(const Chunk* chunk : chunksToBuffer){
@@ -272,6 +296,8 @@ void World::setBuffers(){
     if(buffered.load()) return;
     lock_guard<mutex> lock(meshMutex);
     Mesh mesh = worldMesh;
+
+    cout << "here send buffers  " << mesh.verts.size() << "\n";
 
     glBindVertexArray(vao);
 
