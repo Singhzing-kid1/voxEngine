@@ -25,6 +25,10 @@
 #include <omp.h>
 #include <map>
 #include <unordered_map>
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <condition_variable>
 
 #ifdef _WIN32
 #include <windows.h>

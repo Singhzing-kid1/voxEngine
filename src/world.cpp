@@ -3,21 +3,21 @@
 Chunk::Chunk(worldGenInfo genInfo, vec3 origin, int worldHeight) : genInfo(genInfo), origin(origin), grid(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE, VOXEL::EMPTY), worldHeight(worldHeight) {
     for(int x = 0; x < CHUNK_SIZE; x++){
         for(int z = 0; z < CHUNK_SIZE; z++){
-            int height = worldHeight * genInfo.heightMap.octave2D_01(((origin.x * CHUNK_SIZE) + x) * 0.01, ((origin.z * CHUNK_SIZE) + z) * 0.01, 4);
-            float temp = genInfo.tempMap.octave2D_11(((origin.x * CHUNK_SIZE) + x) * 0.005, ((origin.z * CHUNK_SIZE) + z)  * 0.005, 4);
-            float moistness = genInfo.moistureMap.octave2D_01(((origin.x * CHUNK_SIZE) + x) * 0.005, ((origin.z * CHUNK_SIZE) + z)  * 0.005, 4);
+            int height = worldHeight * genInfo.heightMap.octave2D_01(((origin.x * CHUNK_SIZE) + x) * heightMapScalar, ((origin.z * CHUNK_SIZE) + z) * heightMapScalar, perlinNoiseOctaveAmount);
+            float temp = genInfo.tempMap.octave2D_11(((origin.x * CHUNK_SIZE) + x) * tempAndMoistureMapScalar, ((origin.z * CHUNK_SIZE) + z)  * tempAndMoistureMapScalar, perlinNoiseOctaveAmount);
+            float moistness = genInfo.moistureMap.octave2D_01(((origin.x * CHUNK_SIZE) + x) * tempAndMoistureMapScalar, ((origin.z * CHUNK_SIZE) + z)  * tempAndMoistureMapScalar, perlinNoiseOctaveAmount);
 
             VOXEL _blockType = VOXEL::EMPTY;
             
-            if((temp >= 0.3f && temp <= 1.0f) && (moistness >= 0.0f && moistness <= 0.4f)) {_blockType = Chunk::VOXEL::HOTDRY;}        //hd
-            else if ((temp >= 0.3f && temp <= 1.0f) && (moistness > 0.4f && moistness < 0.7f)) {_blockType = Chunk::VOXEL::HOTNORM;}    //hn
-            else if ((temp >= 0.3f && temp <= 1.0f) && (moistness >= 0.7f && moistness <= 1.0f)) {_blockType = Chunk::VOXEL::HOTWET;}  //hw
-            else if ((temp > -0.3f && temp < 0.3f) && (moistness >= 0.0f && moistness <= 0.4f)) {_blockType = Chunk::VOXEL::NORMDRY;}    //nd
-            else if ((temp > -0.3f && temp < 0.3f) && (moistness > 0.4f && moistness < 0.7f)) {_blockType = Chunk::VOXEL::NORM;}      //nn
-            else if ((temp > -0.3f && temp < 0.3f) && (moistness >= 0.7f && moistness <= 1.0f)) {_blockType = Chunk::VOXEL::NORMWET;}    //nw
-            else if ((temp >= -1.0f && temp <= -0.3f) && (moistness >= 0.0f && moistness <= 0.4f)) {_blockType = Chunk::VOXEL::COLDDRY;}  //cd
-            else if ((temp >= -1.0f && temp <= -0.3f) && (moistness > 0.4f && moistness < 0.7f)) {_blockType = Chunk::VOXEL::COLDNORM;}    //cn
-            else if ((temp >= -1.0f && temp <= -0.3f) && (moistness >= 0.7f && moistness <= 1.0f)) {_blockType = Chunk::VOXEL::COLDWET;}  //cw
+            if((temp >= tempHotMin && temp <= tempHotMax) && (moistness >= dryMin && moistness <= dryMax)) {_blockType = Chunk::VOXEL::HOTDRY;}        //hd
+            else if ((temp >= tempHotMin && temp <= tempHotMax) && (moistness > normMin && moistness < normMax)) {_blockType = Chunk::VOXEL::HOTNORM;}    //hn
+            else if ((temp >= tempHotMin && temp <= tempHotMax) && (moistness >= wetMin && moistness <= wetMax)) {_blockType = Chunk::VOXEL::HOTWET;}  //hw
+            else if ((temp > tempNormMin && temp < tempNormMax) && (moistness >= dryMin && moistness <= dryMax)) {_blockType = Chunk::VOXEL::NORMDRY;}    //nd
+            else if ((temp > tempNormMin && temp < tempNormMax) && (moistness > normMin && moistness < normMax)) {_blockType = Chunk::VOXEL::NORM;}      //nn
+            else if ((temp > tempNormMin && temp < tempNormMax) && (moistness >= wetMin && moistness <= wetMax)) {_blockType = Chunk::VOXEL::NORMWET;}    //nw
+            else if ((temp >= tempColdMin && temp <= tempColdMax) && (moistness >= dryMin && moistness <= dryMax)) {_blockType = Chunk::VOXEL::COLDDRY;}  //cd
+            else if ((temp >= tempColdMin && temp <= tempColdMax) && (moistness > normMin && moistness < normMax)) {_blockType = Chunk::VOXEL::COLDNORM;}    //cn
+            else if ((temp >= tempColdMin && temp <= tempColdMax) && (moistness >= wetMin && moistness <= wetMax)) {_blockType = Chunk::VOXEL::COLDWET;}  //cw
 
             for(int y = 0; y < CHUNK_SIZE; y++){
                 if(((origin.y * CHUNK_SIZE) + y) > height) continue;
@@ -37,7 +37,7 @@ const unordered_map<vec3, vector<vec3>, vecHash> Chunk::faces {
             {vec3(-1, 0, 0), {vec3(-1, -1, -1), vec3(-1, 1, 1), vec3(-1, 1, -1), vec3(-1, -1, 1)}}
         };
 
-const map<Chunk::VOXEL, vec3> Chunk::blockType {
+const map<Chunk::VOXEL, vec3> Chunk::blockType { // if not clear these are color values, i might refactor to make it more self documenting
             {Chunk::VOXEL::HOTDRY, vec3(1, 0, 0)},
             {Chunk::VOXEL::HOTNORM, vec3(1, 0.3, 0)},
             {Chunk::VOXEL::HOTWET, vec3(0.8, 0.29, 0.16)},
@@ -56,7 +56,7 @@ const vector<vec3> Chunk::neighbors = {vec3(0, 0, 1),
                                        vec3(0, -1, 0),
                                        vec3(-1, 0, 0)};
 
-void Chunk::genMesh(const vector<Chunk>& chunks){
+void Chunk::genMesh(const unordered_map<vec3, Chunk, vecHash>& chunks){
     vector<vec3> verts, colors, normals;
     vector<unsigned int> inds;
     VOXEL neighborValue = VOXEL::EMPTY;
@@ -73,13 +73,13 @@ void Chunk::genMesh(const vector<Chunk>& chunks){
                                             floor(((origin.y * CHUNK_SIZE) + _neighbor.y)/CHUNK_SIZE),
                                             floor(((origin.z * CHUNK_SIZE) + _neighbor.z)/CHUNK_SIZE));
                         for(const auto& chunk : chunks){
-                            if(chunk.origin != _origin) continue;
+                            if(chunk.second.origin != _origin) continue;
 
                             vec3 _voxel = vec3((int)((origin.x * CHUNK_SIZE) + _neighbor.x) % CHUNK_SIZE,
                                                (int)((origin.y * CHUNK_SIZE) + _neighbor.y) % CHUNK_SIZE,   
                                                (int)((origin.z * CHUNK_SIZE) + _neighbor.z) % CHUNK_SIZE);
 
-                                neighborValue = chunk.grid.at(_voxel.x + _voxel.y * CHUNK_SIZE + _voxel.z * CHUNK_SIZE * CHUNK_SIZE);
+                                neighborValue = chunk.second.grid.at(_voxel.x + _voxel.y * CHUNK_SIZE + _voxel.z * CHUNK_SIZE * CHUNK_SIZE);
                         }
                     } else {neighborValue = grid.at(_neighbor.x + _neighbor.y * CHUNK_SIZE + _neighbor.z * CHUNK_SIZE * CHUNK_SIZE);}
                         
@@ -114,7 +114,9 @@ bool Chunk::checkOutOfBounds(vec3 coord){
     return coord.x < 0 || coord.y < 0 || coord.z < 0 || coord.x >= CHUNK_SIZE || coord.y >= CHUNK_SIZE || coord.z >= CHUNK_SIZE;
 }
 
-World::World(float voxelSize, int worldDimension, int worldHeight, int renderDist, String seed) : worldHeight(worldHeight), worldDimension(worldDimension), renderDist(renderDist) {
+World::World(float voxelSize, int worldDimension, int worldHeight, int renderDist, String seed, vec3 playerPos) : worldHeight(worldHeight), worldDimension(worldDimension), renderDist(renderDist) {
+    reqThread = thread(&World::requestManager, this);
+    bufThread = thread(&World::prepAndCombineBuffers, this);
     unsigned int seed1, seed2, seed3;
     int len = seed.length() / 3;
 
@@ -128,18 +130,29 @@ World::World(float voxelSize, int worldDimension, int worldHeight, int renderDis
 
     world.reserve(renderDist * renderDist);
 
+    renderBox = Box(round((playerPos / (float)CHUNK_SIZE) - (float)renderDist), round((playerPos / (float)CHUNK_SIZE) + (float)renderDist));
+
+
     for(int x = 0; x < renderDist; x++){
             for(int z = 0; z < renderDist; z++){
                 cout << roundf(((float)((x * renderDist) + z) / (float)(renderDist * renderDist)) * 100.0f) << "% generating: (" << x << ", " << z << ")\n";
-                world.emplace_back(Chunk(worldSeed, vec3(x, 0, z), worldHeight));
-                world.emplace_back(Chunk(worldSeed, vec3(x, 1, z), worldHeight));
-                world.emplace_back(Chunk(worldSeed, vec3(x, 2, z), worldHeight));
+                lock_guard<mutex> lock(requestQueueMutex);
+                requests.push({REQUEST::CHUNKCREATE, vec3(x, 0, z)});
+                requests.push({REQUEST::CHUNKCREATE, vec3(x, 1, z)});
+                requests.push({REQUEST::CHUNKCREATE, vec3(x, 2, z)});
             }
     }
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
     glGenBuffers(1, &ebo);
+}
+
+World::~World(){
+    running = false;
+    requestQueueCV.notify_all();
+    if (reqThread.joinable()) reqThread.join();
+    if (bufThread.joinable()) bufThread.join();   
 }
 
 void World::render(mat4 model, mat4 view, mat4 projection, Shader shader, vec3 cameraPos) {
@@ -158,64 +171,121 @@ void World::render(mat4 model, mat4 view, mat4 projection, Shader shader, vec3 c
 }
 
 void World::update(vec3 playerPos) {
-    for(auto& chunk : world){
-        if(!chunk.dirty) continue;
-        chunk.genMesh(world);
+    vec3 _playerPos = round(playerPos / (float)CHUNK_SIZE);
+    bvec3 moved = greaterThanEqual(abs(_playerPos - lastPlayerPos), vec3(3.0f)); // remove magic numbers
+    if(any(moved) || edited){
+        renderBox.min = round((playerPos / (float)CHUNK_SIZE) - (float)renderDist);
+        renderBox.max = round((playerPos / (float)CHUNK_SIZE) + (float)renderDist);
+        for(int x = renderBox.min.x; x <  renderBox.max.x; x++){
+            for(int y = renderBox.min.y; y <  renderBox.max.y; y++){
+                for(int z = renderBox.min.z; z <  renderBox.max.z; z++){
+                    vec3 coord = vec3(x, y, z);
+                    auto it = world.find(coord);
+                    if(it != world.end()){
+                        if(!it->second.dirty) continue;
+                        lock_guard<mutex> lock(requestQueueMutex);
+                        requests.push({REQUEST::GENERATEMESH, coord});
+                        buffered.store(false);
+                        continue;
+                    }
+                    lock_guard<mutex> lock(requestQueueMutex);
+                    requests.push({REQUEST::CHUNKCREATE, coord});
+                    buffered.store(false);
+                }
+            }
+        }
     }
-    prepAndCombineBuffers(playerPos);
 }
 
-void World::prepAndCombineBuffers(vec3 playerPos) {
-    if(buffered) return;
-    buffered = true;
-    vector<vec3> verts, normals, colors;
-    vector<unsigned int> inds;
-    size_t lastVertsSize = 0;
+void World::requestManager(){
+    while(running){
+        unique_lock<mutex> lock(requestQueueMutex);
+        requestQueueCV.wait(lock, [this] { return !requests.empty() || !running;});
 
-    Box renderBox(playerPos - vec3(renderDist), playerPos + vec3(renderDist));
+        if(!running) break;
 
-    for(auto& chunk : world){
-        if(!renderBox.isInside(chunk.origin)) continue;
+        for(int iter = 0; iter < requestsPerFrame; iter++){
+            auto& request = requests.front();
+            requests.pop();
+            lock.unlock();
+            
+            switch(request.first){
+                case REQUEST::GENERATEMESH: {
+                    lock_guard<mutex> worldLock(worldMutex);
+                    Chunk& chunk = world.at(request.second);
+                    chunk.genMesh(world);
+                    chunk.dirty = false;
+                    break;
 
-        Mesh mesh = chunk.mesh;
+                }
+                case REQUEST::CHUNKCREATE: {
+                    Chunk newChunk(worldSeed, request.second, worldHeight);
+                    lock_guard<mutex> worldLock(worldMutex);
+                    newChunk.genMesh(world);
+                    newChunk.dirty = false;
+                    world.insert({request.second, newChunk});
+                    lock_guard<mutex> renderableLock(renderableMutex);
+                    renderable.push_back(&world.at(request.second));
+                    break;
+                }
+            }
+            lock.lock();
+        }
+    }
+}
 
-        verts.insert(verts.end(), mesh.verts.begin(), mesh.verts.end());
-        normals.insert(normals.end(), mesh.normals.begin(), mesh.normals.end());
-        colors.insert(colors.end(), mesh.colors.begin(), mesh.colors.end());
-        for(const auto& ind : mesh.inds){
-            inds.push_back(ind + lastVertsSize);
+void World::prepAndCombineBuffers() {
+    while(running){
+        if(buffered.load()) continue;
+
+        vector<vec3> verts, normals, colors;
+        vector<unsigned int> inds;
+        size_t lastVertsSize = 0;
+
+        vector<Chunk*> chunksToBuffer;
+        {
+            lock_guard<mutex> lock(renderableMutex);
+            chunksToBuffer = renderable;
         }
 
-        chunk.buffered = true;
+        for(const Chunk* chunk : chunksToBuffer){
+            Mesh mesh = chunk->mesh;
 
-        lastVertsSize += mesh.verts.size();
+            verts.insert(verts.end(), mesh.verts.begin(), mesh.verts.end());
+            normals.insert(normals.end(), mesh.normals.begin(), mesh.normals.end());
+            colors.insert(colors.end(), mesh.colors.begin(), mesh.colors.end());
+            for(const auto& ind : mesh.inds){
+                inds.push_back(ind + lastVertsSize);
+            }
+
+            lastVertsSize += mesh.verts.size();
+        }
+
+        indsSize.store(inds.size());
+
+        glBindVertexArray(vao);
+
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, (verts.size() + normals.size() + colors.size()) * sizeof(vec3), nullptr, GL_STATIC_DRAW);
+
+        glBufferSubData(GL_ARRAY_BUFFER, 0, verts.size() * sizeof(vec3), verts.data());
+        glBufferSubData(GL_ARRAY_BUFFER, verts.size() * sizeof(vec3), normals.size() * sizeof(vec3), normals.data());
+        glBufferSubData(GL_ARRAY_BUFFER, (verts.size() + normals.size()) * sizeof(vec3), colors.size() * sizeof(vec3), colors.data());
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0);
+        glEnableVertexAttribArray(0);
+
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) (verts.size() * sizeof(vec3)));
+        glEnableVertexAttribArray(1);
+
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) ((verts.size() + normals.size()) * sizeof(vec3)));
+        glEnableVertexAttribArray(2);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indsSize * sizeof(unsigned int), inds.data(), GL_STATIC_DRAW);
+
+        glBindVertexArray(0);
     }
-
-
-    indsSize = inds.size();
-
-    glBindVertexArray(vao);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, (verts.size() + normals.size() + colors.size()) * sizeof(vec3), nullptr, GL_STATIC_DRAW);
-
-    glBufferSubData(GL_ARRAY_BUFFER, 0, verts.size() * sizeof(vec3), verts.data());
-    glBufferSubData(GL_ARRAY_BUFFER, verts.size() * sizeof(vec3), normals.size() * sizeof(vec3), normals.data());
-    glBufferSubData(GL_ARRAY_BUFFER, (verts.size() + normals.size()) * sizeof(vec3), colors.size() * sizeof(vec3), colors.data());
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) (verts.size() * sizeof(vec3)));
-    glEnableVertexAttribArray(1);
-
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) ((verts.size() + normals.size()) * sizeof(vec3)));
-    glEnableVertexAttribArray(2);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indsSize * sizeof(unsigned int), inds.data(), GL_STATIC_DRAW);
-
-    glBindVertexArray(0);
 }
 
 int World::hash(String str){

@@ -33,10 +33,13 @@ struct Mesh{
 struct Box{
     Box(vec3 min, vec3 max) : min(min), max(max) {}
 
+    Box() {}
+
     vec3 min, max;
     bool isInside(vec3 position){
         return all(lessThanEqual(min, position)) || all(greaterThanEqual(position, max));
     }
+
 };
 
 class Chunk{
@@ -44,6 +47,28 @@ class Chunk{
         Chunk(worldGenInfo, vec3, int);
 
         static constexpr float halfVoxelSize = (float)VOXEL_SIZE * 0.5f;
+        
+        // TODO, put these values in a yml or similar
+
+        static constexpr float tempColdMin = -1.0f;
+        static constexpr float tempColdMax = -0.3f;
+        static constexpr float tempNormMin = -0.3f;
+        static constexpr float tempNormMax = 0.3f;
+        static constexpr float tempHotMin = 0.3f;
+        static constexpr float tempHotMax = 1.0f;
+
+        static constexpr float dryMin = 0.0f;
+        static constexpr float dryMax = 0.4f;
+        static constexpr float normMin = 0.4f;
+        static constexpr float normMax = 0.7f;
+        static constexpr float wetMin = 0.7f;
+        static constexpr float wetMax = 1.0f;
+
+        static constexpr float heightMapScalar = 0.01f;
+        static constexpr float tempAndMoistureMapScalar = 0.005f;
+
+        static constexpr int perlinNoiseOctaveAmount = 4;
+        
 
         enum class VOXEL {EMPTY = -1,
                           HOTDRY = 1, 
@@ -56,14 +81,13 @@ class Chunk{
                           COLDNORM = 8, 
                           COLDWET = 9};
 
-        void genMesh(const vector<Chunk>&);
+        void genMesh(const unordered_map<vec3, Chunk, vecHash>&);
         Mesh getMesh(int);
 
         vector<VOXEL> grid;
 
         vec3 origin;
         bool dirty = true;
-        bool buffered = false;
 
         Mesh mesh;
 
@@ -84,23 +108,48 @@ class Chunk{
 
 class World{
     public:
-        World(float, int, int, int, String);
+        World(float, int, int, int, String, vec3);
+        ~World();
+
+        enum class REQUEST {CHUNKCREATE, GENERATEMESH};
 
         void render(mat4, mat4, mat4, Shader, vec3);
+
         void update(vec3);
+        void requestManager();
+        void prepAndCombineBuffers();
+
+        mutex worldMutex;
+        mutex renderableMutex;
+        mutex requestQueueMutex;
+        mutex indsSizeMutex;
+        condition_variable requestQueueCV;
+
+        thread reqThread;
+        thread bufThread;
+
+
+        bool running = true;
 
     private:
-        vector<Chunk> world;
+        unordered_map<vec3, Chunk, vecHash> world;
+        vector<Chunk*> renderable;
+        Box renderBox;
+
+        static constexpr int requestsPerFrame = 5;
+
+        queue<pair<REQUEST, vec3>> requests;
+        
         worldGenInfo worldSeed;
-        
+
         GLuint vao, vbo, ebo;
-        size_t indsSize;
+        atomic<size_t> indsSize;
         
-        bool buffered = false;
+        atomic<bool> buffered{false};
+        bool edited = false;
 
         int worldHeight, worldDimension, renderDist;
-
-        void prepAndCombineBuffers(vec3);
+        vec3 lastPlayerPos = vec3(0);
 
         int hash(String);
 

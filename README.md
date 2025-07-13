@@ -24,3 +24,49 @@ Gonna try to get this (0.0.7) out for end of March.
 ## For you summer of making people
 
 i have used AI on this project, mostly to find information, debug, and occasionally write some code :). feel free to download any of the previous versions for yourself and check it out <3
+
+
+
+update func()
+check to see if playerPos has changed by at least 3 chunks from last frame OR edit true
+    update renderBox
+    iter through renderBox
+        if E 
+            if dirty
+                add gen mesh request
+                set buffered false
+            if !dirty
+                cont
+        if !E 
+            add chunk creation request
+            set buffered false
+
+
+requestManager(threaded) func
+if requestQueue
+    loop to max requestPerFrame
+        take one from queue
+        if genMeshRequest
+            req.chunkCoord
+            get chunk from world by ref
+            call genMesh
+            set chunk.dirty to false
+        if chunkCreationRequest
+            create chunk using req.chunkCoord
+            call genMesh
+            set chunk.dirty to false
+            add to worldHashMap
+            add to renderable vector
+
+buffer(threaded) func
+    if buffered
+        return
+    loop through renderable vector by ref
+        add ch.verts, ch.inds, ch.norms, ch.colors to temp vectors as such
+    set indsize sizeof inds(temp)
+    set opengl buffers
+
+
+
+
+            
