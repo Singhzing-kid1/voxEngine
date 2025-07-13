@@ -117,12 +117,14 @@ class World{
 
         void update(vec3);
         void requestManager();
-        void prepAndCombineBuffers();
+        void prepAndCombineMeshes();
+        void setBuffers();
 
         mutex worldMutex;
         mutex renderableMutex;
         mutex requestQueueMutex;
         mutex indsSizeMutex;
+        mutex meshMutex;
         condition_variable requestQueueCV;
 
         thread reqThread;
@@ -143,7 +145,7 @@ class World{
         worldGenInfo worldSeed;
 
         GLuint vao, vbo, ebo;
-        atomic<size_t> indsSize;
+        Mesh worldMesh;
         
         atomic<bool> buffered{false};
         bool edited = false;

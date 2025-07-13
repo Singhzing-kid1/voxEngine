@@ -83,6 +83,7 @@ int main(int argc, char* argv[]){
         float worldUStart = (SDL_GetTicks64()/1000.0f);
         world.update(mainPlayer.position); // update the world (creates mesh)
         world.requestQueueCV.notify_one();
+        world.setBuffers();
         float wUpdateTime = (SDL_GetTicks64()/1000.0f) - worldUStart;
         float debugUStart = (SDL_GetTicks64()/1000.0f);
         debug.update(); // updaye the debug UI (creats UI meshes)

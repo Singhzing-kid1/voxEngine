@@ -116,7 +116,7 @@ bool Chunk::checkOutOfBounds(vec3 coord){
 
 World::World(float voxelSize, int worldDimension, int worldHeight, int renderDist, String seed, vec3 playerPos) : worldHeight(worldHeight), worldDimension(worldDimension), renderDist(renderDist) {
     reqThread = thread(&World::requestManager, this);
-    bufThread = thread(&World::prepAndCombineBuffers, this);
+    bufThread = thread(&World::prepAndCombineMeshes, this);
     unsigned int seed1, seed2, seed3;
     int len = seed.length() / 3;
 
@@ -156,6 +156,9 @@ World::~World(){
 }
 
 void World::render(mat4 model, mat4 view, mat4 projection, Shader shader, vec3 cameraPos) {
+    lock_guard<mutex> lock(meshMutex);
+    Mesh mesh = worldMesh;
+
     glEnable(GL_DEPTH_TEST);
 
     shader.use();
@@ -166,7 +169,7 @@ void World::render(mat4 model, mat4 view, mat4 projection, Shader shader, vec3 c
     shader.setUniform("viewPos", cameraPos);
 
     glBindVertexArray(vao);
-    glDrawElements(GL_TRIANGLES, indsSize, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, mesh.inds.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 }
 
@@ -234,12 +237,9 @@ void World::requestManager(){
     }
 }
 
-void World::prepAndCombineBuffers() {
+void World::prepAndCombineMeshes() {
     while(running){
         if(buffered.load()) continue;
-
-        vector<vec3> verts, normals, colors;
-        vector<unsigned int> inds;
         size_t lastVertsSize = 0;
 
         vector<Chunk*> chunksToBuffer;
@@ -248,44 +248,55 @@ void World::prepAndCombineBuffers() {
             chunksToBuffer = renderable;
         }
 
+        Mesh _mesh;
+
         for(const Chunk* chunk : chunksToBuffer){
             Mesh mesh = chunk->mesh;
 
-            verts.insert(verts.end(), mesh.verts.begin(), mesh.verts.end());
-            normals.insert(normals.end(), mesh.normals.begin(), mesh.normals.end());
-            colors.insert(colors.end(), mesh.colors.begin(), mesh.colors.end());
+            _mesh.verts.insert(_mesh.verts.end(), mesh.verts.begin(), mesh.verts.end());
+            _mesh.normals.insert(_mesh.normals.end(), mesh.normals.begin(), mesh.normals.end());
+            _mesh.colors.insert(_mesh.colors.end(), mesh.colors.begin(), mesh.colors.end());
             for(const auto& ind : mesh.inds){
-                inds.push_back(ind + lastVertsSize);
+                _mesh.inds.push_back(ind + lastVertsSize);
             }
 
             lastVertsSize += mesh.verts.size();
         }
 
-        indsSize.store(inds.size());
-
-        glBindVertexArray(vao);
-
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, (verts.size() + normals.size() + colors.size()) * sizeof(vec3), nullptr, GL_STATIC_DRAW);
-
-        glBufferSubData(GL_ARRAY_BUFFER, 0, verts.size() * sizeof(vec3), verts.data());
-        glBufferSubData(GL_ARRAY_BUFFER, verts.size() * sizeof(vec3), normals.size() * sizeof(vec3), normals.data());
-        glBufferSubData(GL_ARRAY_BUFFER, (verts.size() + normals.size()) * sizeof(vec3), colors.size() * sizeof(vec3), colors.data());
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0);
-        glEnableVertexAttribArray(0);
-
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) (verts.size() * sizeof(vec3)));
-        glEnableVertexAttribArray(1);
-
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) ((verts.size() + normals.size()) * sizeof(vec3)));
-        glEnableVertexAttribArray(2);
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indsSize * sizeof(unsigned int), inds.data(), GL_STATIC_DRAW);
-
-        glBindVertexArray(0);
+        lock_guard<mutex> meshLock(meshMutex);
+        worldMesh = _mesh;
     }
+}
+
+void World::setBuffers(){
+    if(buffered.load()) return;
+    lock_guard<mutex> lock(meshMutex);
+    Mesh mesh = worldMesh;
+
+    glBindVertexArray(vao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, (mesh.verts.size() + mesh.normals.size() + mesh.colors.size()) * sizeof(vec3), nullptr, GL_STATIC_DRAW);
+
+    glBufferSubData(GL_ARRAY_BUFFER, 0, mesh.verts.size() * sizeof(vec3), mesh.verts.data());
+    glBufferSubData(GL_ARRAY_BUFFER, mesh.verts.size() * sizeof(vec3), mesh.normals.size() * sizeof(vec3), mesh.normals.data());
+    glBufferSubData(GL_ARRAY_BUFFER, (mesh.verts.size() + mesh.normals.size()) * sizeof(vec3), mesh.colors.size() * sizeof(vec3), mesh.colors.data());
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) (mesh.verts.size() * sizeof(vec3)));
+    glEnableVertexAttribArray(1);
+
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) ((mesh.verts.size() + mesh.normals.size()) * sizeof(vec3)));
+    glEnableVertexAttribArray(2);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.inds.size() * sizeof(unsigned int), mesh.inds.data(), GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+
+    buffered.store(true);
 }
 
 int World::hash(String str){
