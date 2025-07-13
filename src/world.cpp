@@ -128,10 +128,7 @@ World::World(float voxelSize, int worldDimension, int worldHeight, int renderDis
     worldSeed.moistureMap.reseed(seed2);
     worldSeed.tempMap.reseed(seed3);
 
-    world.reserve(renderDist * renderDist);
-
     renderBox = Box(round((playerPos / (float)CHUNK_SIZE) - (float)renderDist), round((playerPos / (float)CHUNK_SIZE) + (float)renderDist));
-
 
 /*    for(int x = 0; x < renderDist; x++){
             for(int z = 0; z < renderDist; z++){
@@ -196,19 +193,23 @@ void World::update(vec3 playerPos) {
                     vec3 coord = vec3(x, y, z);
                     auto it = _world.find(coord);
                     if(it != _world.end()){
+                        cout << "hallucinate existing chunk?" << to_string(coord) << "\n";
                         if(!it->second.dirty) continue;
+                        cout << "thinks chunk is dirty?\n";
                         lock_guard<mutex> lock(requestQueueMutex);
                         requests.push({REQUEST::GENERATEMESH, coord});
                         buffered.store(false);
+                        requestQueueCV.notify_one();
                         continue;
                     }
                     lock_guard<mutex> lock(requestQueueMutex);
                     requests.push({REQUEST::CHUNKCREATE, coord});
                     buffered.store(false);
+                    requestQueueCV.notify_one();
                 }
             }
         }
-        requestQueueCV.notify_one();
+        
     }
 }
 
@@ -222,12 +223,13 @@ void World::requestManager(){
         cout << "here req\n";
 
         for(int iter = 0; iter < requestsPerFrame; iter++){
-            auto& request = requests.front();
+            auto request = requests.front();
+            requests.pop();
             lock.unlock();
-            
             switch(request.first){
                 case REQUEST::GENERATEMESH: {
                     lock_guard<mutex> worldLock(worldMutex);
+                    cout << "here genMesh request case\n";
                     Chunk& chunk = world.at(request.second);
                     chunk.genMesh(world);
                     chunk.dirty = false;
@@ -246,7 +248,6 @@ void World::requestManager(){
                 }
             }
             lock.lock();
-            requests.pop();
         }
 
         startMeshing.store(true, memory_order_release);
