@@ -209,7 +209,6 @@ void World::requestManager(){
 
         for(int iter = 0; iter < requestsPerFrame; iter++){
             auto& request = requests.front();
-            requests.pop();
             lock.unlock();
             
             switch(request.first){
@@ -233,6 +232,7 @@ void World::requestManager(){
                 }
             }
             lock.lock();
+            requests.pop();
         }
     }
 }
