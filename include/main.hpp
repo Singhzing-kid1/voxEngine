@@ -22,7 +22,6 @@
 #include <queue>
 #include <future>
 #include <random>
-#include <omp.h>
 #include <map>
 #include <unordered_map>
 #include <thread>
@@ -42,8 +41,8 @@
 #include <SDL2/SDL_opengl.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_pixels.h>
+#define GLM_FORCE_SWIZZLE
 #include <glm/glm.hpp>
-
 #define GLM_ENABLE_EXPERIMENTAL
 
 #include <glm/gtc/matrix_transform.hpp>

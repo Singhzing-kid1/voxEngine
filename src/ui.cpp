@@ -15,6 +15,7 @@ UI::~UI(){
 
 
 void UI::render(Shader shader){
+    shader.use();
     for(const auto& element : elements){
         glDisable(GL_DEPTH_TEST);
         unsigned int texture;
@@ -33,7 +34,7 @@ void UI::render(Shader shader){
         glPixelStorei(GL_UNPACK_ROW_LENGTH, element.surface->pitch / element.surface->format->BytesPerPixel);
 
         glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, element.surface->w, element.surface->h, 0, texFormat, GL_UNSIGNED_BYTE, element.surface->pixels);
-        shader.use();
+
         shader.setUniform("projection", projection);
 
         glBindVertexArray(element.vao);

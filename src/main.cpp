@@ -29,7 +29,7 @@ int main(int argc, char* argv[]){
 
     Compute computeShader("./shaders/testComp.comp"); // test compute shader
 
-    World world(0.001f, 100, 64, 25, "asdkjfhsadkfjhekjlahsdlkjdfheljkshadf21230984322", mainPlayer.position); // g7Kp1zQw8vR3xJt5LmSd2Xy9BnHa4UcEoTfS | world init
+    World world(100, 64, 13, "asdkjfhsadkfjhekjlahsdlkjdfheljkshadf21230984322", mainPlayer.position.xz()); // g7Kp1zQw8vR3xJt5LmSd2Xy9BnHa4UcEoTfS | world init
 
     UI debug(engine.width, engine.height, TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15)); // create debug UI
     int deltaTimeUI = debug.addElement(UI::ElementType::TEXT, " ", color, 0, 0); // add element for deltaTime display
@@ -81,15 +81,15 @@ int main(int argc, char* argv[]){
         // clear the screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         float worldUStart = (SDL_GetTicks64()/1000.0f);
-        world.update(mainPlayer.position); // update the world (creates mesh)
-        world.setBuffers();
+        world.update(mainPlayer.position, SDL_GetTicks64()/1000.0f); // update the world (creates mesh)
+        world.sendBuffers();
         float wUpdateTime = (SDL_GetTicks64()/1000.0f) - worldUStart;
         float debugUStart = (SDL_GetTicks64()/1000.0f);
         debug.update(); // updaye the debug UI (creats UI meshes)
         float dUpdateTime = (SDL_GetTicks64()/1000.0f) - debugUStart; 
         
         float worldRStart = (SDL_GetTicks64()/1000.0f);
-        world.render(engine.model, engine.view, engine.projection, shader, mainPlayer.position); // render the world
+        world.render(engine.model, engine.view, engine.projection, mainPlayer.position, shader); // render the world
         float wRenderTime = (SDL_GetTicks64()/1000.0f) - worldRStart;
         float debugRStart = (SDL_GetTicks64()/1000.0f);
         debug.render(textShader); // render UI
