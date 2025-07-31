@@ -1,5 +1,24 @@
 # Vox Engine
 
+## Build
+
+There are prebuilds
+
+to compile from source:
+dependencies are
+- glew
+- sdl2
+- sdl2_ttf
+- opengl
+- glm
+- bullet physics
+
+the prebuilds include the required dlls
+
+compile using cmake, there is an included cmakelists.txt
+
+## other random stuff mostly for the friends(testers)
+
 NOTE:
 i started redoing this project between v0.0.5 and v0.0.6 to have better mass rendering optimizations.
 v0.0.6 has been REDONE completely from scratch. v0.0.7 will also be redone from scratch using the stuff i learned making v0.0.6, but with vulkan so i can use modern graphics techniques
@@ -26,6 +45,7 @@ Gonna try to get this (0.0.7) out for end of March.
 i have used AI on this project, mostly to find information, debug, and occasionally write some code :). feel free to download any of the previous versions for yourself and check it out <3
 
 
+## some algorithm rambling to help me think through things(this is very much a hobby project)
 
 update func()
 check to see if playerPos has changed by at least 3 chunks from last frame OR edit true
