@@ -128,10 +128,10 @@ World::World(int worldHeight, int worldDimension, int renderDist, std::string se
 
     lock_guard<mutex> reqQueueLock(requestQueueMutex);
     for(int x = 0; x < renderDist; x++){
-            for(int y = 0; y < renderDist; y++){
-                cout << roundf(((float)((x * renderDist) + y) / (float)(renderDist * renderDist)) * 100.0f) << "% generating: (" << x << ", " << y << ")\n";
-                requestQueue.push({REQUEST::CHUNKCREATION, vec2(x, y)});
-            }
+        for(int y = 0; y < renderDist; y++){
+            cout << roundf(((float)((x * renderDist) + y) / (float)(renderDist * renderDist)) * 100.0f) << "% generating: (" << x << ", " << y << ")\n";
+            requestQueue.push({REQUEST::CHUNKCREATION, vec2(0, 0)});
+        }
     }
 
     requestQueueCV.notify_one();
