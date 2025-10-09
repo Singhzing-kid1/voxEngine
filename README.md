@@ -48,45 +48,57 @@ i have used AI on this project, mostly to find information, debug, and occasiona
 ## some algorithm rambling to help me think through things(this is very much a hobby project)
 
 update func()
-check to see if playerPos has changed by at least 3 chunks from last frame OR edit true
-    update renderBox
-    iter through renderBox
-        if E 
-            if dirty
-                add gen mesh request
-                set buffered false
-            if !dirty
-                cont
-        if !E 
-            add chunk creation request
-            set buffered false
+if playerPos changed by 3 chunks within 30 seconds, any chunk has been edited, or loading spawn chunks
+update renderBox if needed
+iter through renderBox
+    if E
+        if edited 
+            send gen mesh request
+        if !loaded
+            send load chunk request
+    if !E
+        send chunk creation request
+
+iter through all chunks:
+    skip chunks in renderBox
+    send unload request
 
 
-requestManager(threaded) func
-if requestQueue
-    loop to max requestPerFrame
-        take one from queue
-        if genMeshRequest
-            req.chunkCoord
-            get chunk from world by ref
-            call genMesh
-            set chunk.dirty to false
-        if chunkCreationRequest
-            create chunk using req.chunkCoord
-            call genMesh
-            set chunk.dirty to false
-            add to worldHashMap
-            add to renderable vector
+request Manager func(threaded)
 
-buffer(threaded) func
-    if buffered
-        return
-    loop through renderable vector by ref
-        add ch.verts, ch.inds, ch.norms, ch.colors to temp vectors as such
-    set indsize sizeof inds(temp)
-    set opengl buffers
+iter through requests(max 5 per frame)
+    if request is chunkcreation:
+        create chunk
+        insert into world hashmap
+        send gen_mesh request
+
+    if request is gen_mesh:
+        generate mesh
+        set dirty flag false
+        check loaded flag:
+            if loaded:
+                send update request
+            if !loaded:
+                send load request
+
+    if request is load:
+        set loaded flag to true
+        copy chunk to renderable array
+
+    if request is update:
+        find chunk in renderable array
+        reinsert chunk in renderable array
+    
+    if request is unload:
+        find chunk in renderable array
+        find chunk in world hashmap
+        set flag loaded to false
+        delete chunk from renderable array
 
 
+
+        
+        
 
 
             

@@ -44,8 +44,7 @@ struct Box {
     T min, max;
 
     bool isInside(T coord){
-        return all(greaterThanEqual(coord, min)) && all(lessThanEqual(coord, max))
-;
+        return all(greaterThanEqual(coord, min)) && all(lessThanEqual(coord, max));
     }
 };
 
@@ -57,35 +56,37 @@ struct Mesh{
     vector<unsigned int> indices;
 };
 
-class Chunk{
+class Chunk{ 
     public:
         Chunk(noiseMaps, vec2, int);
+        ~Chunk();
 
-        enum class VOXEL {EMPTY = -1,
-                          AIR = -2,
-                          HOTDRY = 1, 
-                          HOTNORM = 2, 
-                          HOTWET = 3, 
-                          NORMDRY = 4, 
-                          NORM = 5, 
-                          NORMWET = 6, 
-                          COLDDRY = 7, 
-                          COLDNORM = 8, 
-                          COLDWET = 9};
+        enum class VOXEL {
+            EMPTY = -2,
+            AIR = -1,
+            HOTDRY = 1, 
+            HOTNORM = 2, 
+            HOTWET = 3, 
+            NORMDRY = 4, 
+            NORM = 5, 
+            NORMWET = 6, 
+            COLDDRY = 7, 
+            COLDNORM = 8, 
+            COLDWET = 9
+        };
 
         void genMesh(unordered_map<vec2, Chunk, vec2Hash>&);
 
         vector<vector<vector<VOXEL>>> grid;
 
-        GLuint vao, vbo, ebo;
-        
         bool buffered = false;
-        bool buffersGenerated = false;
+        bool genBuffers = false;
         bool loaded = false;
-        bool dirty = true;
+        bool dirty = false;
+
+        GLuint vao, vbo, ebo;
 
         vec2 origin;
-
         Mesh mesh;
 
     private:
@@ -119,14 +120,22 @@ class Chunk{
         static const vector<vec3> neighbors;
 
         bool outOfBounds(vec3);
+        bool layerEmpty(int);
+        bool rowEmpty(int, int);
 };
 
-class World{
+class World {
     public:
         World(int, int, int, std::string, vec2);
         ~World();
 
-        enum class REQUEST {GENMESH, CHUNKCREATION, LOAD, UNLOAD};
+        enum class REQUEST {
+            CHUNKCREATION,
+            GENMESH,
+            LOAD,
+            UPDATE,
+            UNLOAD
+        };
 
         void update(vec3, float);
         void sendBuffers();
@@ -135,32 +144,32 @@ class World{
 
     private:
         unordered_map<vec2, Chunk, vec2Hash> world;
-        vector<Chunk*> renderable;
+        int worldHeight, worldDimension, renderDist;
+
+        vector<Chunk> renderable;
 
         thread reqThread;
         condition_variable requestQueueCV;
 
         mutex worldMutex;
-        mutex requestQueueMutex;
+        mutex queueMutex;
         mutex renderableMutex;
 
-        bool running = true;
-        bool edited = false;
+        atomic<bool> running{true};
+        atomic<bool> working;
+        bool shouldRun = true;
+        bool edited;
 
-        // again in a json or similar
         static constexpr int requestsPerFrame = 5;
 
         queue<pair<REQUEST, vec2>> requestQueue;
         Box2 renderBox;
         noiseMaps maps;
 
-        int worldHeight, worldDimension, renderDist;
         vec2 lastPlayerPos;
 
         void requestManager();
 
-        int hash(std::string);
+        unsigned int hash(std::string);
 };
-
-
 #endif

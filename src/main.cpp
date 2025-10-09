@@ -29,7 +29,7 @@ int main(int argc, char* argv[]){
 
     Compute computeShader("./shaders/testComp.comp"); // test compute shader
 
-    World world(100, 64, 13, "asdkjfhsadkfjhekjlahsdlkjdfheljkshadf21230984322", mainPlayer.position.xz()); // g7Kp1zQw8vR3xJt5LmSd2Xy9BnHa4UcEoTfS | world init
+    World world(100, 64, 7, "asdkjfhsadkfjhekjlahsdlkjdfheljkshadf21230984322", mainPlayer.position.xz()); // g7Kp1zQw8vR3xJt5LmSd2Xy9BnHa4UcEoTfS | world init
 
     UI debug(engine.width, engine.height, TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15)); // create debug UI
     int deltaTimeUI = debug.addElement(UI::ElementType::TEXT, " ", color, 0, 0); // add element for deltaTime display
@@ -55,9 +55,9 @@ int main(int argc, char* argv[]){
 
     inputData data;
     bool quit = false;
+    bool showDebug = false;
 
     float pitch = 0.0f , yaw = 0.0f;
-
     while(!quit){
         engine.eventHandling(&data); // input handling
 
@@ -91,39 +91,42 @@ int main(int argc, char* argv[]){
         float worldRStart = (SDL_GetTicks64()/1000.0f);
         world.render(engine.model, engine.view, engine.projection, mainPlayer.position, shader); // render the world
         float wRenderTime = (SDL_GetTicks64()/1000.0f) - worldRStart;
-        float debugRStart = (SDL_GetTicks64()/1000.0f);
-        debug.render(textShader); // render UI
-        float dRenderTime = (SDL_GetTicks64()/1000.0f) - debugRStart; 
 
-        // update the deltaTime UI element with the current deltaTime
-         stringstream buffer;
-        buffer << floor(engine.deltaTime * 1000.0f) << " ms";
-        debug.editElement(deltaTimeUI, vec2(0, 0), color, buffer.str()); 
+        if(showDebug){
+            float debugRStart = (SDL_GetTicks64()/1000.0f);
+            debug.render(textShader); // render UI
+            float dRenderTime = (SDL_GetTicks64()/1000.0f) - debugRStart; 
 
-        buffer.str(std::string());
-        buffer << "world update: " << floor(wUpdateTime * 1000.0f) << "ms";
-        debug.editElement(deltaTimeWorldUpdate, vec2(0, 25), color, buffer.str());   
+            // update the deltaTime UI element with the current deltaTime
+            stringstream buffer;
+            buffer << floor(engine.deltaTime * 1000.0f) << " ms";
+            debug.editElement(deltaTimeUI, vec2(0, 0), color, buffer.str()); 
 
-        buffer.str(std::string());
-        buffer << "debug update: " << floor(dUpdateTime * 1000.0f) << "ms";
-        debug.editElement(deltaTimeDebugUpdate, vec2(0, 50), color, buffer.str());   
+            buffer.str(std::string());
+            buffer << "world update: " << floor(wUpdateTime * 1000.0f) << "ms";
+            debug.editElement(deltaTimeWorldUpdate, vec2(0, 25), color, buffer.str());   
 
-        buffer.str(std::string());
-        buffer << "world draw: " << floor(wRenderTime * 1000.0f) << "ms";
-        debug.editElement(deltaTimeWorldDraw, vec2(0, 75), color, buffer.str());   
+            buffer.str(std::string());
+            buffer << "debug update: " << floor(dUpdateTime * 1000.0f) << "ms";
+            debug.editElement(deltaTimeDebugUpdate, vec2(0, 50), color, buffer.str());   
 
-        buffer.str(std::string());
-        buffer << "debug draw: " << floor(dRenderTime * 1000.0f) << "ms";
-        debug.editElement(deltaTimeDebugDraw, vec2(0, 100), color, buffer.str());  
-        
-        buffer.str(std::string());
-        buffer << "Yaw: " << yaw << ", Pitch: " << pitch << ", Pos: " << to_string(mainPlayer.position);
-        debug.editElement(playerPitchAndYaw, vec2(0, 125), color, buffer.str());
+            buffer.str(std::string());
+            buffer << "world draw: " << floor(wRenderTime * 1000.0f) << "ms";
+            debug.editElement(deltaTimeWorldDraw, vec2(0, 75), color, buffer.str());   
 
-        // update the fps UI element with the current fps 
-        buffer.str(std::string());
-        buffer << floor(1 / engine.deltaTime) << "fps";
-        debug.editElement(fpsUI, vec2(0, 150), color, buffer.str());  
+            buffer.str(std::string());
+            buffer << "debug draw: " << floor(dRenderTime * 1000.0f) << "ms";
+            debug.editElement(deltaTimeDebugDraw, vec2(0, 100), color, buffer.str());  
+            
+            buffer.str(std::string());
+            buffer << "Yaw: " << yaw << ", Pitch: " << pitch << ", Pos: " << to_string(mainPlayer.position);
+            debug.editElement(playerPitchAndYaw, vec2(0, 125), color, buffer.str());
+
+            // update the fps UI element with the current fps 
+            buffer.str(std::string());
+            buffer << floor(1 / engine.deltaTime) << "fps";
+            debug.editElement(fpsUI, vec2(0, 150), color, buffer.str());
+        }  
 
         engine.swap(); // swap framebuffers
 
