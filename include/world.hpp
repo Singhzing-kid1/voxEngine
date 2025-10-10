@@ -83,6 +83,7 @@ class Chunk{
         bool genBuffers = false;
         bool loaded = false;
         bool dirty = false;
+        bool needsToBeUnloaded = false;
 
         GLuint vao, vbo, ebo;
 
@@ -139,6 +140,7 @@ class World {
 
         void update(vec3, float);
         void sendBuffers();
+        void cleanUpRenderable();
 
         void render(mat4, mat4, mat4, vec3, Shader);
 

@@ -28,11 +28,7 @@ Chunk::Chunk(noiseMaps maps, vec2 origin, int worldHeight) : maps(maps), origin(
 }
 
 Chunk::~Chunk(){
-    if(genBuffers){
-        glDeleteVertexArrays(1, &vao);
-        glDeleteBuffers(1, &vbo);
-        glDeleteBuffers(1, &ebo);
-    }
+    (void*)0;
 }
 
 const unordered_map<vec3, vector<vec3>, vec3Hash> Chunk::faces {
@@ -147,11 +143,6 @@ World::World(int worldHeight, int worldDimension, int renderDist, std::string se
     maps.tempMap.reseed(seed3);
 
     reqThread = thread(&World::requestManager, this);
-    {
-        lock_guard<mutex> lock(worldMutex);
-        requestQueue.push({REQUEST::CHUNKCREATION, vec2(0, 0)});
-        requestQueueCV.notify_one();
-    }
 }
 
 World::~World(){
@@ -169,9 +160,9 @@ void World::update(vec3 playerPos, float totalElapsedTime){
     }
 
     bvec2 moved(greaterThanEqual(abs(difference), vec2(3.0f)));
-    if((int)floor(totalElapsedTime) % 10 == 0) lastPlayerPos = playerChunkPos;
 
-    if(any(moved) || edited){
+    if(any(moved) || edited || shouldRun){
+        shouldRun = false;
         renderBox.min = round(playerChunkPos - (renderDist * 0.5f));
         renderBox.max = round(playerChunkPos + (renderDist * 0.5f));
         for(int x = renderBox.min.x; x < renderBox.max.x; x++){
@@ -248,6 +239,21 @@ void World::sendBuffers(){
     }
 }
 
+void World::cleanUpRenderable(){
+    scoped_lock lock(worldMutex, renderableMutex);
+    size_t index;
+    auto it = find_if(renderable.begin(), renderable.end(), [](const Chunk& chunk) {return chunk.needsToBeUnloaded;});
+    if(it != renderable.end()){
+        index = std::distance(renderable.begin(), it);
+        auto& chunk = renderable.at(index);
+        auto& w_chunk = world.at(chunk.origin);
+
+        w_chunk.needsToBeUnloaded = false;
+
+        renderable.erase(renderable.begin() + index);
+    }
+}
+
 void World::render(mat4 model, mat4 view, mat4 projection, vec3 playerPos, Shader program){
     lock_guard<mutex> lock(renderableMutex);
     glEnable(GL_DEPTH_TEST);
@@ -287,7 +293,7 @@ void World::requestManager(){
         for(const auto& request : requestsToProcces){
             switch(request.first){
                 case REQUEST::CHUNKCREATION: {
-                    scoped_lock lock(worldMutex, queueMutex);
+                    scoped_lock caseLock(worldMutex, queueMutex);
 
                     world.emplace(request.second, Chunk(maps, request.second, worldHeight));
 
@@ -296,7 +302,7 @@ void World::requestManager(){
                     break;
                 }
                 case REQUEST::GENMESH: {
-                    scoped_lock lock(worldMutex, queueMutex);
+                    scoped_lock caseLock(worldMutex, queueMutex);
 
                     auto& chunk = world.at(request.second);
 
@@ -314,7 +320,7 @@ void World::requestManager(){
                     break;
                 }
                 case REQUEST::LOAD: {
-                    scoped_lock lock(worldMutex, renderableMutex);
+                    scoped_lock caseLock(worldMutex, renderableMutex);
 
                     auto& chunk = world.at(request.second);
                     chunk.loaded = true;
@@ -323,7 +329,7 @@ void World::requestManager(){
                     break;
                 }
                 case REQUEST::UPDATE: {
-                    scoped_lock lock(worldMutex, renderableMutex);
+                    scoped_lock caseLock(worldMutex, renderableMutex);
 
                     auto& chunk = world.at(request.second);
                     chunk.buffered = false;
@@ -337,17 +343,18 @@ void World::requestManager(){
                     break;
                 }
                 case REQUEST::UNLOAD: {
-                    scoped_lock lock(worldMutex, renderableMutex);
+                    scoped_lock caseLock(worldMutex, renderableMutex);
 
                     auto& chunk = world.at(request.second);
+                    chunk.loaded = false;
+                    chunk.needsToBeUnloaded = true;
 
                     size_t index;
                     auto it = find_if(renderable.begin(), renderable.end(), [request](const Chunk& chunk) {return chunk.origin == request.second;});
                     if(it != renderable.end()){
                         index = std::distance(renderable.begin(), it);
-                        renderable.erase(renderable.begin() + index);
+                        renderable[index] = chunk;
                     }
-                    break;
                 }
             }
         }

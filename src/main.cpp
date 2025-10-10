@@ -82,6 +82,7 @@ int main(int argc, char* argv[]){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         float worldUStart = (SDL_GetTicks64()/1000.0f);
         world.update(mainPlayer.position, SDL_GetTicks64()/1000.0f); // update the world (creates mesh)
+        world.cleanUpRenderable();
         world.sendBuffers();
         float wUpdateTime = (SDL_GetTicks64()/1000.0f) - worldUStart;
         float debugUStart = (SDL_GetTicks64()/1000.0f);
@@ -126,7 +127,7 @@ int main(int argc, char* argv[]){
             buffer.str(std::string());
             buffer << floor(1 / engine.deltaTime) << "fps";
             debug.editElement(fpsUI, vec2(0, 150), color, buffer.str());
-        }  
+        }   
 
         engine.swap(); // swap framebuffers
 
