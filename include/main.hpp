@@ -28,6 +28,7 @@
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
+#include <set>
 
 #ifdef _WIN32
 #include <windows.h>

@@ -142,13 +142,13 @@ World::World(int worldHeight, int worldDimension, int renderDist, std::string se
     maps.moistureMap.reseed(seed2);
     maps.tempMap.reseed(seed3);
 
-    reqThread = thread(&World::requestManager, this);
+    reqThreadOne = thread(&World::requestManager, this);
 }
 
 World::~World(){
     running = false;
-    requestQueueCV.notify_one();
-    reqThread.detach();
+    requestQueueCV.notify_all();
+    reqThreadOne.detach();
 }
 
 void World::update(vec3 playerPos, float totalElapsedTime){
@@ -161,206 +161,224 @@ void World::update(vec3 playerPos, float totalElapsedTime){
 
     bvec2 moved(greaterThanEqual(abs(difference), vec2(3.0f)));
 
-    if(any(moved) || edited || shouldRun){
-        shouldRun = false;
-        renderBox.min = round(playerChunkPos - (renderDist * 0.5f));
-        renderBox.max = round(playerChunkPos + (renderDist * 0.5f));
-        for(int x = renderBox.min.x; x < renderBox.max.x; x++){
-            for(int y = renderBox.min.y; y < renderBox.max.y; y++){
-                vec2 currentChunkCoord(x, y);
-                try{
-                    scoped_lock lock(worldMutex, queueMutex);
-                    auto& chunk = world.at(currentChunkCoord);
-                    if(!chunk.dirty) {
-                        if(chunk.loaded) continue;
-                        requestQueue.push({REQUEST::LOAD, currentChunkCoord});
-                        requestQueueCV.notify_one();
-                        continue;
-                    }
+    set<vec2, vec2Less> newChunks;
 
-                    requestQueue.push({REQUEST::GENMESH, currentChunkCoord});
-                    requestQueueCV.notify_one();
-                } catch(const out_of_range& e){
-                    lock_guard<mutex> lock(queueMutex);
-                    requestQueue.push({REQUEST::CHUNKCREATION, currentChunkCoord});
-                    requestQueueCV.notify_one();
-                }
-            }
+    set<vec2, vec2Less> keep;
+    set<vec2, vec2Less> unload;
+    set<vec2, vec2Less> load;
+
+    for(int x = round(playerChunkPos.x - (renderDist * 0.5f)); x <= round(playerChunkPos.x + (renderDist * 0.5f)); x++){
+        for(int y = round(playerChunkPos.y - (renderDist * 0.5f)); y <= round(playerChunkPos.y + (renderDist * 0.5f)); y++){
+            newChunks.insert(vec2(x, y));
         }
-        {
-            scoped_lock lock(worldMutex, queueMutex);
-            for(const auto& it : world){
-                if(renderBox.isInside(it.second.origin)) continue;
-                requestQueue.push({REQUEST::UNLOAD, it.second.origin});
-                requestQueueCV.notify_one();
-            }
+    }
+    
+    set_intersection(oldChunks.begin(), oldChunks.end(), newChunks.begin(), newChunks.end(), inserter(keep, keep.begin()), vec2Less{});
+    set_difference(newChunks.begin(), newChunks.end(), keep.begin(), keep.end(), inserter(load, load.begin()), vec2Less{});
+    set_difference(oldChunks.begin(), oldChunks.end(), keep.begin(), keep.end(), inserter(unload, unload.begin()), vec2Less{});
+
+    {
+        lock_guard<mutex> lock(queueMutex);
+        for(const auto& coord : load){
+            requestQueue.push({REQUEST::LOAD, coord});
+            requestQueueCV.notify_one();
+        }
+
+        for(const auto& coord : unload){
+            requestQueue.push({REQUEST::UNLOAD, coord});
+            requestQueueCV.notify_one();
         }
     }
 
+    oldChunks = newChunks;
+
 }
 
-void World::sendBuffers(){
-    lock_guard<mutex> lock(renderableMutex);
-    if(renderable.empty()) return;
+void World::sendBuffers() {
+    // Lock to safely access the current active renderable buffer
+    std::lock_guard<std::mutex> renderLock(renderableMutex);
+    auto& renderable = renderableBuffers[currentRenderableIndex.load()];
 
-    for(auto& chunk : renderable){
-        if(chunk.buffered) continue;
+    if (renderable.empty()) return;
 
-        if(!chunk.genBuffers){
-            glGenVertexArrays(1, &chunk.vao);
-            glGenBuffers(1, &chunk.vbo);
-            glGenBuffers(1, &chunk.ebo);
-            chunk.genBuffers = true;
+    for (auto& chunk : renderable) {
+        if (chunk.second.buffered) continue;
+
+        if (!chunk.second.genBuffers) {
+            glGenVertexArrays(1, &chunk.second.vao);
+            glGenBuffers(1, &chunk.second.vbo);
+            glGenBuffers(1, &chunk.second.ebo);
+            chunk.second.genBuffers = true;
         }
 
-        glBindVertexArray(chunk.vao);
-        glBindBuffer(GL_ARRAY_BUFFER, chunk.vbo);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, chunk.ebo);
+        glBindVertexArray(chunk.second.vao);
+        glBindBuffer(GL_ARRAY_BUFFER, chunk.second.vbo);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, chunk.second.ebo);
 
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, chunk.mesh.indices.size() * sizeof(unsigned int), chunk.mesh.indices.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, chunk.second.mesh.indices.size() * sizeof(unsigned int), chunk.second.mesh.indices.data(), GL_DYNAMIC_DRAW);
 
-        glBufferData(GL_ARRAY_BUFFER, (chunk.mesh.vertices.size() + chunk.mesh.normals.size() + chunk.mesh.colors.size()) * sizeof(vec3), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, (chunk.second.mesh.vertices.size() + chunk.second.mesh.normals.size() + chunk.second.mesh.colors.size()) * sizeof(vec3), nullptr, GL_DYNAMIC_DRAW);
 
-        glBufferSubData(GL_ARRAY_BUFFER, 0, chunk.mesh.vertices.size() * sizeof(vec3), chunk.mesh.vertices.data());
-        glBufferSubData(GL_ARRAY_BUFFER, chunk.mesh.vertices.size() * sizeof(vec3), chunk.mesh.normals.size() * sizeof(vec3), chunk.mesh.normals.data());
-        glBufferSubData(GL_ARRAY_BUFFER, (chunk.mesh.vertices.size() + chunk.mesh.normals.size()) * sizeof(vec3), chunk.mesh.colors.size() * sizeof(vec3), chunk.mesh.colors.data());
+        glBufferSubData(GL_ARRAY_BUFFER, 0, chunk.second.mesh.vertices.size() * sizeof(vec3), chunk.second.mesh.vertices.data());
+        glBufferSubData(GL_ARRAY_BUFFER, chunk.second.mesh.vertices.size() * sizeof(vec3), chunk.second.mesh.normals.size() * sizeof(vec3), chunk.second.mesh.normals.data());
+        glBufferSubData(GL_ARRAY_BUFFER, (chunk.second.mesh.vertices.size() + chunk.second.mesh.normals.size()) * sizeof(vec3), chunk.second.mesh.colors.size() * sizeof(vec3), chunk.second.mesh.colors.data());
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
 
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(chunk.mesh.vertices.size() * sizeof(vec3)));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(chunk.second.mesh.vertices.size() * sizeof(vec3)));
         glEnableVertexAttribArray(1);
 
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)((chunk.mesh.vertices.size() + chunk.mesh.normals.size()) * sizeof(vec3)));
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)((chunk.second.mesh.vertices.size() + chunk.second.mesh.normals.size()) * sizeof(vec3)));
         glEnableVertexAttribArray(2);
 
         glBindVertexArray(0);
-        chunk.buffered = true;
+
+        chunk.second.buffered = true;
     }
 }
 
-void World::cleanUpRenderable(){
-    scoped_lock lock(worldMutex, renderableMutex);
-    size_t index;
-    auto it = find_if(renderable.begin(), renderable.end(), [](const Chunk& chunk) {return chunk.needsToBeUnloaded;});
-    if(it != renderable.end()){
-        index = std::distance(renderable.begin(), it);
-        auto& chunk = renderable.at(index);
-        auto& w_chunk = world.at(chunk.origin);
+void World::render(mat4 model, mat4 view, mat4 projection, vec3 playerPos, Shader program) {
+    const auto& renderable = renderableBuffers[currentRenderableIndex.load()];
 
-        w_chunk.needsToBeUnloaded = false;
-
-        renderable.erase(renderable.begin() + index);
-    }
-}
-
-void World::render(mat4 model, mat4 view, mat4 projection, vec3 playerPos, Shader program){
-    lock_guard<mutex> lock(renderableMutex);
     glEnable(GL_DEPTH_TEST);
     program.use();
 
-    for(const auto& chunk : renderable){
+    for (const auto& chunk : renderable) {
         program.setUniform("model", model);
         program.setUniform("view", view);
         program.setUniform("projection", projection);
         program.setUniform("lightPosition", vec3(0, 30, 0));
         program.setUniform("viewPos", playerPos);
 
-        glBindVertexArray(chunk.vao);
-        glDrawElements(GL_TRIANGLES, chunk.mesh.indices.size(), GL_UNSIGNED_INT, 0);
+        glBindVertexArray(chunk.second.vao);
+        glDrawElements(GL_TRIANGLES, chunk.second.mesh.indices.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
     }
 }
 
-void World::requestManager(){
-    unique_lock<mutex> lock(queueMutex);
-    while(running.load()){
-        working = false;
-        requestQueueCV.wait(lock, [this] {return !requestQueue.empty() || !running.load();});
-        if(!running.load()) break;
-        working = true;
+void World::requestManager() {
+    std::vector<std::pair<REQUEST, vec2>> requestsToProcess;
+    requestsToProcess.reserve(requestsPerFrame);
 
-        vector<pair<REQUEST, vec2>> requestsToProcces;
-        requestsToProcces.reserve(requestsPerFrame);
+    while (running.load()) {
+        // Wait for new requests
+        {
+            std::unique_lock<std::mutex> lock(queueMutex);
+            working = false;
+            requestQueueCV.wait(lock, [this] { return !requestQueue.empty() || !running.load(); });
+            if (!running.load()) break;
 
-        for(int i = 0; i < requestsPerFrame && !requestQueue.empty(); ++i){
-            requestsToProcces.push_back(requestQueue.front());
-            requestQueue.pop();
+            working = true;
+
+            // Pop batch of requests
+            requestsToProcess.clear();
+            for (int i = 0; i < requestsPerFrame && !requestQueue.empty(); ++i) {
+                requestsToProcess.push_back(requestQueue.front());
+                requestQueue.pop();
+            }
         }
 
-        lock.unlock();
+        // Prepare vector to collect new deferred requests during processing
+        std::vector<std::pair<REQUEST, vec2>> deferredNewRequests;
+        deferredNewRequests.reserve(requestsPerFrame);
 
-        for(const auto& request : requestsToProcces){
-            switch(request.first){
+        // Copy back buffer renderable to modify
+        size_t backBufferIndex = 1 - currentRenderableIndex.load();
+        {
+            std::lock_guard<std::mutex> renderLock(renderableMutex);
+            // Copy current front buffer to back buffer for modification
+            renderableBuffers[backBufferIndex] = renderableBuffers[currentRenderableIndex.load()];
+        }
+
+        // Process requests without holding queue or world locks for long duration
+        for (const auto& request : requestsToProcess) {
+            switch (request.first) {
                 case REQUEST::CHUNKCREATION: {
-                    scoped_lock caseLock(worldMutex, queueMutex);
-
-                    world.emplace(request.second, Chunk(maps, request.second, worldHeight));
-
-                    requestQueue.push({REQUEST::GENMESH, request.second});
-                    requestQueueCV.notify_one();
+                    {
+                        std::lock_guard<std::mutex> lock(worldMutex);
+                        world.emplace(request.second, Chunk(maps, request.second, worldHeight));
+                    }
+                    deferredNewRequests.push_back({REQUEST::GENMESH, request.second});
                     break;
                 }
                 case REQUEST::GENMESH: {
-                    scoped_lock caseLock(worldMutex, queueMutex);
-
-                    auto& chunk = world.at(request.second);
-
-                    chunk.genMesh(world);
-                    chunk.dirty = false;
-
-                    if(!chunk.loaded){
-                        requestQueue.push({REQUEST::LOAD, request.second});
-                        requestQueueCV.notify_one();
-                        break;
+                    Chunk chunkCopy;
+                    {
+                        std::lock_guard<std::mutex> lock(worldMutex);
+                        chunkCopy = world.at(request.second);
                     }
 
-                    requestQueue.push({REQUEST::UPDATE, request.second});
-                    requestQueueCV.notify_one();
+                    chunkCopy.genMesh(world);
+                    chunkCopy.dirty = false;
+
+                    {
+                        std::lock_guard<std::mutex> lock(worldMutex);
+                        world[request.second] = chunkCopy;
+                    }
+
+                    if (!chunkCopy.loaded) {
+                        deferredNewRequests.push_back({REQUEST::LOAD, request.second});
+                    } else {
+                        deferredNewRequests.push_back({REQUEST::UPDATE, request.second});
+                    }
                     break;
                 }
                 case REQUEST::LOAD: {
-                    scoped_lock caseLock(worldMutex, renderableMutex);
+                    try {
+                        Chunk chunkCopy;
+                        {
+                            std::lock_guard<std::mutex> lock(worldMutex);
+                            chunkCopy = world.at(request.second);
+                            chunkCopy.loaded = true;
+                            world[request.second] = chunkCopy;
+                        }
 
-                    auto& chunk = world.at(request.second);
-                    chunk.loaded = true;
-
-                    renderable.push_back(chunk);
-                    break;
-                }
-                case REQUEST::UPDATE: {
-                    scoped_lock caseLock(worldMutex, renderableMutex);
-
-                    auto& chunk = world.at(request.second);
-                    chunk.buffered = false;
-
-                    size_t index;        
-                    auto it = find_if(renderable.begin(), renderable.end(), [request](const Chunk& chunk) {return chunk.origin == request.second;});
-                    if(it != renderable.end()){
-                        index = std::distance(renderable.begin(), it);
-                        renderable[index] = chunk;
+                        {
+                            std::lock_guard<std::mutex> renderLock(renderableMutex);
+                            renderableBuffers[backBufferIndex].push_back({request.second, chunkCopy});
+                        }
+                    } catch (const std::out_of_range& e) {
+                        deferredNewRequests.push_back({REQUEST::CHUNKCREATION, request.second});
                     }
                     break;
                 }
                 case REQUEST::UNLOAD: {
-                    scoped_lock caseLock(worldMutex, renderableMutex);
-
-                    auto& chunk = world.at(request.second);
-                    chunk.loaded = false;
-                    chunk.needsToBeUnloaded = true;
-
-                    size_t index;
-                    auto it = find_if(renderable.begin(), renderable.end(), [request](const Chunk& chunk) {return chunk.origin == request.second;});
-                    if(it != renderable.end()){
-                        index = std::distance(renderable.begin(), it);
-                        renderable[index] = chunk;
+                    {
+                        std::lock_guard<std::mutex> lock(worldMutex);
+                        auto& chunk = world.at(request.second);
+                        chunk.loaded = false;
+                        world[request.second] = chunk;
                     }
+
+                    {
+                        std::lock_guard<std::mutex> renderLock(renderableMutex);
+                        auto& buffer = renderableBuffers[backBufferIndex];
+                        buffer.erase(std::remove_if(buffer.begin(), buffer.end(),
+                            [&request](const std::pair<vec2, Chunk>& c) { return c.first == request.second; }),
+                            buffer.end());
+                    }
+                    break;
                 }
+                default:
+                    break;
             }
         }
-        lock.lock();
+
+        // Swap the renderable buffer index atomically to expose the updated renderable vector
+        currentRenderableIndex.store(backBufferIndex);
+
+        // Push deferred requests back into requestQueue
+        if (!deferredNewRequests.empty()) {
+            std::lock_guard<std::mutex> lock(queueMutex);
+            for (auto& req : deferredNewRequests) {
+                requestQueue.push(req);
+            }
+            requestQueueCV.notify_one();
+        }
     }
 }
+
 
 unsigned int World::hash(std::string string){
     unsigned int hash = 0;

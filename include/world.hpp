@@ -30,6 +30,14 @@ struct vec2Hash{
     }
 };
 
+struct vec2Less {
+    bool operator()(const glm::vec2& a, const glm::vec2& b) const {
+        // Lexicographical compare: first x, then y
+        if (a.x != b.x) return a.x < b.x;
+        return a.y < b.y;
+    }
+};
+
 struct noiseMaps{
     PerlinNoise heightMap;
     PerlinNoise moistureMap;
@@ -43,7 +51,35 @@ struct Box {
 
     T min, max;
 
-    bool isInside(T coord){
+    struct iterator{
+        T current, min, max;
+
+        const Box& boxRef;
+
+        iterator(const Box& box, const T& min, const T& max, bool isEnd = false) : boxRef(box), min(min), max(max), current(min) {
+            if(isEnd){
+                current[0] = max[0] + 1;
+            }
+        }
+
+        T operator*() const {return current;}
+
+        iterator& operator++() {
+            T bufferedIncrement = current + T(1.0f);
+
+            if(boxRef.isInside(bufferedIncrement)) current = bufferedIncrement;
+
+            return *this;
+        }
+
+        bool operator==(const iterator& other) const {return current == other.current;}
+        bool operator!=(const iterator& other) const {return !(*this == other);}
+    };
+
+    iterator begin() const {return iterator(*this, min, max, false);}
+    iterator end() const {return iterator(*this, min, max, true);}
+
+    bool isInside(T coord) const {
         return all(greaterThanEqual(coord, min)) && all(lessThanEqual(coord, max));
     }
 };
@@ -59,6 +95,7 @@ struct Mesh{
 class Chunk{ 
     public:
         Chunk(noiseMaps, vec2, int);
+        Chunk(){};
         ~Chunk();
 
         enum class VOXEL {
@@ -148,9 +185,11 @@ class World {
         unordered_map<vec2, Chunk, vec2Hash> world;
         int worldHeight, worldDimension, renderDist;
 
-        vector<Chunk> renderable;
+        vector<pair<vec2, Chunk>> renderableBuffers[2];
+        atomic<size_t> currentRenderableIndex{0};
 
-        thread reqThread;
+        thread reqThreadOne;
+        thread reqThreadTwo;
         condition_variable requestQueueCV;
 
         mutex worldMutex;
@@ -165,7 +204,7 @@ class World {
         static constexpr int requestsPerFrame = 5;
 
         queue<pair<REQUEST, vec2>> requestQueue;
-        Box2 renderBox;
+        set<vec2, vec2Less> oldChunks;
         noiseMaps maps;
 
         vec2 lastPlayerPos;

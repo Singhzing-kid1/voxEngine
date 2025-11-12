@@ -80,11 +80,12 @@ int main(int argc, char* argv[]){
         
         // clear the screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
         float worldUStart = (SDL_GetTicks64()/1000.0f);
         world.update(mainPlayer.position, SDL_GetTicks64()/1000.0f); // update the world (creates mesh)
-        world.cleanUpRenderable();
         world.sendBuffers();
         float wUpdateTime = (SDL_GetTicks64()/1000.0f) - worldUStart;
+        
         float debugUStart = (SDL_GetTicks64()/1000.0f);
         debug.update(); // updaye the debug UI (creats UI meshes)
         float dUpdateTime = (SDL_GetTicks64()/1000.0f) - debugUStart; 
