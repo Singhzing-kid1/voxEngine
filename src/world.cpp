@@ -195,8 +195,7 @@ void World::update(vec3 playerPos, float totalElapsedTime){
 }
 
 void World::sendBuffers() {
-    // Lock to safely access the current active renderable buffer
-    std::lock_guard<std::mutex> renderLock(renderableMutex);
+    lock_guard<mutex> renderLock(renderableMutex);
     auto& renderable = renderableBuffers[currentRenderableIndex.load()];
 
     if (renderable.empty()) return;
@@ -258,20 +257,18 @@ void World::render(mat4 model, mat4 view, mat4 projection, vec3 playerPos, Shade
 }
 
 void World::requestManager() {
-    std::vector<std::pair<REQUEST, vec2>> requestsToProcess;
+    vector<pair<REQUEST, vec2>> requestsToProcess;
     requestsToProcess.reserve(requestsPerFrame);
 
     while (running.load()) {
-        // Wait for new requests
         {
-            std::unique_lock<std::mutex> lock(queueMutex);
+            unique_lock<mutex> lock(queueMutex);
             working = false;
             requestQueueCV.wait(lock, [this] { return !requestQueue.empty() || !running.load(); });
             if (!running.load()) break;
 
             working = true;
 
-            // Pop batch of requests
             requestsToProcess.clear();
             for (int i = 0; i < requestsPerFrame && !requestQueue.empty(); ++i) {
                 requestsToProcess.push_back(requestQueue.front());
@@ -279,24 +276,20 @@ void World::requestManager() {
             }
         }
 
-        // Prepare vector to collect new deferred requests during processing
-        std::vector<std::pair<REQUEST, vec2>> deferredNewRequests;
+        vector<pair<REQUEST, vec2>> deferredNewRequests;
         deferredNewRequests.reserve(requestsPerFrame);
 
-        // Copy back buffer renderable to modify
         size_t backBufferIndex = 1 - currentRenderableIndex.load();
         {
-            std::lock_guard<std::mutex> renderLock(renderableMutex);
-            // Copy current front buffer to back buffer for modification
+            lock_guard<mutex> renderLock(renderableMutex);
             renderableBuffers[backBufferIndex] = renderableBuffers[currentRenderableIndex.load()];
         }
 
-        // Process requests without holding queue or world locks for long duration
         for (const auto& request : requestsToProcess) {
             switch (request.first) {
                 case REQUEST::CHUNKCREATION: {
                     {
-                        std::lock_guard<std::mutex> lock(worldMutex);
+                        lock_guard<mutex> lock(worldMutex);
                         world.emplace(request.second, Chunk(maps, request.second, worldHeight));
                     }
                     deferredNewRequests.push_back({REQUEST::GENMESH, request.second});
@@ -305,7 +298,7 @@ void World::requestManager() {
                 case REQUEST::GENMESH: {
                     Chunk chunkCopy;
                     {
-                        std::lock_guard<std::mutex> lock(worldMutex);
+                        lock_guard<mutex> lock(worldMutex);
                         chunkCopy = world.at(request.second);
                     }
 
@@ -313,7 +306,7 @@ void World::requestManager() {
                     chunkCopy.dirty = false;
 
                     {
-                        std::lock_guard<std::mutex> lock(worldMutex);
+                        lock_guard<mutex> lock(worldMutex);
                         world[request.second] = chunkCopy;
                     }
 
@@ -328,34 +321,34 @@ void World::requestManager() {
                     try {
                         Chunk chunkCopy;
                         {
-                            std::lock_guard<std::mutex> lock(worldMutex);
+                            lock_guard<mutex> lock(worldMutex);
                             chunkCopy = world.at(request.second);
                             chunkCopy.loaded = true;
                             world[request.second] = chunkCopy;
                         }
 
                         {
-                            std::lock_guard<std::mutex> renderLock(renderableMutex);
+                            lock_guard<mutex> renderLock(renderableMutex);
                             renderableBuffers[backBufferIndex].push_back({request.second, chunkCopy});
                         }
-                    } catch (const std::out_of_range& e) {
+                    } catch (const out_of_range& e) {
                         deferredNewRequests.push_back({REQUEST::CHUNKCREATION, request.second});
                     }
                     break;
                 }
                 case REQUEST::UNLOAD: {
                     {
-                        std::lock_guard<std::mutex> lock(worldMutex);
+                        lock_guard<mutex> lock(worldMutex);
                         auto& chunk = world.at(request.second);
                         chunk.loaded = false;
                         world[request.second] = chunk;
                     }
 
                     {
-                        std::lock_guard<std::mutex> renderLock(renderableMutex);
+                        lock_guard<mutex> renderLock(renderableMutex);
                         auto& buffer = renderableBuffers[backBufferIndex];
-                        buffer.erase(std::remove_if(buffer.begin(), buffer.end(),
-                            [&request](const std::pair<vec2, Chunk>& c) { return c.first == request.second; }),
+                        buffer.erase(remove_if(buffer.begin(), buffer.end(),
+                            [&request](const pair<vec2, Chunk>& c) { return c.first == request.second; }),
                             buffer.end());
                     }
                     break;
@@ -365,12 +358,10 @@ void World::requestManager() {
             }
         }
 
-        // Swap the renderable buffer index atomically to expose the updated renderable vector
         currentRenderableIndex.store(backBufferIndex);
 
-        // Push deferred requests back into requestQueue
         if (!deferredNewRequests.empty()) {
-            std::lock_guard<std::mutex> lock(queueMutex);
+            lock_guard<mutex> lock(queueMutex);
             for (auto& req : deferredNewRequests) {
                 requestQueue.push(req);
             }
