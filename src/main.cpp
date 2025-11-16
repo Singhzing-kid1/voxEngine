@@ -19,7 +19,7 @@ extern "C" {  //temporary to force computer to use Nvidia GPU or AMD GPU over in
 #endif
 
 int main(int argc, char* argv[]){
-    Engine engine(1080, 1920, "v0.0.8 pre-release"); // init engine class
+    Engine engine(1080, 1920, "v0.0.8 pre-release", true); // init engine class
     SDL_Color color = {255, 255, 255, 255}; // white color for UI text
 
     Player mainPlayer(45, engine.height, engine.width, 0.1f, 1000.0f, vec3(0.0f, 5.0f, 0.0f), vec4(1.0f, 1.0f, 3.0f, 1.0f), 2.5f); // create player
@@ -49,7 +49,8 @@ int main(int argc, char* argv[]){
     glFrontFace(GL_CCW);
 
     glEnable(GL_BLEND); // enable blending allows UI to render with transparent frags
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    //glClearColor(1.0f, 1.0f, 1.0f, 1.0f); 
 
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 

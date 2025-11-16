@@ -10,10 +10,7 @@
  */
 #include "main.hpp"
 
-Engine::Engine(int height, int width, const char* title){
-    this->width = width;
-    this->height = height;
-
+Engine::Engine(int height, int width, const char* title, bool captureMouse) : width(width), height(height), captureMouse(captureMouse){ 
     if(SDL_Init(SDL_INIT_VIDEO) < 0){
         cout << "could not init SDL2. Error: " << SDL_GetError();
     }
@@ -117,7 +114,9 @@ void Engine::eventHandling(inputData* data){
 }
 
 void Engine::initRendering(vec3 pos, float fov, float aspect, float nearPlane, float farPlane){
-    SDL_SetRelativeMouseMode(SDL_TRUE);
+    if(captureMouse){
+        SDL_SetRelativeMouseMode(SDL_TRUE);
+    }
 
     view = translate(view, pos);
     projection = perspective(fov, aspect, nearPlane, farPlane);

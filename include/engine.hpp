@@ -30,7 +30,7 @@ class Engine{
          * @param title title of window
          * 
          */
-        Engine(int, int, const char*);
+        Engine(int, int, const char*, bool);
         ~Engine();
         float deltaTime, lastFrame;
 
@@ -70,6 +70,8 @@ class Engine{
 
         SDL_Window* window;
         SDL_GLContext context;
+
+        bool captureMouse;
 
         double accumX = 0.0, accumY = 0.0;
         int mouseX = 0, mouseY = 0;

@@ -9,17 +9,12 @@ Chunk::Chunk(noiseMaps maps, vec2 origin, int worldHeight) : maps(maps), origin(
 
             VOXEL _blockType = VOXEL::EMPTY;
 
-            if((temp >= tempHotMin && temp <= tempHotMax) && (moistness >= dryMin && moistness <= dryMax)) {_blockType = Chunk::VOXEL::HOTDRY;}        //hd
-            else if ((temp >= tempHotMin && temp <= tempHotMax) && (moistness > normMin && moistness < normMax)) {_blockType = Chunk::VOXEL::HOTNORM;}    //hn
-            else if ((temp >= tempHotMin && temp <= tempHotMax) && (moistness >= wetMin && moistness <= wetMax)) {_blockType = Chunk::VOXEL::HOTWET;}  //hw
-            else if ((temp > tempNormMin && temp < tempNormMax) && (moistness >= dryMin && moistness <= dryMax)) {_blockType = Chunk::VOXEL::NORMDRY;}    //nd
-            else if ((temp > tempNormMin && temp < tempNormMax) && (moistness > normMin && moistness < normMax)) {_blockType = Chunk::VOXEL::NORM;}      //nn
-            else if ((temp > tempNormMin && temp < tempNormMax) && (moistness >= wetMin && moistness <= wetMax)) {_blockType = Chunk::VOXEL::NORMWET;}    //nw
-            else if ((temp >= tempColdMin && temp <= tempColdMax) && (moistness >= dryMin && moistness <= dryMax)) {_blockType = Chunk::VOXEL::COLDDRY;}  //cd
-            else if ((temp >= tempColdMin && temp <= tempColdMax) && (moistness > normMin && moistness < normMax)) {_blockType = Chunk::VOXEL::COLDNORM;}    //cn
-            else if ((temp >= tempColdMin && temp <= tempColdMax) && (moistness >= wetMin && moistness <= wetMax)) {_blockType = Chunk::VOXEL::COLDWET;}  //cw
+            MOISTCAT moisture = categorizeMoisture(moistness);
+            TEMPCAT temperature = categorizeTemp(temp);
+
+            _blockType = blockTypeLookup[temperature][moisture];
             
-            for(int y = 0; y < worldHeight; y++){
+            for(int y = 0; y < MAX_WORLD_GENERATION_HEIGHT; y++){
                 if(y > height) continue;
                 grid[x][y][z] = _blockType;
             }
@@ -75,15 +70,29 @@ void Chunk::genMesh(unordered_map<vec2, Chunk, vec2Hash>& world){
                     VOXEL n_voxel;
 
                     if(outOfBounds(n_coord)){
-                        vec2 n_chunkCoord = ((origin * (float)CHUNK_SIZE) + n_coord.xz()) / (float)CHUNK_SIZE;
+                        vec2 n_chunkCoord = glm::floor(((origin * (float)CHUNK_SIZE) + n_coord.xz()) / (float)CHUNK_SIZE);
 
                         try{    
                             Chunk& n_chunk = world.at(n_chunkCoord);
-                            n_coord = mod(((vec3(origin.x, 0, origin.y) * (float)CHUNK_SIZE) + n_coord), (float)CHUNK_SIZE);
-                            n_voxel = n_chunk.grid.at(n_coord.x).at(n_coord.y).at(n_coord.z);
-                            
+                            n_coord = modulo(((vec3(origin.x, 0, origin.y) * (float)CHUNK_SIZE) + n_coord), vec3((float)CHUNK_SIZE, (float)MAX_WORLD_GENERATION_HEIGHT, (float)CHUNK_SIZE));
+                            if(neighbor.y != 1){
+                                n_voxel = n_chunk.grid.at(n_coord.x).at(n_coord.y).at(n_coord.z);
+                            }
+
+                            n_voxel = VOXEL::EMPTY;
+
                         } catch(const out_of_range& e) {
-                            continue;
+                            n_coord = modulo(((vec3(origin.x, 0, origin.y) * (float)CHUNK_SIZE) + n_coord), vec3((float)CHUNK_SIZE, (float)MAX_WORLD_GENERATION_HEIGHT, (float)CHUNK_SIZE));
+                            vec3 n_worldCoord = ((vec3(n_chunkCoord.x, 0, n_chunkCoord.y) * (float)CHUNK_SIZE) + n_coord);
+
+                            int height = (int)MAX_WORLD_GENERATION_HEIGHT * maps.heightMap.octave2D_01(n_worldCoord.x * heightMapScalar, n_worldCoord.z * heightMapScalar, perlinNoiseOctaveAmount);
+
+                            n_voxel = VOXEL::NORM;
+
+                            if(c_coord.y > height){
+                                n_voxel = VOXEL::EMPTY;
+                            }
+
                         }
                     } else {n_voxel = grid.at(n_coord.x).at(n_coord.y).at(n_coord.z);}
 
@@ -128,6 +137,14 @@ bool Chunk::rowEmpty(int x, int y){
     return all_of(grid.at(x).at(y).begin(), grid.at(x).at(y).end(), [](VOXEL voxel){
         return voxel == VOXEL::AIR || voxel == VOXEL::EMPTY;
     });
+}
+
+vec3 Chunk::modulo(vec3 dividend, vec3 divisor){
+    float x = (int)dividend.x % (int)divisor.x < 0 ? ((int)dividend.x % (int)divisor.x) + divisor.x : (int)dividend.x % (int)divisor.x;
+    float y = (int)dividend.y % (int)divisor.y < 0 ? ((int)dividend.y % (int)divisor.y) + divisor.y : (int)dividend.y % (int)divisor.y;
+    float z = (int)dividend.z % (int)divisor.z < 0 ? ((int)dividend.z % (int)divisor.z) + divisor.z : (int)dividend.z % (int)divisor.z;
+
+    return vec3(x, y, z);
 }
 
 
@@ -346,9 +363,14 @@ void World::requestManager() {
                 case REQUEST::UNLOAD: {
                     {
                         std::lock_guard<std::mutex> lock(worldMutex);
-                        auto& chunk = world.at(request.second);
-                        chunk.loaded = false;
-                        world[request.second] = chunk;
+                        try{
+                            auto& chunk = world.at(request.second);
+
+                            chunk.loaded = false;
+                            world[request.second] = chunk;
+                        } catch (const std::out_of_range& e){
+                            cout << "out of range at: " << to_string(request.second) << "\n";
+                        }
                     }
 
                     {

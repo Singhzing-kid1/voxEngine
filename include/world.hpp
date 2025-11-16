@@ -3,7 +3,7 @@
 
 #include "main.hpp"
 
-#define VOXEL_SIZE 0.1
+#define VOXEL_SIZE 0.05
 #define CHUNK_SIZE 32
 #define MAX_WORLD_GENERATION_HEIGHT 64
 
@@ -97,7 +97,7 @@ class Chunk{
         Chunk(noiseMaps, vec2, int);
         Chunk(){};
         ~Chunk();
-
+        
         enum class VOXEL {
             EMPTY = -2,
             AIR = -1,
@@ -112,6 +112,30 @@ class Chunk{
             COLDWET = 9
         };
 
+        enum TEMPCAT {HOT, tNORM, COLD};
+
+        enum MOISTCAT {DRY, mNORM, WET};
+
+        TEMPCAT categorizeTemp(float temp){
+            if (temp >= tempHotMin && temp <= tempHotMax) return TEMPCAT::HOT;
+            if (temp > tempNormMin && temp < tempNormMax) return TEMPCAT::tNORM;
+            if (temp >= tempColdMin && temp <= tempColdMax) return TEMPCAT::COLD;
+            return TEMPCAT::COLD;
+        }
+
+        MOISTCAT categorizeMoisture(float moist){
+            if (moist >= dryMin && moist <= dryMax) return MOISTCAT::DRY;
+            if (moist > normMin && moist < normMax) return MOISTCAT::mNORM;
+            if (moist >= wetMin && moist <= wetMax) return MOISTCAT::WET;
+            return MOISTCAT::WET;
+        }
+
+        Chunk::VOXEL blockTypeLookup[3][3] = {
+            {Chunk::VOXEL::HOTDRY, Chunk::VOXEL::HOTNORM, Chunk::VOXEL::HOTWET},
+            {Chunk::VOXEL::NORMDRY, Chunk::VOXEL::NORM,     Chunk::VOXEL::NORMWET},
+            {Chunk::VOXEL::COLDDRY, Chunk::VOXEL::COLDNORM, Chunk::VOXEL::COLDWET}
+        };
+
         void genMesh(unordered_map<vec2, Chunk, vec2Hash>&);
 
         vector<vector<vector<VOXEL>>> grid;
@@ -120,7 +144,6 @@ class Chunk{
         bool genBuffers = false;
         bool loaded = false;
         bool dirty = false;
-        bool needsToBeUnloaded = false;
 
         GLuint vao, vbo, ebo;
 
@@ -146,7 +169,7 @@ class Chunk{
         static constexpr float wetMax = 1.0f;
 
         static constexpr float heightMapScalar = 0.01f;
-        static constexpr float tempAndMoistureMapScalar = 0.005f;
+        static constexpr float tempAndMoistureMapScalar = 0.001f;
 
         static constexpr int perlinNoiseOctaveAmount = 4;
 
@@ -160,6 +183,8 @@ class Chunk{
         bool outOfBounds(vec3);
         bool layerEmpty(int);
         bool rowEmpty(int, int);
+
+        vec3 modulo(vec3, vec3);
 };
 
 class World {
