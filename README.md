@@ -95,7 +95,8 @@ iter through requests(max 5 per frame)
         set flag loaded to false
         delete chunk from renderable array
 
-clickup integration test
+clickup integration test with task id in commit message
+
 
         
         
