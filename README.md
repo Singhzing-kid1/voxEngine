@@ -2,6 +2,8 @@
 
 ## Build
 
+test to see if im editing on the correct local branch
+
 There are prebuilds
 
 to compile from source:
