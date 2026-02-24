@@ -2,8 +2,6 @@
 
 ## Build
 
-test to see if im editing on the correct local branch
-
 There are prebuilds
 
 to compile from source:
@@ -11,7 +9,6 @@ dependencies are
 - glew
 - sdl2
 - sdl2_ttf
-- opengl
 - glm
 - bullet physics
 
@@ -40,63 +37,18 @@ Gonna try to get this (0.0.7) out for end of March.
 
 0.0.7 almost done. trying to sort out so e optimization stuff with parallelization of syncing the world and meshing the world. might also implement a version of a greedy mesher.
 
+# pride versioning
 
+as of v0.1.0 or v1.0.0
 
-## For you summer of making people
+i am switching to pride versioning. this would be v0.0.8 but i found pride versioning as a meme  
+but i feel like it is actually a good way for me to stay motivated on this project as i know  
+i take like really long hiatuses and then drop an update. but this way there will be a direct reminder of  
+my progress
 
-i have used AI on this project, mostly to find information, debug, and occasionally write some code :). feel free to download any of the previous versions for yourself and check it out <3
+anyways pride versioning is as follows:
 
-
-## some algorithm rambling to help me think through things(this is very much a hobby project)
-
-update func()
-if playerPos changed by 3 chunks within 30 seconds, any chunk has been edited, or loading spawn chunks
-update renderBox if needed
-iter through renderBox
-    if E
-        if edited 
-            send gen mesh request
-        if !loaded
-            send load chunk request
-    if !E
-        send chunk creation request
-
-iter through all chunks:
-    skip chunks in renderBox
-    send unload request
-
-
-request Manager func(threaded)
-
-iter through requests(max 5 per frame)
-    if request is chunkcreation:
-        create chunk
-        insert into world hashmap
-        send gen_mesh request
-
-    if request is gen_mesh:
-        generate mesh
-        set dirty flag false
-        check loaded flag:
-            if loaded:
-                send update request
-            if !loaded:
-                send load request
-
-    if request is load:
-        set loaded flag to true
-        copy chunk to renderable array
-
-    if request is update:
-        find chunk in renderable array
-        reinsert chunk in renderable array
-    
-    if request is unload:
-        find chunk in renderable array
-        find chunk in world hashmap
-        set flag loaded to false
-        delete chunk from renderable array
-
+![pride versioning explaining diagram](https://pridever.org/images/pridever.png)
 
         
         
