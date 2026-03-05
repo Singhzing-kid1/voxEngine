@@ -22,14 +22,32 @@ int main(int argc, char* argv[]){
     Engine engine(1080, 1920, "v0.0.8 pre-release", true); // init engine class
     SDL_Color color = {255, 255, 255, 255}; // white color for UI text
 
-    Player mainPlayer(45, engine.height, engine.width, 0.1f, 1000.0f, vec3(0.0f, 5.0f, 0.0f), vec4(1.0f, 1.0f, 3.0f, 1.0f), 2.5f); // create player
+    Player mainPlayer(45, engine.height, engine.width, 0.1f, 1000.0f, vec3(0.0f, 5.0f, 0.0f), vec4(1.0f, 1.0f, 3.0f, 1.0f), 10.0f, 100.0f); // create player
 
     Shader shader("./shaders/vertex.vert", "./shaders/fragment.frag");  // terrain shader
     Shader textShader("./shaders/textVert.vert", "./shaders/textFrag.frag"); // ui shader
 
     Compute computeShader("./shaders/testComp.comp"); // test compute shader
 
-    World world(100, 64, 7, "asdkjfhsadkfjhekjlahsdlkjdfheljkshadf21230984322", mainPlayer.position.xz()); // g7Kp1zQw8vR3xJt5LmSd2Xy9BnHa4UcEoTfS | world init
+    Physics simulation(9.81f);
+
+    btBoxShape* boxShape = new btBoxShape(btVector3(0.5f, 0.5f, 0.5f));
+
+    // Create collision object
+    btCollisionObject* boxObj = new btCollisionObject();
+    boxObj->setCollisionShape(boxShape);
+
+    // Set world transform at (0, 3, 0)
+    btTransform trans;
+    trans.setIdentity();
+    trans.setOrigin(btVector3(0.0f, 3.0f, 0.0f));
+    boxObj->setWorldTransform(trans);
+
+    //simulation.collisionWorld->addCollisionObject(boxObj);
+
+    World world(100, 64, 7, "asdkjfhsadkfjhekjlahsdlkjdfheljkshadf21230984322", get<vec3>(mainPlayer.getItem(Player::ITEM::POSITION)).xz(), simulation.collisionWorld); // g7Kp1zQw8vR3xJt5LmSd2Xy9BnHa4UcEoTfS | world init
+
+    simulation.addEntity(mainPlayer);
 
     UI debug(engine.width, engine.height, TTF_OpenFont("./fonts/IBMPlexMono-Regular.ttf", 15)); // create debug UI
     int deltaTimeUI = debug.addElement(UI::ElementType::TEXT, " ", color, 0, 0); // add element for deltaTime display
@@ -42,7 +60,7 @@ int main(int argc, char* argv[]){
     int rendererUI = debug.addElement(UI::ElementType::TEXT, (std::string)reinterpret_cast<const char*>(glGetString(GL_RENDERER)), color, 0, 175); // add element to show current renderer(GPU)
     int versionUI = debug.addElement(UI::ElementType::TEXT, (std::string)reinterpret_cast<const char*>(glGetString(GL_VERSION)), color, 0, 200); // add element to show OpenGL version and graphics driver version 
 
-    engine.initRendering(mainPlayer.getItem(1), mainPlayer.getItem(1.0f), mainPlayer.getItem(2.0f), mainPlayer.getItem(3.0f), mainPlayer.getItem(4.0f)); // initialize rendering
+    engine.initRendering(get<vec3>(mainPlayer.getItem(Player::ITEM::CAMERAPOSITION)), get<float>(mainPlayer.getItem(Player::ITEM::FOV)), get<float>(mainPlayer.getItem(Player::ITEM::ASPECT)), get<float>(mainPlayer.getItem(Player::ITEM::NEAR)), get<float>(mainPlayer.getItem(Player::ITEM::FAR))); // initialize rendering
 
     glEnable(GL_CULL_FACE); // enable backface culling and specify direction of front face
     glCullFace(GL_BACK);
@@ -57,8 +75,10 @@ int main(int argc, char* argv[]){
     inputData data;
     bool quit = false;
     bool showDebug = false;
+    bool applyGravity = false;
 
     float pitch = 0.0f , yaw = 0.0f;
+
     while(!quit){
         engine.eventHandling(&data); // input handling
 
@@ -74,16 +94,17 @@ int main(int argc, char* argv[]){
         }
 
         // update the player position/orientation
-        mainPlayer.updatePlayer(engine.deltaTime, data.state, yaw, pitch, engine.collisionWorld);
+        mainPlayer.updatePlayer(engine.deltaTime, data.state, yaw, pitch);
+        simulation.step(data.applyGravity);
 
         // update the view matrix based on player orientaion
-        engine.view = lookAt(mainPlayer.getItem(1), mainPlayer.getItem(3) + mainPlayer.getItem(1), mainPlayer.getItem(2));
+        engine.view = lookAt(get<vec3>(mainPlayer.getItem(Player::ITEM::CAMERAPOSITION)), get<vec3>(mainPlayer.getItem(Player::ITEM::FRONT)) + get<vec3>(mainPlayer.getItem(Player::ITEM::CAMERAPOSITION)), get<vec3>(mainPlayer.getItem(Player::ITEM::UP)));
         
         // clear the screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         float worldUStart = (SDL_GetTicks64()/1000.0f);
-        world.update(mainPlayer.position, SDL_GetTicks64()/1000.0f); // update the world (creates mesh)
+        world.update(get<vec3>(mainPlayer.getItem(Player::ITEM::POSITION)), SDL_GetTicks64()/1000.0f); // update the world (creates mesh)
         world.sendBuffers();
         float wUpdateTime = (SDL_GetTicks64()/1000.0f) - worldUStart;
         
@@ -92,7 +113,7 @@ int main(int argc, char* argv[]){
         float dUpdateTime = (SDL_GetTicks64()/1000.0f) - debugUStart; 
         
         float worldRStart = (SDL_GetTicks64()/1000.0f);
-        world.render(engine.model, engine.view, engine.projection, mainPlayer.position, shader); // render the world
+        world.render(engine.model, engine.view, engine.projection, get<vec3>(mainPlayer.getItem(Player::ITEM::CAMERAPOSITION)), shader); // render the world
         float wRenderTime = (SDL_GetTicks64()/1000.0f) - worldRStart;
 
         if(showDebug){
@@ -122,7 +143,7 @@ int main(int argc, char* argv[]){
             debug.editElement(deltaTimeDebugDraw, vec2(0, 100), color, buffer.str());  
             
             buffer.str(std::string());
-            buffer << "Yaw: " << yaw << ", Pitch: " << pitch << ", Pos: " << to_string(mainPlayer.position);
+            buffer << "Yaw: " << yaw << ", Pitch: " << pitch << ", Pos: " << to_string(get<vec3>(mainPlayer.getItem(Player::ITEM::POSITION)));
             debug.editElement(playerPitchAndYaw, vec2(0, 125), color, buffer.str());
 
             // update the fps UI element with the current fps 

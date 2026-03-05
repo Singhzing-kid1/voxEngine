@@ -29,6 +29,9 @@
 #include <atomic>
 #include <condition_variable>
 #include <set>
+#include <variant>
+#include <memory>
+#include <functional>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -52,7 +55,8 @@
 #include <glm/ext/vector_relational.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
-#include <btBulletCollisionCommon.h>
+#include <glm/gtx/vector_angle.hpp>
+#include <btBulletDynamicsCommon.h>
 
 #pragma endregion
 
@@ -60,11 +64,13 @@
 #include "engine.hpp"
 #include "player.hpp"
 #include "camera.hpp"
+#include "entity.hpp"
 #include "gpuCompute.hpp"
 #include "shader.hpp"
 #include "world.hpp"
 #include "perlin.hpp"
 #include "ui.hpp"
+#include "physics.hpp"
 #pragma endregion
 
 #define pass (void)0;

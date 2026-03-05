@@ -15,7 +15,7 @@
 
 typedef struct{
     float xOffset = 0.0f, yOffset = 0.0f;
-    bool shouldQuit = false;
+    bool shouldQuit = false, applyGravity = false;
     const Uint8* state;
 } inputData;
 
@@ -63,7 +63,6 @@ class Engine{
         mat4 model = mat4(1.0f), view = mat4(1.0f), projection;
 
         int width, height;
-        btCollisionWorld* collisionWorld;
 
     private:
         SDL_Event e;

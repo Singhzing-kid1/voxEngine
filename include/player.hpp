@@ -4,21 +4,21 @@
 #include "main.hpp"
 
 class Camera;
+class Entity;
 
-class Player : public Camera {
+class Player : public Entity, public Camera {
     public:
-        Player(float, float, float, float, float, vec3, vec4, float);
+        Player(float, float, float, float, float, vec3, vec4, float, float);
 
-        void updatePlayer(float, const Uint8*, float, float, btCollisionWorld*);
+        enum ITEM {FOV, ASPECT, NEAR, FAR, POSITION, CAMERAPOSITION, UP, FRONT, RIGHT};
+        variant<float, vec3> getItem(ITEM);
 
-        vec3 position;
+        void updatePlayer(float, const Uint8*, float, float);
 
-        void movePlayer(Axis, float);
+        void movePlayer(float);
 
     private:
-        vec4 size;
-        vec3 velocity, prevPos, playerTranslationVec;
-        float deltaTime, speed, reach;
+        float deltaTime, movementForce, reach;
 
         void interact(btCollisionWorld*);
 };

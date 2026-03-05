@@ -138,6 +138,8 @@ class Chunk{
 
         void genMesh(unordered_map<vec2, Chunk, vec2Hash>&);
 
+        btCollisionObject* collider = nullptr;
+
         vector<vector<vector<VOXEL>>> grid;
 
         bool buffered = false;
@@ -189,7 +191,7 @@ class Chunk{
 
 class World {
     public:
-        World(int, int, int, std::string, vec2);
+        World(int, int, int, std::string, vec2, btCollisionWorld*);
         ~World();
 
         enum class REQUEST {
@@ -206,12 +208,14 @@ class World {
 
         void render(mat4, mat4, mat4, vec3, Shader);
 
+        vector<pair<vec2, Chunk>> renderableBuffers[2];
+        atomic<size_t> currentRenderableIndex{0};
+
     private:
         unordered_map<vec2, Chunk, vec2Hash> world;
         int worldHeight, worldDimension, renderDist;
 
-        vector<pair<vec2, Chunk>> renderableBuffers[2];
-        atomic<size_t> currentRenderableIndex{0};
+        btCollisionWorld* collisionWorld;
 
         thread reqThreadOne;
         thread reqThreadTwo;

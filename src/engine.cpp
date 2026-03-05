@@ -47,22 +47,9 @@ Engine::Engine(int height, int width, const char* title, bool captureMouse) : wi
     if(glewError != GLEW_OK){
         cout << "could not init GLEW. Error: " << glewGetErrorString(glewError);
     }
-
-    
-
-    btBroadphaseInterface* broadPhase = new btDbvtBroadphase();
-    btDefaultCollisionConfiguration* config = new btDefaultCollisionConfiguration();
-    btCollisionDispatcher* dispatch = new btCollisionDispatcher(config);
-
-    collisionWorld = new btCollisionWorld(dispatch, broadPhase, config);
-
-    delete dispatch;
-    delete config;
-    delete broadPhase;
 }
 
 Engine::~Engine(){
-    delete collisionWorld;
 
     SDL_GL_DeleteContext(context);
     SDL_DestroyWindow(window);
@@ -92,6 +79,10 @@ void Engine::eventHandling(inputData* data){
             case SDL_KEYDOWN:
                 if(e.key.keysym.sym == SDLK_ESCAPE){
                     data->shouldQuit = true;
+                }
+
+                if(e.key.keysym.sym == SDLK_g){
+                    data->applyGravity = !data->applyGravity;
                 }
                 break;
 

@@ -1,6 +1,7 @@
 #include "main.hpp"
 
 Chunk::Chunk(noiseMaps maps, vec2 origin, int worldHeight) : maps(maps), origin(origin), worldHeight(worldHeight), grid(CHUNK_SIZE, vector<vector<VOXEL>>(MAX_WORLD_GENERATION_HEIGHT, vector<VOXEL>(CHUNK_SIZE, VOXEL::EMPTY))){
+    dirty = true;
     for(int x = 0; x < (int)CHUNK_SIZE; x++){
         for(int z = 0; z < (int)CHUNK_SIZE; z++){
             int height = (int)MAX_WORLD_GENERATION_HEIGHT * maps.heightMap.octave2D_01(((origin.x * CHUNK_SIZE) + x) * heightMapScalar, ((origin.y * CHUNK_SIZE) + z) * heightMapScalar, perlinNoiseOctaveAmount);
@@ -14,8 +15,8 @@ Chunk::Chunk(noiseMaps maps, vec2 origin, int worldHeight) : maps(maps), origin(
 
             _blockType = blockTypeLookup[temperature][moisture];
             
-            for(int y = 0; y < MAX_WORLD_GENERATION_HEIGHT; y++){
-                if(y > height) continue;
+            for(int y = 0; y < 20; y++){
+                //if(y > height) continue;
                 grid[x][y][z] = _blockType;
             }
         }
@@ -57,6 +58,9 @@ const vector<vec3> Chunk::neighbors = {vec3(0, 0, 1),
 void Chunk::genMesh(unordered_map<vec2, Chunk, vec2Hash>& world){
     vector<vec3> vertices; vector<vec3> colors; vector<vec3> normals;
     vector<unsigned int> indices;
+
+    btCompoundShape* chunkShape = new btCompoundShape();
+    collider = new btCollisionObject();
 
     for(int x = 0; x < CHUNK_SIZE; x++){
         for(int y = 0; y < MAX_WORLD_GENERATION_HEIGHT; y++){
@@ -104,6 +108,17 @@ void Chunk::genMesh(unordered_map<vec2, Chunk, vec2Hash>& world){
                     vector<vec3> face = faces.at(neighbor);
                     vec3 color = blockType.at(c_voxel);
 
+                    btBoxShape* boxShape = new btBoxShape(btVector3(halfVoxelSize, halfVoxelSize, halfVoxelSize));
+                    btTransform localTransform;
+                    localTransform.setIdentity();
+                    localTransform.setOrigin(btVector3(
+                        x * (float)VOXEL_SIZE,
+                        y * (float)VOXEL_SIZE,
+                        z * (float)VOXEL_SIZE
+                    ));
+
+                    chunkShape->addChildShape(localTransform, boxShape);
+
                     normals.insert(normals.end(), 4, neighbor);
                     vertices.insert(vertices.end(), {w_coord + (face[0] * halfVoxelSize), w_coord + (face[1] * halfVoxelSize), w_coord + (face[2] * halfVoxelSize), w_coord + (face[3] * halfVoxelSize)});
                     colors.insert(colors.end(), 4, color);
@@ -113,6 +128,17 @@ void Chunk::genMesh(unordered_map<vec2, Chunk, vec2Hash>& world){
             }
         }
     }
+
+    btTransform worldTransform;
+    worldTransform.setIdentity();
+    worldTransform.setOrigin(btVector3(
+        origin.x * (float)CHUNK_SIZE,
+        0,
+        origin.y * (float)CHUNK_SIZE
+    ));
+
+    collider->setCollisionShape(chunkShape); // <-- this line
+    collider->setWorldTransform(worldTransform);
 
     mesh.vertices.assign(vertices.begin(), vertices.end());
     mesh.colors.assign(colors.begin(), colors.end());
@@ -148,7 +174,7 @@ vec3 Chunk::modulo(vec3 dividend, vec3 divisor){
 }
 
 
-World::World(int worldHeight, int worldDimension, int renderDist, std::string seed, vec2 playerPos) : worldHeight(worldHeight), worldDimension(worldDimension), renderDist(renderDist), lastPlayerPos(playerPos){
+World::World(int worldHeight, int worldDimension, int renderDist, std::string seed, vec2 playerPos, btCollisionWorld* collisionWorld) : worldHeight(worldHeight), worldDimension(worldDimension), renderDist(renderDist), lastPlayerPos(playerPos), collisionWorld(collisionWorld){
     unsigned int seed1; unsigned int seed2; unsigned int seed3;
     int len = seed.length() /3;
     seed1 = hash(seed.substr(0*len, len));
@@ -159,12 +185,19 @@ World::World(int worldHeight, int worldDimension, int renderDist, std::string se
     maps.moistureMap.reseed(seed2);
     maps.tempMap.reseed(seed3);
 
+    for(int x = -25; x < 25; x++){
+        for(int y = -25; y < 25; y++){
+            world.emplace(vec2(x, y), Chunk(maps, vec2(x, y), worldHeight));
+        }
+    }
+
     reqThreadOne = thread(&World::requestManager, this);
 }
 
 World::~World(){
     running = false;
     requestQueueCV.notify_all();
+    reqThreadOne.join();
     reqThreadOne.detach();
 }
 
@@ -339,9 +372,21 @@ void World::requestManager() {
                         Chunk chunkCopy;
                         {
                             lock_guard<mutex> lock(worldMutex);
-                            chunkCopy = world.at(request.second);
-                            chunkCopy.loaded = true;
+                            chunkCopy = world.at(request.second);                            
+                        }
+
+                        if(chunkCopy.dirty){
+                            deferredNewRequests.push_back({REQUEST::GENMESH, request.second});
+                            break;
+                        }
+
+                        chunkCopy.loaded = true;
+                        collisionWorld->addCollisionObject(chunkCopy.collider);
+
+                        {
+                            lock_guard<mutex> lock(worldMutex);
                             world[request.second] = chunkCopy;
+
                         }
 
                         {
@@ -360,6 +405,7 @@ void World::requestManager() {
                             auto& chunk = world.at(request.second);
 
                             chunk.loaded = false;
+                            collisionWorld->removeCollisionObject(chunk.collider);
                             world[request.second] = chunk;
                         } catch (const std::out_of_range& e){
                             cout << "out of range at: " << to_string(request.second) << "\n";
