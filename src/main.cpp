@@ -22,7 +22,7 @@ int main(int argc, char* argv[]){
     Engine engine(1080, 1920, "v0.0.8 pre-release", true); // init engine class
     SDL_Color color = {255, 255, 255, 255}; // white color for UI text
 
-    Player mainPlayer(45, engine.height, engine.width, 0.1f, 1000.0f, vec3(0.0f, 5.0f, 0.0f), vec4(1.0f, 1.0f, 3.0f, 1.0f), 10.0f, 100.0f); // create player
+    Player mainPlayer(45, engine.height, engine.width, 0.1f, 1000.0f, vec3(0.0f, 5.0f, 0.0f), vec4(1.0f, 1.0f, 3.0f, 1.0f), 100.0f, 100.0f); // create player
 
     Shader shader("./shaders/vertex.vert", "./shaders/fragment.frag");  // terrain shader
     Shader textShader("./shaders/textVert.vert", "./shaders/textFrag.frag"); // ui shader
@@ -30,20 +30,6 @@ int main(int argc, char* argv[]){
     Compute computeShader("./shaders/testComp.comp"); // test compute shader
 
     Physics simulation(9.81f);
-
-    btBoxShape* boxShape = new btBoxShape(btVector3(0.5f, 0.5f, 0.5f));
-
-    // Create collision object
-    btCollisionObject* boxObj = new btCollisionObject();
-    boxObj->setCollisionShape(boxShape);
-
-    // Set world transform at (0, 3, 0)
-    btTransform trans;
-    trans.setIdentity();
-    trans.setOrigin(btVector3(0.0f, 3.0f, 0.0f));
-    boxObj->setWorldTransform(trans);
-
-    //simulation.collisionWorld->addCollisionObject(boxObj);
 
     World world(100, 64, 7, "asdkjfhsadkfjhekjlahsdlkjdfheljkshadf21230984322", get<vec3>(mainPlayer.getItem(Player::ITEM::POSITION)).xz(), simulation.collisionWorld); // g7Kp1zQw8vR3xJt5LmSd2Xy9BnHa4UcEoTfS | world init
 
@@ -96,6 +82,7 @@ int main(int argc, char* argv[]){
         // update the player position/orientation
         mainPlayer.updatePlayer(engine.deltaTime, data.state, yaw, pitch);
         simulation.step(data.applyGravity);
+
 
         // update the view matrix based on player orientaion
         engine.view = lookAt(get<vec3>(mainPlayer.getItem(Player::ITEM::CAMERAPOSITION)), get<vec3>(mainPlayer.getItem(Player::ITEM::FRONT)) + get<vec3>(mainPlayer.getItem(Player::ITEM::CAMERAPOSITION)), get<vec3>(mainPlayer.getItem(Player::ITEM::UP)));

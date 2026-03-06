@@ -13,7 +13,7 @@ void Physics::step(bool applyGravity){
     for(auto& entity : entities){
         vec3 weight = entity.get().mass * gravity * gravityDirection;
         if (applyGravity){
-            entity.get().addForce(weight);
+            entity.get().addAppliedForce(weight);
         }
 
         for(auto direction  : directions){
@@ -22,17 +22,18 @@ void Physics::step(bool applyGravity){
             if(!hit) continue;
 
             float isolatedVelocityDirection = dot(direction, entity.get().velocity);
-            float isolatedNetForceDirection = dot(direction, entity.get().netForce);
+            float isolatedNetForceDirection = dot(direction, entity.get().appliedForce);
 
             float velocityAngle = degrees(angle(direction, entity.get().velocity));
-            float forceAngle = degrees(angle(direction, entity.get().netForce));
+            float forceAngle = degrees(angle(direction, entity.get().appliedForce));
 
             if(velocityAngle < 90){
                 entity.get().velocity -= isolatedVelocityDirection * direction;
             }
 
-
-            entity.get().addForce(-isolatedNetForceDirection * direction);
+            if(forceAngle < 90){    
+                entity.get().addNormalForce(-isolatedNetForceDirection * direction);
+            }
         }
     }
 }

@@ -7,7 +7,8 @@ class Entity{
     public:
         Entity(float, vec3, vec3);
 
-        void addForce(vec3);
+        void addAppliedForce(vec3);
+        void addNormalForce(vec3);
 
         float mass;
 
@@ -15,6 +16,8 @@ class Entity{
         vec3 position;
         vec3 velocity;
         vec3 netForce;
+        vec3 normalForce;
+        vec3 appliedForce;
 
         float rYaw;
         float rPitch;

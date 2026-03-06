@@ -43,19 +43,25 @@ void Player::updatePlayer(float deltaTime, const Uint8* state, float yaw, float 
     vec3 rightHorizontal = normalize(vec3(right.x, 0.0f, right.z));
 
     if(state[SDL_SCANCODE_W]){
-        addForce(movementForce * frontHorizontal);
+        addAppliedForce(movementForce * frontHorizontal);
     } 
     
     if(state[SDL_SCANCODE_S]){
-        addForce(-movementForce * frontHorizontal);
+        addAppliedForce(-movementForce * frontHorizontal);
     }
 
     if(state[SDL_SCANCODE_D]){
-        addForce(movementForce * rightHorizontal);
+        addAppliedForce(movementForce * rightHorizontal);
     } 
 
     if(state[SDL_SCANCODE_A]){
-        addForce(-movementForce * rightHorizontal);
+        addAppliedForce(-movementForce * rightHorizontal);
+    }
+
+    if(state[SDL_SCANCODE_SPACE]){
+        float weight = mass * 9.81f;
+        float jumpForce = weight + weight*0.1f;
+        addAppliedForce(jumpForce * up);
     }
 
     cameraPosition = position;

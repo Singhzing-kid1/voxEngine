@@ -6,11 +6,16 @@ Entity::Entity(float mass, vec3 size, vec3 position) :
     position(position),
     netForce(vec3(0)) {}
 
-void Entity::addForce(vec3 force){
-    netForce += force;
+void Entity::addAppliedForce(vec3 force){
+    appliedForce += force;
+}
+
+void Entity::addNormalForce(vec3 force){
+    normalForce += force;
 }
 
 void Entity::calculateAcceleration(){
+    netForce += appliedForce + normalForce;
     acceleration = netForce/mass;
 }
 
@@ -27,4 +32,6 @@ void Entity::tick(float deltaTime){
     calculateVelocity(deltaTime);
     calculatePosition(deltaTime);
     netForce = vec3(0);
+    appliedForce = vec3(0);
+    normalForce = vec3(0);
 }

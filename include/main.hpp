@@ -67,6 +67,7 @@
 #include "entity.hpp"
 #include "gpuCompute.hpp"
 #include "shader.hpp"
+#include "temp.hpp"
 #include "world.hpp"
 #include "perlin.hpp"
 #include "ui.hpp"
