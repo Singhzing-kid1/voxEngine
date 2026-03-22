@@ -60,8 +60,14 @@ void Player::updatePlayer(float deltaTime, const Uint8* state, float yaw, float 
 
     if(state[SDL_SCANCODE_SPACE]){
         float weight = mass * 9.81f;
-        float jumpForce = weight + weight*0.1f;
-        addAppliedForce(jumpForce * up);
+        float jumpForce = weight + weight*0.5f;
+
+        float isolatedVerticalNormalForce = dot(normalForce, up);
+
+
+        if(isolatedVerticalNormalForce > 0){
+            addAppliedForce(jumpForce * up);
+        }
     }
 
     cameraPosition = position;
