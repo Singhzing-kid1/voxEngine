@@ -1,0 +1,11 @@
+[package]
+name = "voxEngine"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+glam = "0.32.1"
+sdl3 = {version = "0.17.3", features = ["ash"]}
+vulkano = "0.35.2"
+vulkano-shaders = "0.35.0"
+ash = "0.32.1"
