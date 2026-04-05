@@ -5,6 +5,7 @@ use crate::camera::Camera;
 use crate::common::{HasEntity, Updateable};
 use crate::entity::Entity;
 
+#[allow(unused)]
 pub struct Player {
     movement_force: f32,
     reach: i32,

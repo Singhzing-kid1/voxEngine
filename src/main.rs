@@ -282,12 +282,7 @@ fn main() {
     
     engine.send_world_data(world.get_world_as_u32(), 104);
 
-    engine.init_rendering(
-        player.get_controller().get_position(),
-        player.get_camera().get_fov(),
-        player.get_camera().get_near(),
-        player.get_camera().get_far(),
-    );
+    engine.grab_mouse();
 
     while !engine.get_flags().get_quit_state() {
         engine.event_handling();

@@ -8,20 +8,17 @@ use sdl3::keyboard::Keycode;
 use sdl3::video::Window;
 
 use vulkano::buffer::BufferUsage;
-use vulkano::buffer::{Buffer, BufferContents, BufferCreateInfo, Subbuffer};
+use vulkano::buffer::{Buffer, BufferCreateInfo};
 use vulkano::command_buffer::AutoCommandBufferBuilder;
 use vulkano::command_buffer::ClearColorImageInfo;
 use vulkano::command_buffer::CommandBufferUsage;
-use vulkano::command_buffer::CopyBufferInfo;
 use vulkano::command_buffer::CopyBufferToImageInfo;
 use vulkano::command_buffer::CopyImageInfo;
 use vulkano::command_buffer::PrimaryCommandBufferAbstract;
-use vulkano::command_buffer::ResourceUseRef;
 use vulkano::command_buffer::allocator::StandardCommandBufferAllocator;
 use vulkano::descriptor_set::DescriptorSet;
 use vulkano::descriptor_set::WriteDescriptorSet;
 use vulkano::descriptor_set::allocator::StandardDescriptorSetAllocator;
-use vulkano::descriptor_set::layout::DescriptorSetLayout;
 use vulkano::device::{
     Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags,
     physical::PhysicalDeviceType,
@@ -93,6 +90,7 @@ impl Flags {
     }
 }
 
+#[allow(unused)]
 pub struct Engine {
     delta_time: u128,
     last_frame: u128,
@@ -122,7 +120,6 @@ pub struct Engine {
     resample_compute_pipeline: Arc<ComputePipeline>,
 
     voxel_set: Option<Arc<DescriptorSet>>,
-    resample_set: Option<Arc<DescriptorSet>>,
     render_set: Arc<DescriptorSet>,
 
     image: Arc<Image>,
@@ -150,6 +147,7 @@ pub struct Engine {
 }
 
 impl Engine {
+    #[allow(unused_mut)]
     pub fn new(title: &str, width: u16, height: u16, start: time::Instant, flags: Flags) -> Self {
         let sdl_context = sdl3::init().unwrap();
         let video = sdl_context.video().unwrap();
@@ -253,7 +251,7 @@ impl Engine {
             .unwrap()[0]
             .0;
 
-        let (mut swapchain, images) = Swapchain::new(
+        let (swapchain, images) = Swapchain::new(
             device.clone(),
             surface.clone(),
             SwapchainCreateInfo {
@@ -379,7 +377,6 @@ impl Engine {
 
             render_set,
             voxel_set: None,
-            resample_set: None,
 
             image,
             view,
@@ -470,7 +467,7 @@ impl Engine {
         }
     }
 
-    pub fn init_rendering(&mut self, position: glam::Vec3, fov: f32, near: f32, far: f32) {
+    pub fn grab_mouse(&mut self) {
         if self.flags.get_capture_mouse_state() {
             self.sdl_context
                 .mouse()

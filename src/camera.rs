@@ -12,6 +12,7 @@ pub struct Camera {
     pitch: f32,
     dimensions: (u16, u16),
 }
+
 impl Camera {
     pub fn new(fov: f32, near: f32, far: f32, w: u16, h: u16, camera_position: glam::Vec3) -> Self {
         Camera {
@@ -71,7 +72,6 @@ impl Camera {
         let (w, h) = self.dimensions;
         let (w, h) = (w as f32, h as f32);
 
-        let aspect = w / h;
         let tan_fov = (self.fov.to_radians() * 0.5).tan();
 
         let f_y = (h * 0.5) / tan_fov;
