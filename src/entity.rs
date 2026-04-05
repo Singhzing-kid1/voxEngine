@@ -88,17 +88,18 @@ impl Entity {
         self.acceleration = self.net_force / self.mass;
     }
 
-    fn calculate_velocity(&mut self, delta_time: u128) {
-        self.velocity += self.acceleration * delta_time as f32;
+    fn calculate_velocity(&mut self, delta_time: f32) {
+        self.velocity += self.acceleration * delta_time;
     }
 
-    fn calculate_position(&mut self, delta_time: u128) {
-        self.position += self.velocity * delta_time as f32;
+    fn calculate_position(&mut self, delta_time: f32) {
+        self.position += self.velocity * delta_time;
     }
 }
 
 impl Updateable for Entity {
     fn update(&mut self, delta_time: u128) {
+        let delta_time = delta_time as f32 / 1000.0;
         self.calculate_acceleration();
         self.calculate_velocity(delta_time);
         self.calculate_position(delta_time);

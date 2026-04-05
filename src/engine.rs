@@ -7,18 +7,51 @@ use sdl3::event::Event;
 use sdl3::keyboard::Keycode;
 use sdl3::video::Window;
 
+use vulkano::buffer::BufferUsage;
+use vulkano::buffer::{Buffer, BufferContents, BufferCreateInfo, Subbuffer};
+use vulkano::command_buffer::AutoCommandBufferBuilder;
+use vulkano::command_buffer::ClearColorImageInfo;
+use vulkano::command_buffer::CommandBufferUsage;
+use vulkano::command_buffer::CopyBufferInfo;
+use vulkano::command_buffer::CopyBufferToImageInfo;
+use vulkano::command_buffer::CopyImageInfo;
+use vulkano::command_buffer::PrimaryCommandBufferAbstract;
+use vulkano::command_buffer::ResourceUseRef;
+use vulkano::command_buffer::allocator::StandardCommandBufferAllocator;
+use vulkano::descriptor_set::DescriptorSet;
+use vulkano::descriptor_set::WriteDescriptorSet;
+use vulkano::descriptor_set::allocator::StandardDescriptorSetAllocator;
+use vulkano::descriptor_set::layout::DescriptorSetLayout;
 use vulkano::device::{
     Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags,
     physical::PhysicalDeviceType,
 };
+use vulkano::format::ClearColorValue;
+use vulkano::format::Format;
 use vulkano::image::Image;
+use vulkano::image::ImageCreateInfo;
 use vulkano::image::ImageUsage;
+use vulkano::image::view::ImageView;
+use vulkano::image::view::ImageViewCreateInfo;
 use vulkano::instance::{Instance, InstanceCreateFlags, InstanceCreateInfo};
+use vulkano::memory::allocator::AllocationCreateInfo;
+use vulkano::memory::allocator::MemoryTypeFilter;
 use vulkano::memory::allocator::StandardMemoryAllocator;
+use vulkano::pipeline::ComputePipeline;
+use vulkano::pipeline::Pipeline;
+use vulkano::pipeline::PipelineBindPoint;
+use vulkano::pipeline::PipelineLayout;
+use vulkano::pipeline::PipelineShaderStageCreateInfo;
+use vulkano::pipeline::compute::ComputePipelineCreateInfo;
+use vulkano::pipeline::layout::PipelineDescriptorSetLayoutCreateInfo;
 use vulkano::swapchain::{self, Surface, Swapchain, SwapchainCreateInfo};
 use vulkano::swapchain::{SurfaceApi, SwapchainPresentInfo};
 use vulkano::sync::GpuFuture;
 use vulkano::{VulkanLibrary, VulkanObject};
+
+use crate::cs;
+use crate::cs::PushConstants;
+use crate::rs;
 
 pub struct Flags {
     quit: bool,
@@ -82,6 +115,20 @@ pub struct Engine {
     images: Vec<Arc<Image>>,
 
     memory_allocator: Arc<StandardMemoryAllocator>,
+    command_buffer_allocator: Arc<StandardCommandBufferAllocator>,
+    descriptor_set_allocator: Arc<StandardDescriptorSetAllocator>,
+
+    render_compute_pipeline: Arc<ComputePipeline>,
+    resample_compute_pipeline: Arc<ComputePipeline>,
+
+    voxel_set: Option<Arc<DescriptorSet>>,
+    resample_set: Option<Arc<DescriptorSet>>,
+    render_set: Arc<DescriptorSet>,
+
+    image: Arc<Image>,
+    view: Arc<ImageView>,
+
+    previous_future: Option<Box<dyn GpuFuture + Send + Sync>>,
 
     event: EventPump,
 
@@ -93,6 +140,11 @@ pub struct Engine {
     mouse_y: f32,
     last_x: f32,
     last_y: f32,
+
+    scale: f32,
+
+    x: f32,
+    y: f32,
 
     flags: Flags,
 }
@@ -218,6 +270,85 @@ impl Engine {
 
         let memory_allocator = Arc::new(StandardMemoryAllocator::new_default(device.clone()));
 
+        let command_buffer_allocator = Arc::new(StandardCommandBufferAllocator::new(
+            device.clone(),
+            Default::default(),
+        ));
+        let descriptor_set_allocator = Arc::new(StandardDescriptorSetAllocator::new(
+            device.clone(),
+            Default::default(),
+        ));
+
+        let render_shader = cs::load(device.clone()).expect("cannot load shader");
+        let cs = render_shader.entry_point("main").unwrap();
+        let stage = PipelineShaderStageCreateInfo::new(cs);
+        let layout = PipelineLayout::new(
+            device.clone(),
+            PipelineDescriptorSetLayoutCreateInfo::from_stages([&stage])
+                .into_pipeline_layout_create_info(device.clone())
+                .unwrap(),
+        )
+        .unwrap();
+
+        let render_compute_pipeline = ComputePipeline::new(
+            device.clone(),
+            None,
+            ComputePipelineCreateInfo::stage_layout(stage, layout),
+        )
+        .unwrap();
+
+        let resample_shader = rs::load(device.clone()).expect("cannot load shader");
+        let rs = resample_shader.entry_point("main").unwrap();
+        let stage = PipelineShaderStageCreateInfo::new(rs);
+        let layout = PipelineLayout::new(
+            device.clone(),
+            PipelineDescriptorSetLayoutCreateInfo::from_stages([&stage])
+                .into_pipeline_layout_create_info(device.clone())
+                .unwrap(),
+        )
+        .unwrap();
+
+        let resample_compute_pipeline = ComputePipeline::new(
+            device.clone(),
+            None,
+            ComputePipelineCreateInfo::stage_layout(stage, layout),
+        )
+        .unwrap();
+
+        let image = Image::new(
+            memory_allocator.clone(),
+            ImageCreateInfo {
+                image_type: vulkano::image::ImageType::Dim2d,
+                format: Format::R8G8B8A8_UNORM,
+                extent: [width as u32, height as u32, 1],
+                usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC | ImageUsage::TRANSFER_DST,
+                ..Default::default()
+            },
+            AllocationCreateInfo {
+                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let layout = render_compute_pipeline
+            .layout()
+            .set_layouts()
+            .get(0)
+            .unwrap();
+        let view = ImageView::new_default(image.clone()).unwrap();
+
+        let render_set = DescriptorSet::new(
+            descriptor_set_allocator.clone(),
+            layout.clone(),
+            [WriteDescriptorSet::image_view(0, view.clone())],
+            [],
+        )
+        .unwrap();
+
+        let previous_future =
+            Some(Box::new(vulkano::sync::now(device.clone())) as Box<dyn GpuFuture + Send + Sync>);
+
         Engine {
             delta_time: 0,
             last_frame: 0,
@@ -240,6 +371,20 @@ impl Engine {
             images,
 
             memory_allocator,
+            command_buffer_allocator,
+            descriptor_set_allocator,
+
+            render_compute_pipeline,
+            resample_compute_pipeline,
+
+            render_set,
+            voxel_set: None,
+            resample_set: None,
+
+            image,
+            view,
+
+            previous_future,
 
             event,
 
@@ -252,6 +397,9 @@ impl Engine {
             last_x: 0.0,
             last_y: 0.0,
 
+            scale: 2.5,
+            x: 0.0,
+            y: 0.0,
             flags,
         }
     }
@@ -282,6 +430,13 @@ impl Engine {
                 } => {
                     self.flags.set_gravity_state(true);
                 }
+                Event::KeyUp {
+                    keycode: Some(Keycode::M),
+                    ..
+                } => {
+                    self.flags.set_capture_mouse_state(false);
+                }
+  
                 Event::MouseMotion {
                     xrel, yrel, x, y, ..
                 } => {
@@ -294,10 +449,11 @@ impl Engine {
                     let new_mouse_x = self.mouse_x + xrel;
                     let new_mouse_y = self.mouse_y + yrel;
 
-                    if new_mouse_x < self.width as f32 / 2.0
+                    if (new_mouse_x < self.width as f32 / 2.0
                         || new_mouse_x > self.width as f32 / 2.0
                         || new_mouse_y < self.height as f32 / 2.0
-                        || new_mouse_y > self.height as f32 / 2.0
+                        || new_mouse_y > self.height as f32 / 2.0)
+                        && self.flags.get_capture_mouse_state()
                     {
                         self.sdl_context.mouse().warp_mouse_in_window(
                             &self.window,
@@ -305,6 +461,9 @@ impl Engine {
                             self.height as f32 / 2.0,
                         );
                     }
+                }
+                Event::MouseWheel { y, .. } => {
+                    self.scale -= y * self.scale * 0.1;
                 }
                 _ => {}
             }
@@ -317,8 +476,6 @@ impl Engine {
                 .mouse()
                 .set_relative_mouse_mode(&self.window, true);
         }
-
-        let aspect = (self.height / self.width) as f32;
     }
 
     pub fn get_flags(&self) -> &Flags {
@@ -341,17 +498,206 @@ impl Engine {
         self.delta_time
     }
 
-    pub fn swap(&self) {
+    pub fn get_dimensions(&self) -> (u16, u16) {
+        (self.width, self.height)
+    }
+
+    pub fn send_world_data(&mut self, world: Vec<u32>, resolution: u32) {
+        let voxels = Image::new(
+            self.memory_allocator.clone(),
+            ImageCreateInfo {
+                image_type: vulkano::image::ImageType::Dim3d,
+                format: Format::R32G32B32A32_UINT,
+                extent: [resolution / 4, resolution / 4, resolution / 8],
+                usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_DST,
+                ..Default::default()
+            },
+            AllocationCreateInfo::default(),
+        )
+        .unwrap();
+
+        let voxel_staging_buffer = Buffer::from_iter(
+            self.memory_allocator.clone(),
+            BufferCreateInfo {
+                usage: BufferUsage::TRANSFER_SRC,
+                ..Default::default()
+            },
+            AllocationCreateInfo {
+                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
+                    | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+                ..Default::default()
+            },
+            world,
+        )
+        .unwrap();
+
+        let mut builder = AutoCommandBufferBuilder::primary(
+            self.command_buffer_allocator.clone(),
+            self.queue.queue_family_index(),
+            CommandBufferUsage::OneTimeSubmit,
+        )
+        .unwrap();
+
+        builder
+            .clear_color_image(ClearColorImageInfo::image(voxels.clone()))
+            .unwrap()
+            .copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(
+                voxel_staging_buffer,
+                voxels.clone(),
+            ))
+            .unwrap();
+
+        let _ = builder
+            .build()
+            .unwrap()
+            .execute(self.queue.clone())
+            .unwrap();
+
+        let view =
+            ImageView::new(voxels.clone(), ImageViewCreateInfo::from_image(&voxels)).unwrap();
+
+        let layout = self
+            .render_compute_pipeline
+            .layout()
+            .set_layouts()
+            .get(0)
+            .unwrap();
+
+        let voxel_set = DescriptorSet::new(
+            self.descriptor_set_allocator.clone(),
+            layout.clone(),
+            [WriteDescriptorSet::image_view(0, view)],
+            [],
+        )
+        .unwrap();
+
+        self.voxel_set = Some(voxel_set);
+    }
+
+    pub fn render(&mut self, pixel_to_ray: glam::Mat4, resolution: u32) {
         let (image_index, _, acquire_future) =
             swapchain::acquire_next_image(self.swapchain.clone(), None).unwrap();
 
-        let present = acquire_future
+        let swapchain_image = &self.images[image_index as usize];
+
+        let mut builder = AutoCommandBufferBuilder::primary(
+            self.command_buffer_allocator.clone(),
+            self.queue.queue_family_index(),
+            CommandBufferUsage::OneTimeSubmit,
+        )
+        .unwrap();
+
+        let layout = self
+            .resample_compute_pipeline
+            .layout()
+            .set_layouts()
+            .get(0)
+            .unwrap();
+
+        let resample_image = Image::new(
+            self.memory_allocator.clone(),
+            ImageCreateInfo {
+                image_type: vulkano::image::ImageType::Dim2d,
+                format: Format::R8G8B8A8_UNORM,
+                extent: [self.width as u32, self.height as u32, 1],
+                usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC | ImageUsage::TRANSFER_DST,
+                ..Default::default()
+            },
+            AllocationCreateInfo {
+                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let resample_view = ImageView::new(
+            resample_image.clone(),
+            ImageViewCreateInfo::from_image(&resample_image),
+        )
+        .unwrap();
+
+        let resample_set = DescriptorSet::new(
+            self.descriptor_set_allocator.clone(),
+            layout.clone(),
+            [
+                WriteDescriptorSet::image_view(0, self.view.clone()),
+                WriteDescriptorSet::image_view(1, resample_view),
+            ],
+            [],
+        )
+        .unwrap();
+
+        let push_data = PushConstants {
+            pixelToRay: pixel_to_ray.to_cols_array_2d(),
+            voxel_resolution: resolution,
+            render_mode: 1,
+        };
+
+        unsafe {
+            builder
+                .clear_color_image(ClearColorImageInfo {
+                    clear_value: ClearColorValue::Float([0.0, 0.0, 0.0, 1.0]),
+                    ..ClearColorImageInfo::image(self.image.clone())
+                })
+                .unwrap()
+                .bind_pipeline_compute(self.render_compute_pipeline.clone())
+                .unwrap()
+                .bind_descriptor_sets(
+                    PipelineBindPoint::Compute,
+                    self.render_compute_pipeline.layout().clone(),
+                    0,
+                    vec![
+                        self.render_set.clone(),
+                        self.voxel_set.as_ref().unwrap().clone(),
+                    ],
+                )
+                .unwrap()
+                .push_constants(self.render_compute_pipeline.layout().clone(), 0, push_data)
+                .unwrap()
+                .dispatch([self.width as u32 / 8, self.height as u32 / 8, 1])
+                .unwrap()
+                .bind_pipeline_compute(self.resample_compute_pipeline.clone())
+                .unwrap()
+                .bind_descriptor_sets(
+                    PipelineBindPoint::Compute,
+                    self.resample_compute_pipeline.layout().clone(),
+                    0,
+                    vec![resample_set.clone()],
+                )
+                .unwrap()
+                .dispatch([self.width as u32 / 8, self.height as u32 / 8, 1])
+                .unwrap()
+                .copy_image(CopyImageInfo::images(
+                    resample_image.clone(),
+                    swapchain_image.clone(),
+                ))
+                .unwrap();
+        };
+
+        let command_buffer = builder.build().unwrap();
+
+        let previous_future = self
+            .previous_future
+            .take()
+            .unwrap_or_else(|| Box::new(vulkano::sync::now(self.device.clone())));
+
+        let present = previous_future
+            .join(acquire_future)
+            .then_execute(self.queue.clone(), command_buffer)
+            .unwrap()
             .then_swapchain_present(
                 self.queue.clone(),
                 SwapchainPresentInfo::swapchain_image_index(self.swapchain.clone(), image_index),
             )
-            .then_signal_fence_and_flush();
+            .then_signal_fence_and_flush()
+            .unwrap();
 
-        present.unwrap();
+        present.wait(None).unwrap();
+
+        self.previous_future = Some(Box::new(present));
+
+        if let Some(prev) = &mut self.previous_future {
+            prev.as_mut().cleanup_finished();
+        }
     }
 }

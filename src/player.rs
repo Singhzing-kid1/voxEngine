@@ -21,6 +21,8 @@ impl Player {
         mass: f32,
         movement_force: f32,
         reach: i32,
+        w: u16,
+        h: u16,
         position: glam::Vec3,
         size: glam::Vec3,
     ) -> Self {
@@ -28,7 +30,7 @@ impl Player {
             movement_force,
             reach,
 
-            camera: Camera::new(fov, near, far, position),
+            camera: Camera::new(fov, near, far, w, h, position),
             entity: Entity::new(mass, size, position),
         }
     }
@@ -50,9 +52,9 @@ impl Player {
             .set_r_pitch(self.camera.get_pitch().to_radians());
 
         let front_horizontal =
-            glam::vec3(self.camera.get_front().x, 0.0, self.camera.get_front().z).normalize();
+            glam::vec3(self.camera.get_front().x, 0.0, self.camera.get_front().z).normalize_or_zero();
         let right_horizontal =
-            glam::vec3(self.camera.get_right().x, 0.0, self.camera.get_right().z).normalize();
+            glam::vec3(self.camera.get_right().x, 0.0, self.camera.get_right().z).normalize_or_zero();
 
         if event_pump.keyboard_state().is_scancode_pressed(Scancode::W) {
             self.entity
