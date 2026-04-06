@@ -257,8 +257,8 @@ fn main() {
 
     let mut engine = Engine::new(
         "vox engine using rust",
-        3440,
-        1440,
+        1920,
+        1080,
         time::Instant::now(),
         flags,
     );
