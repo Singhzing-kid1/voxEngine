@@ -177,12 +177,14 @@ impl Engine {
         let mut enabled_extensions = vulkano::instance::InstanceExtensions::empty();
 
         for ext in &extensions {
-            match ext.as_str() {
-                "VK_KHR_wayland_surface" => enabled_extensions.khr_wayland_surface = true,
-                "VK_KHR_xlib_surface" => enabled_extensions.khr_xlib_surface = true,
-                "VK_KHR_surface" => enabled_extensions.khr_surface = true,
-                _ => {
-                    eprintln!("Unknown Vulkan instance extension: {}", ext);
+                match ext.as_str() {
+                    "VK_KHR_wayland_surface" => enabled_extensions.khr_wayland_surface = true,
+                    "VK_KHR_xlib_surface" => enabled_extensions.khr_xlib_surface = true,
+                    "VK_KHR_xcb_surface" => enabled_extensions.khr_xcb_surface = true,
+                    "VK_KHR_surface" => enabled_extensions.khr_surface = true,
+                    "VK_KHR_win32_surface" => enabled_extensions.khr_win32_surface = true,
+                    _ => {
+                        eprintln!("Unknown Vulkan instance extension: {}", ext);
                 }
             }
         }
