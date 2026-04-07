@@ -282,7 +282,7 @@ fn main() {
     
     engine.send_world_data(world.get_world_as_u32(), 104);
 
-    engine.grab_mouse();
+    engine.toggle_mouse(engine.get_flags().get_capture_mouse_state());
 
     while !engine.get_flags().get_quit_state() {
         engine.event_handling();

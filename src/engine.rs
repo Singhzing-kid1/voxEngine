@@ -50,6 +50,16 @@ use crate::cs;
 use crate::cs::PushConstants;
 use crate::rs;
 
+#[derive(Debug, Clone, Copy)]
+#[allow(unused)]
+enum RENDERMODE {
+    COORD,
+    STEPS,
+    NORMAL,
+    UV,
+    DEPTH
+}
+
 pub struct Flags {
     quit: bool,
     gravity: bool,
@@ -137,6 +147,8 @@ pub struct Engine {
     mouse_y: f32,
     last_x: f32,
     last_y: f32,
+
+    current_render_mode: RENDERMODE,
 
     scale: f32,
 
@@ -385,6 +397,8 @@ impl Engine {
 
             event,
 
+            current_render_mode: RENDERMODE::STEPS,
+
             x_offset: 0.0,
             y_offset: 0.0,
             accum_x: 0.0,
@@ -427,52 +441,65 @@ impl Engine {
                 } => {
                     self.flags.set_gravity_state(true);
                 }
-                Event::KeyUp {
+                Event::KeyDown {
                     keycode: Some(Keycode::M),
                     ..
                 } => {
-                    self.flags.set_capture_mouse_state(false);
+                    self.flags.set_capture_mouse_state(!self.flags.get_capture_mouse_state());
+                    self.sdl_context
+                        .mouse()
+                        .set_relative_mouse_mode(&self.window, self.flags.get_capture_mouse_state());
                 }
-  
+                Event::KeyDown {
+                    keycode: Some(Keycode::R),
+                    ..
+                } => {
+                    let render_mode = self.current_render_mode as u32;
+                    let new_render_mode = (render_mode + 1) % 5;
+                    self.current_render_mode = match new_render_mode {
+                        0 => RENDERMODE::COORD,
+                        1 => RENDERMODE::STEPS,
+                        2 => RENDERMODE::NORMAL,
+                        3 => RENDERMODE::UV,
+                        4 => RENDERMODE::DEPTH,
+                        _ => RENDERMODE::STEPS,
+                    }
+                }
                 Event::MouseMotion {
                     xrel, yrel, x, y, ..
                 } => {
-                    self.accum_x -= xrel;
-                    self.accum_y += yrel;
+                    if self.flags.get_capture_mouse_state() {
+                        self.accum_x -= xrel;
+                        self.accum_y += yrel;
 
-                    self.mouse_x = x;
-                    self.mouse_y = y;
+                        self.mouse_x = x;
+                        self.mouse_y = y;
 
-                    let new_mouse_x = self.mouse_x + xrel;
-                    let new_mouse_y = self.mouse_y + yrel;
+                        let new_mouse_x = self.mouse_x + xrel;
+                        let new_mouse_y = self.mouse_y + yrel;
 
-                    if (new_mouse_x < self.width as f32 / 2.0
-                        || new_mouse_x > self.width as f32 / 2.0
-                        || new_mouse_y < self.height as f32 / 2.0
-                        || new_mouse_y > self.height as f32 / 2.0)
-                        && self.flags.get_capture_mouse_state()
-                    {
-                        self.sdl_context.mouse().warp_mouse_in_window(
-                            &self.window,
-                            self.width as f32 / 2.0,
-                            self.height as f32 / 2.0,
-                        );
+                        if new_mouse_x < self.width as f32 / 2.0
+                            || new_mouse_x > self.width as f32 / 2.0
+                            || new_mouse_y < self.height as f32 / 2.0
+                            || new_mouse_y > self.height as f32 / 2.0
+                        {
+                            self.sdl_context.mouse().warp_mouse_in_window(
+                                &self.window,
+                                self.width as f32 / 2.0,
+                                self.height as f32 / 2.0,
+                            );
+                        }
                     }
-                }
-                Event::MouseWheel { y, .. } => {
-                    self.scale -= y * self.scale * 0.1;
                 }
                 _ => {}
             }
         }
     }
 
-    pub fn grab_mouse(&mut self) {
-        if self.flags.get_capture_mouse_state() {
-            self.sdl_context
-                .mouse()
-                .set_relative_mouse_mode(&self.window, true);
-        }
+    pub fn toggle_mouse(&self, toggle: bool) {
+        self.sdl_context
+            .mouse()
+            .set_relative_mouse_mode(&self.window, toggle);
     }
 
     pub fn get_flags(&self) -> &Flags {
@@ -627,7 +654,7 @@ impl Engine {
         let push_data = PushConstants {
             pixelToRay: pixel_to_ray.to_cols_array_2d(),
             voxel_resolution: resolution,
-            render_mode: 1,
+            render_mode: self.current_render_mode as u32,
         };
 
         unsafe {
