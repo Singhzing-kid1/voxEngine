@@ -131,6 +131,7 @@ pub struct Engine {
 
     voxel_set: Option<Arc<DescriptorSet>>,
     render_set: Arc<DescriptorSet>,
+    image_format: Format,
 
     image: Arc<Image>,
     view: Arc<ImageView>,
@@ -262,8 +263,15 @@ impl Engine {
 
         let image_format = physical_device
             .surface_formats(&surface, Default::default())
-            .unwrap()[0]
-            .0;
+            .unwrap()
+            .iter()
+            .find(|(f, _)| *f == Format::R8G8B8A8_UNORM)
+            .map(|(f, _)| *f)
+            .unwrap_or_else(|| {
+                physical_device
+                    .surface_formats(&surface, Default::default())
+                    .unwrap()[0].0
+        });
 
         let (swapchain, images) = Swapchain::new(
             device.clone(),
@@ -331,7 +339,7 @@ impl Engine {
             memory_allocator.clone(),
             ImageCreateInfo {
                 image_type: vulkano::image::ImageType::Dim2d,
-                format: Format::R8G8B8A8_UNORM,
+                format: image_format,
                 extent: [width as u32, height as u32, 1],
                 usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC | ImageUsage::TRANSFER_DST,
                 ..Default::default()
@@ -391,6 +399,8 @@ impl Engine {
 
             render_set,
             voxel_set: None,
+
+            image_format,
 
             image,
             view,
@@ -624,7 +634,7 @@ impl Engine {
             self.memory_allocator.clone(),
             ImageCreateInfo {
                 image_type: vulkano::image::ImageType::Dim2d,
-                format: Format::R8G8B8A8_UNORM,
+                format: self.image_format,
                 extent: [self.width as u32, self.height as u32, 1],
                 usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC | ImageUsage::TRANSFER_DST,
                 ..Default::default()
