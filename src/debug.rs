@@ -181,10 +181,6 @@ impl Debug {
     }
 
     pub fn render(&mut self, engine: &mut Engine, player: &mut Player) {
-        unsafe {
-            self.ash_device.queue_wait_idle(self.queue.handle()).unwrap();
-        }
-
         let image_index = engine.get_current_image_index();
 
         for event in engine.get_collected_events() {
