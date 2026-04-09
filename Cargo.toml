@@ -8,5 +8,9 @@ glam = "0.32.1"
 sdl3 = { version = "0.17.3", features = ["ash"] }
 vulkano = "0.35.2"
 vulkano-shaders = "0.35.0"
-ash = "0.32.1"
-dear-imgui-rs = "0.10.4"
+ash = "0.38.0"
+dear-imgui-rs = "0.11.0"
+dear-imgui-ash = "0.11.0"
+dear-imgui-sdl3 = "0.11.0"
+dear-imgui-reflect = { version = "0.11.0", features = ["glam"] }
+sdl3-sys = "0.6.2"

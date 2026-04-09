@@ -4,12 +4,14 @@ pub mod engine;
 pub mod entity;
 pub mod player;
 pub mod world;
+pub mod debug;
 
 use engine::Engine;
 use engine::Flags;
 use player::Player;
 use std::time;
 use world::World;
+use debug::Debug;
 
 use crate::common::Updateable;
 
@@ -263,6 +265,8 @@ fn main() {
         flags,
     );
 
+    let mut debug = Debug::new(&engine);
+
     let (w, h) = engine.get_dimensions();
 
     let mut player = Player::new(
@@ -296,5 +300,7 @@ fn main() {
         player.update(engine.get_delta_time());
 
         engine.render(player.get_camera().get_pixel_to_ray_matrix(), 24);
+        debug.render(&mut engine, &mut player);
+        engine.present();
     }
 }

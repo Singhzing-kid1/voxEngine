@@ -1,11 +1,14 @@
 use sdl3::EventPump;
 use sdl3::keyboard::Scancode;
 
+use dear_imgui_reflect::ImGuiReflect;
+
 use crate::camera::Camera;
 use crate::common::{HasEntity, Updateable};
 use crate::entity::Entity;
 
 #[allow(unused)]
+#[derive(ImGuiReflect)]
 pub struct Player {
     movement_force: f32,
     reach: i32,
