@@ -251,7 +251,6 @@ impl Engine {
         let instance = Instance::new(
             library.clone(),
             InstanceCreateInfo {
-                enabled_layers: vec!["VK_LAYER_KHRONOS_validation".to_string()],
                 flags: InstanceCreateFlags::ENUMERATE_PORTABILITY,
                 enabled_extensions,
                 ..Default::default()
