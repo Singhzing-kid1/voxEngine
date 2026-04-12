@@ -5,6 +5,7 @@ pub mod entity;
 pub mod player;
 pub mod world;
 pub mod debug;
+pub mod perlin;
 
 use engine::Engine;
 use engine::Flags;
@@ -12,7 +13,6 @@ use player::Player;
 use std::time;
 use world::World;
 use debug::Debug;
-
 use crate::common::Updateable;
 
 mod cs {
@@ -282,9 +282,9 @@ fn main() {
         glam::Vec3::ONE,
     );
 
-    let world = World::new(104);
+    let world = World::new(416, 42);
     
-    engine.send_world_data(world.get_world_as_u32(), 104);
+    engine.send_world_data(world.get_world_as_u32(), 416);
 
     engine.toggle_mouse(engine.get_flags().get_capture_mouse_state());
 

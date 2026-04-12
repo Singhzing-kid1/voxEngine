@@ -1,9 +1,16 @@
+use crate::perlin::FractalNoise;
+
 pub struct World {
     world: Vec<u128>,
+    height_map: FractalNoise,
+
 }
 
 impl World {
-    pub fn new(resolution: u32) -> Self {
+    pub fn new(resolution: u32, seed: u64) -> Self {
+        let height_map = FractalNoise::new(seed, 6, 2.0, 0.5);
+
+
         let res = resolution as usize;
         let texel_dim = res / 4;
         let texel_dim_z = res / 8;
@@ -23,12 +30,19 @@ impl World {
             world[texel] |= 1u128 << bit;
         };
 
-        set_voxel(1, 1, 1);
-        set_voxel(1, 1, 2);
+        for x in 0..(resolution / 4) {
+            for z in 0..(resolution / 8) {
+                let height = (resolution / 4) as f64 * height_map.sample(x as f64 * 0.1, z as f64 * 0.1) * 0.5 + 0.5;
+                for y in 1..height as u32 {
+                    set_voxel(x as usize, 0, z as usize);
+                    set_voxel(x as usize, y as usize, z as usize);
+                }
+            }   
+        }
 
 
 
-        World { world }
+        World { world, height_map }
     }
 
     pub fn get_world(&self) -> Vec<u128> {
