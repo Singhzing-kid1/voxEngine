@@ -50,7 +50,7 @@ anyways pride versioning is as follows:
 
 ![pride versioning explaining diagram](https://pridever.org/images/pridever.png)
 
-        
+discord webhook test
         
 
 
