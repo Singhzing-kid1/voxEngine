@@ -1,4 +1,4 @@
-use std::{fmt::Display, sync::Arc, time};
+use std::{sync::Arc, time};
 
 use sdl3::{
     EventPump,
@@ -476,7 +476,7 @@ impl Engine {
             event,
             collected_events: Vec::new(),
 
-            current_render_mode: RENDERMODE::STEPS,
+            current_render_mode: RENDERMODE::COORD,
 
             x_offset: 0.0,
             y_offset: 0.0,

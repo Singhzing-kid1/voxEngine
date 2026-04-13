@@ -6,7 +6,9 @@ fn splitmix64(state: &mut u64) -> u64 {
     z = (z ^ (z >> 30)).wrapping_mul(0xBF58476D1CE4E5B9);
     z = (z ^ (z >> 27)).wrapping_mul(0x94D049BB133111EB);
     z ^ (z >> 31)
-} 
+}
+
+#[allow(unused)]
 pub struct Perlin {
     perm: [u8; 512],
     seed: u64

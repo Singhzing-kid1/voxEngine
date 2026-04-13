@@ -13,12 +13,12 @@ use vulkano::instance::Instance;
 use vulkano::device::Queue;
 use vulkano::VulkanObject;
 use dear_imgui_reflect::ImGuiReflectExt;
-use dear_imgui_rs::TreeNodeFlags;
 
-use crate::common::Updateable;
 use crate::engine::Engine;
 use crate::player::Player;
 
+
+#[allow(unused)]
 pub struct Debug {
     device: Arc<Device>,
     queue: Arc<Queue>,

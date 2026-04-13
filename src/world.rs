@@ -1,11 +1,11 @@
 use crate::perlin::FractalNoise;
 
-// World dimensions in voxels (derived from physical size / voxel size)
-// 1km x 1km x 500m with 25cm voxels = 4000 x 4000 x 2000 voxels
+//TODO make this part of the world struct
 const WORLD_X: usize = 2000;
 const WORLD_Y: usize = 1000;
 const WORLD_Z: usize = 2000;
 
+#[allow(unused)]
 pub struct World {
     world: Vec<u128>,
     height_map: FractalNoise,
