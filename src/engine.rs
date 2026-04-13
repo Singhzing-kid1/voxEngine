@@ -678,13 +678,13 @@ impl Engine {
 // rendering
 
 impl Engine {
-    pub fn send_world_data(&mut self, world: Vec<u32>, resolution: u32) {
+    pub fn send_world_data(&mut self, world: Vec<u32>, resolution: [u32; 3]) {
         let voxels = Image::new(
             self.memory_allocator.clone(),
             ImageCreateInfo {
                 image_type: vulkano::image::ImageType::Dim3d,
                 format: Format::R32G32B32A32_UINT,
-                extent: [resolution / 4, resolution / 4, resolution / 8],
+                extent: [resolution[0] / 4, resolution[1] / 4, resolution[2] / 8],
                 usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_DST,
                 ..Default::default()
             },
@@ -750,7 +750,7 @@ impl Engine {
         self.voxel_set = Some(voxel_set);
     }
 
-    pub fn render(&mut self, pixel_to_ray: glam::Mat4, resolution: u32) {
+    pub fn render(&mut self, pixel_to_ray: glam::Mat4, resolution: [u32; 3]) {
         let (image_index, _, acquire_future) =
             swapchain::acquire_next_image(self.swapchain.clone(), None).unwrap();
 

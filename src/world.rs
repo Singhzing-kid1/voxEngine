@@ -1,27 +1,38 @@
 use crate::perlin::FractalNoise;
 
+// World dimensions in voxels (derived from physical size / voxel size)
+// 1km x 1km x 500m with 25cm voxels = 4000 x 4000 x 2000 voxels
+const WORLD_X: usize = 2000;
+const WORLD_Y: usize = 1000;
+const WORLD_Z: usize = 2000;
+
 pub struct World {
     world: Vec<u128>,
     height_map: FractalNoise,
-
+    dim_x: usize,
+    dim_y: usize,
+    dim_z: usize,
 }
 
 impl World {
-    pub fn new(resolution: u32, seed: u64) -> Self {
+    pub fn new(seed: u64) -> Self {
+        let dim_x = WORLD_X;
+        let dim_y = WORLD_Y;
+        let dim_z = WORLD_Z;
+
         let height_map = FractalNoise::new(seed, 6, 2.0, 0.5);
 
-
-        let res = resolution as usize;
-        let texel_dim = res / 4;
-        let texel_dim_z = res / 8;
-        let total = texel_dim * texel_dim * texel_dim_z;
+        let texel_x = dim_x / 4;
+        let texel_y = dim_y / 4;
+        let texel_z = dim_z / 8;
+        let total = texel_x * texel_y * texel_z;
         let mut world = vec![0u128; total];
 
         let mut set_voxel = |x: usize, y: usize, z: usize| {
             let tx = x / 4;
             let ty = y / 4;
             let tz = z / 8;
-            let texel = tx + ty * texel_dim + tz * texel_dim * texel_dim;
+            let texel = tx + ty * texel_x + tz * texel_x * texel_y;
 
             let channel = x % 4;
             let bit_in_channel = (y % 4) + (z % 8) * 4;
@@ -30,19 +41,34 @@ impl World {
             world[texel] |= 1u128 << bit;
         };
 
-        for x in 0..(resolution / 4) {
-            for z in 0..(resolution / 8) {
-                let height = (resolution / 4) as f64 * height_map.sample(x as f64 * 0.1, z as f64 * 0.1) * 0.5 + 0.5;
-                for y in 1..height as u32 {
-                    set_voxel(x as usize, 0, z as usize);
-                    set_voxel(x as usize, y as usize, z as usize);
+        let noise_frequency = 1.0 / 400.0;
+
+        for x in 0..dim_x {
+            for z in 0..dim_z {
+                let t = height_map.sample(x as f64 * noise_frequency, z as f64 * noise_frequency);
+                let height = (dim_y as f64 * (t * 0.5 + 0.5)) as usize;
+                let height = height.clamp(1, dim_y);
+
+                for y in 0..height {
+                    set_voxel(x, y, z);
                 }
-            }   
+            }
         }
 
+        World { world, height_map, dim_x, dim_y, dim_z }
+    }
 
+    pub fn dimensions(&self) -> [u32; 3] {
+        [self.dim_x as u32, self.dim_y as u32, self.dim_z as u32]
+    }
 
-        World { world, height_map }
+    pub fn dimensions_metres(&self) -> (f64, f64, f64) {
+        const VOXEL_SIZE_M: f64 = 0.50;
+        (
+            self.dim_x as f64 * VOXEL_SIZE_M,
+            self.dim_y as f64 * VOXEL_SIZE_M,
+            self.dim_z as f64 * VOXEL_SIZE_M,
+        )
     }
 
     pub fn get_world(&self) -> Vec<u128> {

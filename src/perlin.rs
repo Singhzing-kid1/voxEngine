@@ -87,7 +87,6 @@ impl Perlin {
     }
 }
 
-
 pub struct FractalNoise {
     perlin: Perlin,
 
