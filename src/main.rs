@@ -267,8 +267,11 @@ fn main() {
         time::Instant::now(),
         flags,
     );
+    println!("initialized engine");
+
 
     let mut debug = Debug::new(&engine);
+    println!("initialized debug ui");
 
     let (w, h) = engine.get_dimensions();
 
@@ -285,9 +288,13 @@ fn main() {
         glam::Vec3::ONE,
     );
 
+    println!("start world generation");
     let world = World::new(416120398);
+
     
     engine.send_world_data(world.get_world_as_u32(), world.dimensions());
+    println!("sent world data to gpu");
+
 
     engine.toggle_mouse(engine.get_flags().get_capture_mouse_state());
 

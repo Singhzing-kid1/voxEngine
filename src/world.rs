@@ -1,3 +1,4 @@
+use std::io::{self, Write};
 use crate::perlin::FractalNoise;
 
 //TODO make this part of the world struct
@@ -51,10 +52,10 @@ impl World {
 
                 for y in 0..height {
                     set_voxel(x, y, z);
+
                 }
             }
         }
-
         World { world, height_map, dim_x, dim_y, dim_z }
     }
 
