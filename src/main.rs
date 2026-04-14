@@ -14,6 +14,7 @@ use std::time;
 use world::World;
 use debug::Debug;
 use crate::common::Updateable;
+use glam::vec3;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -262,7 +263,7 @@ fn main() {
 
     let mut engine = Engine::new(
         "vox engine using rust",
-        1920,
+        2560,
         1080,
         time::Instant::now(),
         flags,
@@ -289,10 +290,10 @@ fn main() {
     );
 
     println!("start world generation");
-    let world = World::new(416120398);
+    let world = World::new(416120398, vec3(2000.0, 1000.0, 2000.0));
 
     
-    engine.send_world_data(world.get_world_as_u32(), world.dimensions());
+    engine.send_world_data(world.get_world_as_u32(), world.get_dimensions());
     println!("sent world data to gpu");
 
 
@@ -309,7 +310,7 @@ fn main() {
 
         player.update(engine.get_delta_time());
 
-        engine.render(player.get_camera().get_pixel_to_ray_matrix(), world.dimensions());
+        engine.render(player.get_camera().get_pixel_to_ray_matrix(), world.get_dimensions());
         debug.render(&mut engine, &mut player);
         engine.present();
     }
