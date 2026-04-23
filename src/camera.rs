@@ -1,4 +1,7 @@
+use dear_imgui_reflect::ImGuiReflect;
 use crate::common::Updateable;
+
+#[derive(ImGuiReflect)]
 pub struct Camera {
     fov: f32,
     near: f32,
@@ -8,7 +11,9 @@ pub struct Camera {
     up: glam::Vec3,
     right: glam::Vec3,
     camera_orientation: glam::Quat,
+    #[imgui(slider, min = 0.0, max = 360.0)]
     yaw: f32,
+    #[imgui(slider, min = -89.9, max = 89.9)]
     pitch: f32,
     dimensions: (u16, u16),
 }

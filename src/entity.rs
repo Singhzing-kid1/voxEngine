@@ -1,5 +1,7 @@
+use dear_imgui_reflect::ImGuiReflect;
 use crate::common::Updateable;
 
+#[derive(ImGuiReflect)]
 pub struct Entity {
     mass: f32,
 

@@ -1,58 +1,105 @@
-use std::sync::Arc;
-use std::time;
+use std::{sync::Arc, time};
 
-use sdl3::EventPump;
-use sdl3::VideoSubsystem;
-use sdl3::event::Event;
-use sdl3::keyboard::Keycode;
-use sdl3::video::Window;
-
-use vulkano::buffer::BufferUsage;
-use vulkano::buffer::{Buffer, BufferCreateInfo};
-use vulkano::command_buffer::AutoCommandBufferBuilder;
-use vulkano::command_buffer::ClearColorImageInfo;
-use vulkano::command_buffer::CommandBufferUsage;
-use vulkano::command_buffer::CopyBufferToImageInfo;
-use vulkano::command_buffer::CopyImageInfo;
-use vulkano::command_buffer::PrimaryCommandBufferAbstract;
-use vulkano::command_buffer::allocator::StandardCommandBufferAllocator;
-use vulkano::descriptor_set::DescriptorSet;
-use vulkano::descriptor_set::WriteDescriptorSet;
-use vulkano::descriptor_set::allocator::StandardDescriptorSetAllocator;
-use vulkano::device::{
-    Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags,
-    physical::PhysicalDeviceType,
+use sdl3::{
+    EventPump,
+    VideoSubsystem,
+    event::Event,
+    keyboard::Keycode,
+    video::Window
 };
-use vulkano::format::ClearColorValue;
-use vulkano::format::Format;
-use vulkano::image::Image;
-use vulkano::image::ImageCreateInfo;
-use vulkano::image::ImageUsage;
-use vulkano::image::view::ImageView;
-use vulkano::image::view::ImageViewCreateInfo;
-use vulkano::instance::{Instance, InstanceCreateFlags, InstanceCreateInfo};
-use vulkano::memory::allocator::AllocationCreateInfo;
-use vulkano::memory::allocator::MemoryTypeFilter;
-use vulkano::memory::allocator::StandardMemoryAllocator;
-use vulkano::pipeline::ComputePipeline;
-use vulkano::pipeline::Pipeline;
-use vulkano::pipeline::PipelineBindPoint;
-use vulkano::pipeline::PipelineLayout;
-use vulkano::pipeline::PipelineShaderStageCreateInfo;
-use vulkano::pipeline::compute::ComputePipelineCreateInfo;
-use vulkano::pipeline::layout::PipelineDescriptorSetLayoutCreateInfo;
-use vulkano::swapchain::{self, Surface, Swapchain, SwapchainCreateInfo};
-use vulkano::swapchain::{SurfaceApi, SwapchainPresentInfo};
-use vulkano::sync::GpuFuture;
-use vulkano::{VulkanLibrary, VulkanObject};
 
-use crate::cs;
-use crate::cs::PushConstants;
-use crate::rs;
+use vulkano::{
+    VulkanLibrary,
+    VulkanObject,
+    buffer::{
+        Buffer,
+        BufferUsage,
+        BufferCreateInfo
+    },
+    command_buffer::{
+        AutoCommandBufferBuilder,
+        ClearColorImageInfo,
+        CommandBufferUsage,
+        CopyBufferToImageInfo,
+        CopyImageInfo,
+        PrimaryCommandBufferAbstract,
+        allocator::StandardCommandBufferAllocator
+    },
+    descriptor_set::{
+        DescriptorSet,
+        WriteDescriptorSet,
+        allocator::StandardDescriptorSetAllocator
+    },
+    device::{
+        Device,
+        DeviceCreateInfo,
+        DeviceExtensions,
+        Queue,
+        QueueCreateInfo,
+        QueueFlags,
+        physical::PhysicalDeviceType
+    },
+    format::{
+        ClearColorValue,
+        Format
+    },
+    image::{
+        Image,
+        ImageCreateInfo,
+        ImageUsage,
+        view::{
+            ImageView,
+            ImageViewCreateInfo
+        }
+    },
+    instance::{
+        Instance,
+        InstanceCreateFlags,
+        InstanceCreateInfo
+    },
+    memory::{
+        allocator::{
+            AllocationCreateInfo,
+            MemoryTypeFilter,
+            StandardMemoryAllocator
+        }
+    },
+    pipeline::{
+        ComputePipeline,
+        Pipeline,
+        PipelineBindPoint,
+        PipelineLayout,
+        PipelineShaderStageCreateInfo,
+        compute::ComputePipelineCreateInfo,
+        layout::PipelineDescriptorSetLayoutCreateInfo
+    },
+    swapchain::{
+        self,
+        Surface,
+        Swapchain,
+        SwapchainCreateInfo,
+        SurfaceApi,
+        SwapchainPresentInfo,
+        SwapchainAcquireFuture
+    },
+    sync::{
+        GpuFuture,
+        semaphore::Semaphore
+    }
+};
 
-#[derive(Debug, Clone, Copy)]
+use dear_imgui_reflect::ImGuiReflect;
+
+use crate::{
+    cs,
+    cs::PushConstants,
+    rs
+};
+
+#[derive(Debug, Clone, Copy, ImGuiReflect)]
+#[imgui(enum_style = "dropdown")]
 #[allow(unused)]
-enum RENDERMODE {
+pub enum RENDERMODE {
     COORD,
     STEPS,
     NORMAL,
@@ -60,6 +107,7 @@ enum RENDERMODE {
     DEPTH
 }
 
+#[derive(ImGuiReflect)]
 pub struct Flags {
     quit: bool,
     gravity: bool,
@@ -137,8 +185,14 @@ pub struct Engine {
     view: Arc<ImageView>,
 
     previous_future: Option<Box<dyn GpuFuture + Send + Sync>>,
+    current_image_index: u32,
+    current_acquire_future: Option<SwapchainAcquireFuture>,
+
+    render_complete_semaphore: Arc<Semaphore>,
 
     event: EventPump,
+
+    collected_events: Vec<Event>,
 
     x_offset: f32,
     y_offset: f32,
@@ -158,6 +212,8 @@ pub struct Engine {
 
     flags: Flags,
 }
+
+// Public
 
 impl Engine {
     #[allow(unused_mut)]
@@ -369,6 +425,13 @@ impl Engine {
         let previous_future =
             Some(Box::new(vulkano::sync::now(device.clone())) as Box<dyn GpuFuture + Send + Sync>);
 
+        let render_complete_semaphore = Arc::new(
+            vulkano::sync::semaphore::Semaphore::new(
+                device.clone(),
+                Default::default()
+            ).unwrap()
+        );
+
         Engine {
             delta_time: 0,
             last_frame: 0,
@@ -406,10 +469,14 @@ impl Engine {
             view,
 
             previous_future,
+            current_image_index: 0,
+            current_acquire_future: None,
+            render_complete_semaphore,
 
             event,
+            collected_events: Vec::new(),
 
-            current_render_mode: RENDERMODE::STEPS,
+            current_render_mode: RENDERMODE::COORD,
 
             x_offset: 0.0,
             y_offset: 0.0,
@@ -426,7 +493,11 @@ impl Engine {
             flags,
         }
     }
+}
 
+// event handling
+
+impl Engine {
     pub fn event_handling(&mut self) {
         let current_frame = self.start.elapsed().as_millis();
         self.delta_time = current_frame - self.last_frame;
@@ -438,7 +509,9 @@ impl Engine {
         self.last_x = self.accum_x;
         self.last_y = self.accum_y;
 
-        for event in self.event.poll_iter() {
+        self.collected_events = self.event.poll_iter().collect();
+
+        for event in &self.collected_events {
             match event {
                 Event::Quit { .. }
                 | Event::KeyDown {
@@ -484,8 +557,8 @@ impl Engine {
                         self.accum_x -= xrel;
                         self.accum_y += yrel;
 
-                        self.mouse_x = x;
-                        self.mouse_y = y;
+                        self.mouse_x = *x;
+                        self.mouse_y = *y;
 
                         let new_mouse_x = self.mouse_x + xrel;
                         let new_mouse_y = self.mouse_y + yrel;
@@ -513,9 +586,21 @@ impl Engine {
             .mouse()
             .set_relative_mouse_mode(&self.window, toggle);
     }
+}
 
+// getters
+
+impl Engine {
     pub fn get_flags(&self) -> &Flags {
         &self.flags
+    }
+
+    pub fn get_flags_mut(&mut self) -> &mut Flags {
+        &mut self.flags
+    }
+
+    pub fn get_render_mode_mut(&mut self) -> &mut RENDERMODE {
+        &mut self.current_render_mode
     }
 
     pub fn get_event(&self) -> &EventPump {
@@ -538,13 +623,68 @@ impl Engine {
         (self.width, self.height)
     }
 
-    pub fn send_world_data(&mut self, world: Vec<u32>, resolution: u32) {
+    pub fn get_device(&self) -> Arc<Device> {
+        self.device.clone()
+    }
+
+    pub fn get_queue(&self) -> Arc<Queue> {
+        self.queue.clone()
+    }
+
+    pub fn get_instance(&self) -> Arc<Instance> {
+        self.instance.clone()
+    }
+
+    pub fn get_swapchain(&self) -> Arc<Swapchain> {
+        self.swapchain.clone()
+    }
+
+    pub fn get_images(&self) -> Vec<Arc<Image>> {
+        self.images.clone()
+    }
+
+    pub fn get_library(&self) -> Arc<VulkanLibrary> {
+        self.library.clone()
+    }
+
+    pub fn get_window(&self) -> &Window {
+        &self.window
+    }
+
+    pub fn get_current_image_index(&self) -> u32 {
+        self.current_image_index
+    }
+
+    pub fn get_render_complete_semaphore(&self) -> Arc<Semaphore> {
+        self.render_complete_semaphore.clone()
+    }
+
+    pub fn get_collected_events(&self) -> &[Event] {
+        &self.collected_events
+    }
+
+    pub fn get_hardware_info(&self) -> String {
+        let props = self.device.physical_device().properties();
+        format!("{}\n{}", props.device_name, props.api_version)
+    }
+
+    pub fn get_frame_rate(&self) -> u64 {
+        (1000.0 / self.delta_time as f64).round() as u64
+    }
+
+
+}
+
+// rendering
+
+impl Engine {
+    pub fn send_world_data(&mut self, world: Vec<u32>, resolution: [u32; 3]) {
         let voxels = Image::new(
             self.memory_allocator.clone(),
             ImageCreateInfo {
                 image_type: vulkano::image::ImageType::Dim3d,
                 format: Format::R32G32B32A32_UINT,
-                extent: [resolution / 4, resolution / 4, resolution / 8],
+                extent: [resolution[0] / 4, resolution[1] / 4, resolution[2] / 8],
                 usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_DST,
                 ..Default::default()
             },
@@ -610,9 +750,11 @@ impl Engine {
         self.voxel_set = Some(voxel_set);
     }
 
-    pub fn render(&mut self, pixel_to_ray: glam::Mat4, resolution: u32) {
+    pub fn render(&mut self, pixel_to_ray: glam::Mat4, resolution: [u32; 3]) {
         let (image_index, _, acquire_future) =
             swapchain::acquire_next_image(self.swapchain.clone(), None).unwrap();
+
+        self.current_image_index = image_index;
 
         let swapchain_image = &self.images[image_index as usize];
 
@@ -717,13 +859,34 @@ impl Engine {
             .take()
             .unwrap_or_else(|| Box::new(vulkano::sync::now(self.device.clone())));
 
-        let present = previous_future
+        let future = previous_future
             .join(acquire_future)
             .then_execute(self.queue.clone(), command_buffer)
             .unwrap()
+            .boxed_send_sync();
+
+
+
+        self.previous_future = Some(Box::new(future));
+
+        if let Some(future) = &mut self.previous_future {
+            future.flush().unwrap();
+        }
+
+        //println!("swapchain image layout: {:?}", swapchain_image.clone().initial_layout());
+    }
+
+    pub fn present(&mut self) {
+
+        let future = self.previous_future.take().unwrap();
+
+        let present = future
             .then_swapchain_present(
                 self.queue.clone(),
-                SwapchainPresentInfo::swapchain_image_index(self.swapchain.clone(), image_index),
+                SwapchainPresentInfo::swapchain_image_index(
+                    self.swapchain.clone(),
+                    self.current_image_index
+                )
             )
             .then_signal_fence_and_flush()
             .unwrap();
