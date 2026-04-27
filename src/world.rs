@@ -1,13 +1,11 @@
-use std::io::{self, Write};
 use crate::perlin::FractalNoise;
 use glam::Vec3;
-
 
 #[allow(unused)]
 pub struct World {
     world: Vec<u128>,
     height_map: FractalNoise,
-    dimensions: Vec3
+    dimensions: Vec3,
 }
 
 impl World {
@@ -43,15 +41,22 @@ impl World {
 
                 for y in 0..height {
                     set_voxel(x, y, z);
-
                 }
             }
         }
-        World { world, height_map, dimensions }
+        World {
+            world,
+            height_map,
+            dimensions,
+        }
     }
 
     pub fn get_dimensions(&self) -> [u32; 3] {
-        [self.dimensions.x as u32, self.dimensions.y as u32, self.dimensions.z as u32]
+        [
+            self.dimensions.x as u32,
+            self.dimensions.y as u32,
+            self.dimensions.z as u32,
+        ]
     }
 
     pub fn dimensions_metres(&self) -> (f64, f64, f64) {
@@ -68,14 +73,18 @@ impl World {
     }
 
     pub fn get_world_as_u32(&self) -> Vec<u32> {
-        self.world.iter().flat_map(|v| {
-            let bytes = v.to_le_bytes();
-            [
-                u32::from_le_bytes(bytes[0..4].try_into().unwrap()),
-                u32::from_le_bytes(bytes[4..8].try_into().unwrap()),
-                u32::from_le_bytes(bytes[8..12].try_into().unwrap()),
-                u32::from_le_bytes(bytes[12..16].try_into().unwrap()),
-            ]
-        }).collect()
+        self.world
+            .iter()
+            .flat_map(|v| {
+                let bytes = v.to_le_bytes();
+                [
+                    u32::from_le_bytes(bytes[0..4].try_into().unwrap()),
+                    u32::from_le_bytes(bytes[4..8].try_into().unwrap()),
+                    u32::from_le_bytes(bytes[8..12].try_into().unwrap()),
+                    u32::from_le_bytes(bytes[12..16].try_into().unwrap()),
+                ]
+            })
+            .collect()
     }
 }
+

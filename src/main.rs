@@ -1,20 +1,21 @@
 pub mod camera;
 pub mod common;
+pub mod debug;
 pub mod engine;
 pub mod entity;
+pub mod perlin;
+pub mod physics;
 pub mod player;
 pub mod world;
-pub mod debug;
-pub mod perlin;
 
+use crate::common::Updateable;
+use debug::Debug;
 use engine::Engine;
 use engine::Flags;
+use glam::vec3;
 use player::Player;
 use std::time;
 use world::World;
-use debug::Debug;
-use crate::common::Updateable;
-use glam::vec3;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -270,7 +271,6 @@ fn main() {
     );
     println!("initialized engine");
 
-
     let mut debug = Debug::new(&engine);
     println!("initialized debug ui");
 
@@ -292,10 +292,8 @@ fn main() {
     println!("start world generation");
     let world = World::new(416120398, vec3(2000.0, 1000.0, 2000.0));
 
-    
     engine.send_world_data(world.get_world_as_u32(), world.get_dimensions());
     println!("sent world data to gpu");
-
 
     engine.toggle_mouse(engine.get_flags().get_capture_mouse_state());
 
@@ -310,7 +308,10 @@ fn main() {
 
         player.update(engine.get_delta_time());
 
-        engine.render(player.get_camera().get_pixel_to_ray_matrix(), world.get_dimensions());
+        engine.render(
+            player.get_camera().get_pixel_to_ray_matrix(),
+            world.get_dimensions(),
+        );
         debug.render(&mut engine, &mut player);
         engine.present();
     }
