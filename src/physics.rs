@@ -1,1 +1,3 @@
-pub struct Physics {}
+pub struct Physics {
+    id: u16,
+}
