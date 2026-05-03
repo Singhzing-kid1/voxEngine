@@ -44,6 +44,7 @@ impl World {
                 }
             }
         }
+
         World {
             world,
             height_map,
@@ -51,7 +52,11 @@ impl World {
         }
     }
 
-    pub fn get_dimensions(&self) -> [u32; 3] {
+    pub fn get_dimensions(&self) -> Vec3 {
+        self.dimensions.clone()
+    }
+
+    pub fn get_dimensions_as_arr(&self) -> [u32; 3] {
         [
             self.dimensions.x as u32,
             self.dimensions.y as u32,

@@ -3,6 +3,7 @@ use crate::common::Updateable;
 
 #[derive(ImGuiReflect)]
 pub struct Camera {
+    #[imgui(slider, min = 0.0, max = 200.0)]
     fov: f32,
     near: f32,
     far: f32,

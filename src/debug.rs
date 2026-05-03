@@ -34,7 +34,8 @@ pub struct Debug {
     render_pass: RenderPass,
     framebuffer: Vec<Framebuffer>,
     image_views: Vec<ImageView>,
-    command_pool: CommandPool
+    command_pool: CommandPool,
+    getting_input: bool,
 }
 
 impl Debug {
@@ -173,7 +174,8 @@ impl Debug {
                 render_pass, 
                 framebuffer,
                 image_views, 
-                command_pool 
+                command_pool,
+                getting_input: false 
             }
 
 
@@ -188,6 +190,14 @@ impl Debug {
         }
 
         dear_imgui_sdl3::sdl3_new_frame(&mut self.context);
+
+        if self.context.io().want_text_input() && !self.getting_input {
+            engine.start_text_input();
+            self.getting_input = true;
+        } else if !self.context.io().want_text_input() && self.getting_input {
+            engine.stop_text_input();
+        }
+
         let ui = self.context.frame();
 
         ui.window("Debug")
@@ -195,6 +205,7 @@ impl Debug {
         .build(|| {
             ui.text(engine.get_hardware_info());
             ui.text(engine.get_frame_rate().to_string());
+            ui.slider("Ray Length", 1.0, 2000.0, engine.get_ray_length_mut());
             ui.input_reflect("Flags", engine.get_flags_mut());
             ui.input_reflect("Render Mode", engine.get_render_mode_mut());
             ui.input_reflect("Player", player);

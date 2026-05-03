@@ -82,6 +82,7 @@ use vulkano::{
         SwapchainPresentInfo,
         SwapchainAcquireFuture
     },
+    sync,
     sync::{
         GpuFuture,
         semaphore::Semaphore
@@ -90,10 +91,8 @@ use vulkano::{
 
 use dear_imgui_reflect::ImGuiReflect;
 
-use crate::{
-    cs,
-    cs::PushConstants,
-    rs
+use crate::shader::{
+    cs::{self, PushConstants}, rayCastShader::{self, RayParams}, rs
 };
 
 #[derive(Debug, Clone, Copy, ImGuiReflect)]
@@ -111,7 +110,7 @@ pub enum RENDERMODE {
 pub struct Flags {
     quit: bool,
     gravity: bool,
-    capture_mouse: bool,
+    capture_mouse: bool
 }
 
 impl Flags {
@@ -177,6 +176,8 @@ pub struct Engine {
     render_compute_pipeline: Arc<ComputePipeline>,
     resample_compute_pipeline: Arc<ComputePipeline>,
 
+    raycast_compute_pipeline: Arc<ComputePipeline>,
+
     voxel_set: Option<Arc<DescriptorSet>>,
     render_set: Arc<DescriptorSet>,
     image_format: Format,
@@ -204,6 +205,7 @@ pub struct Engine {
     last_y: f32,
 
     current_render_mode: RENDERMODE,
+    ray_length: f32,
 
     scale: f32,
 
@@ -391,6 +393,24 @@ impl Engine {
         )
         .unwrap();
 
+        let raycast_shader = rayCastShader::load(device.clone()).expect("cannot load shader");
+        let raycast = raycast_shader.entry_point("main").unwrap();
+        let stage = PipelineShaderStageCreateInfo::new(raycast);
+        let layout = PipelineLayout::new(
+            device.clone(),
+            PipelineDescriptorSetLayoutCreateInfo::from_stages([&stage])
+                .into_pipeline_layout_create_info(device.clone())
+                .unwrap()
+        )
+        .unwrap();
+
+        let raycast_compute_pipeline = ComputePipeline::new(
+            device.clone(),
+            None,
+            ComputePipelineCreateInfo::stage_layout(stage, layout)
+        )
+        .unwrap();
+
         let image = Image::new(
             memory_allocator.clone(),
             ImageCreateInfo {
@@ -460,6 +480,8 @@ impl Engine {
             render_compute_pipeline,
             resample_compute_pipeline,
 
+            raycast_compute_pipeline,
+
             render_set,
             voxel_set: None,
 
@@ -477,6 +499,7 @@ impl Engine {
             collected_events: Vec::new(),
 
             current_render_mode: RENDERMODE::COORD,
+            ray_length: 400.0,
 
             x_offset: 0.0,
             y_offset: 0.0,
@@ -603,6 +626,10 @@ impl Engine {
         &mut self.current_render_mode
     }
 
+    pub fn get_ray_length_mut(&mut self) -> &mut f32 {
+        &mut self.ray_length
+    }
+
     pub fn get_event(&self) -> &EventPump {
         &self.event
     }
@@ -672,7 +699,101 @@ impl Engine {
         (1000.0 / self.delta_time as f64).round() as u64
     }
 
+    pub fn start_text_input(&self) {
+    self.sdl_context.video().unwrap().text_input().start(&self.window);
+    }
 
+    pub fn stop_text_input(&self) {
+        self.sdl_context.video().unwrap().text_input().stop(&self.window);
+    }
+
+}
+
+// raycast
+
+impl Engine {
+    pub fn ray_hit_world(&self, origin: glam::Mat4, direction: glam::Vec3, ray_length: f32, resolution: [u32; 3]) -> bool{
+        let result_buffer = Buffer::from_data(
+            self.memory_allocator.clone(),
+            BufferCreateInfo {
+                usage: BufferUsage::STORAGE_BUFFER | BufferUsage::TRANSFER_SRC,
+                ..Default::default()
+            },
+            AllocationCreateInfo{ 
+                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+                ..Default::default()
+            },
+            0u32
+        )
+        .unwrap();
+
+        let layout = self
+        .raycast_compute_pipeline
+        .layout()
+        .set_layouts()
+        .get(1)
+        .unwrap();
+
+        let query_set = DescriptorSet::new(
+            self.descriptor_set_allocator.clone(),
+            layout.clone(),
+            [
+                WriteDescriptorSet::buffer(0, result_buffer.clone())
+            ],
+            []
+        )
+        .unwrap();
+
+        let push_data = RayParams {
+            pixel_to_ray: origin.to_cols_array_2d(),
+            direction: direction.to_array(),
+            max_distance: ray_length,
+            voxel_resolution: resolution
+        };
+
+        let mut builder = AutoCommandBufferBuilder::primary(
+            self.command_buffer_allocator.clone(),
+            self.queue.queue_family_index(),
+            CommandBufferUsage::OneTimeSubmit
+        )
+        .unwrap();
+
+        unsafe{
+            builder
+                .bind_pipeline_compute(self.raycast_compute_pipeline.clone())
+                .unwrap()
+                .bind_descriptor_sets(
+                    PipelineBindPoint::Compute,
+                    self.raycast_compute_pipeline.layout().clone(),
+                    0,
+                    vec![
+                        self.voxel_set.as_ref().unwrap().clone(),
+                        query_set.clone()
+                    ]
+                )
+                .unwrap()
+                .push_constants(self.raycast_compute_pipeline.layout().clone(), 0, push_data)
+                .unwrap()
+                .dispatch([1, 1, 1])
+                .unwrap();
+        }
+
+        let command_buffer = builder.build().unwrap();
+
+        let future = sync::now(self.device.clone())
+            .then_execute(self.queue.clone(), command_buffer)
+            .unwrap()
+            .then_signal_fence_and_flush()
+            .unwrap();
+
+        future.wait(None).unwrap();
+
+        let result = result_buffer.read().unwrap();
+
+        println!("{}", *result);
+
+        *result != 0
+    }
 }
 
 // rendering
@@ -809,6 +930,7 @@ impl Engine {
             pixelToRay: pixel_to_ray.to_cols_array_2d(),
             voxel_resolution: resolution,
             render_mode: self.current_render_mode as u32,
+            max_ray_length: self.ray_length
         };
 
         unsafe {

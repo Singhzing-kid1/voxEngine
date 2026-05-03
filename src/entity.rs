@@ -1,8 +1,12 @@
 use dear_imgui_reflect::ImGuiReflect;
-use crate::common::Updateable;
+
+use glam::Vec3;
+
+use crate::common::{Updateable, AABB};
 
 #[derive(ImGuiReflect)]
 pub struct Entity {
+    #[imgui(input)]
     mass: f32,
 
     size: glam::Vec3,
@@ -109,5 +113,30 @@ impl Updateable for Entity {
         self.normal_force = glam::Vec3::ZERO;
         self.applied_force = glam::Vec3::ZERO;
         self.net_force = glam::Vec3::ZERO;
+    }
+}
+
+impl AABB for Entity {
+    fn aabb(&self) -> [Vec3; 2] {
+        let position = self.position;
+        let size = self.size;
+
+        let width = size.x * 0.5;
+        let depth = size.z * 0.5;
+        let height = size.y;
+
+        let min = glam::vec3(
+            position.x - width,
+            position.y - height,
+            position.z - depth
+        );
+
+        let max = glam::vec3(
+            position.x + width,
+            position.y,
+            position.z + depth
+        );
+
+        [min, max]
     }
 }
