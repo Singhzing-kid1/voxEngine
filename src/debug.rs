@@ -1,22 +1,63 @@
 use std::sync::Arc;
 
-use ash::vk::{AccessFlags, AttachmentDescription, AttachmentLoadOp, AttachmentReference, AttachmentStoreOp, ClearValue, CommandPool, Extent2D, Fence, Framebuffer, ImageLayout, ImageView, Offset2D, PipelineBindPoint, PipelineStageFlags, Rect2D, RenderPass, RenderPassBeginInfo, RenderPassCreateInfo, SUBPASS_EXTERNAL, SampleCountFlags, SubmitInfo, SubpassContents, SubpassDependency, SubpassDescription};
-use ash::vk;
-use ash::vk::FramebufferCreateInfo;
-use ash::vk::ClearColorValue;
+use ash::vk::{
+    AccessFlags, 
+    AttachmentDescription, 
+    AttachmentLoadOp, 
+    AttachmentReference, 
+    AttachmentStoreOp, 
+    ClearValue, 
+    CommandPool, 
+    Extent2D, 
+    Fence, 
+    Framebuffer, 
+    ImageLayout, 
+    ImageView, 
+    Offset2D, 
+    PipelineBindPoint, 
+    PipelineStageFlags, 
+    Rect2D, 
+    RenderPass, 
+    RenderPassBeginInfo, 
+    RenderPassCreateInfo, 
+    SUBPASS_EXTERNAL, 
+    SampleCountFlags, 
+    SubmitInfo, 
+    SubpassContents, 
+    SubpassDependency, 
+    SubpassDescription,
+    FramebufferCreateInfo,
+    ClearColorValue,
+    CommandPoolCreateInfo,
+    CommandPoolCreateFlags,
+    CommandBufferLevel,
+    CommandBufferBeginInfo,
+    CommandBufferAllocateInfo,
+    CommandBufferUsageFlags,
+    ImageMemoryBarrier,
+    ImageSubresourceRange,
+    ImageAspectFlags,
+    DependencyFlags
+};
+
 use dear_imgui_ash::AshRenderer;
 use dear_imgui_rs::Context;
 use dear_imgui_sdl3::process_sys_event;
-use vulkano::{image::Image, swapchain::Swapchain};
-use vulkano::device::Device;
-use vulkano::instance::Instance;
-use vulkano::device::Queue;
-use vulkano::VulkanObject;
+
+use vulkano::{
+    image::Image,
+    swapchain::Swapchain,
+    device::{Device, Queue},
+    instance::Instance,
+    VulkanObject
+};
+
 use dear_imgui_reflect::ImGuiReflectExt;
 
-use crate::engine::Engine;
-use crate::player::Player;
-
+use crate::{
+    engine::Engine,
+    player::Player
+};
 
 #[allow(unused)]
 pub struct Debug {
@@ -63,9 +104,9 @@ impl Debug {
 
         let command_pool = unsafe {
             ash_device.create_command_pool(
-                &vk::CommandPoolCreateInfo::default()
+                &CommandPoolCreateInfo::default()
                     .queue_family_index(queue.queue_family_index())
-                    .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER),
+                    .flags(CommandPoolCreateFlags::RESET_COMMAND_BUFFER),
                 None
             ).unwrap()
         };
@@ -207,7 +248,7 @@ impl Debug {
             ui.text(engine.get_frame_rate().to_string());
             ui.slider("Ray Length", 1.0, 2000.0, engine.get_ray_length_mut());
             ui.input_reflect("Flags", engine.get_flags_mut());
-            ui.input_reflect("Render Mode", engine.get_render_mode_mut());
+            ui.input_reflect("Render Mode", engine.get_current_render_mode_mut());
             ui.input_reflect("Player", player);
     
         });
@@ -215,9 +256,9 @@ impl Debug {
         let draw_data = self.context.render();
 
         let command_buffer = unsafe {
-            let alloc_info = vk::CommandBufferAllocateInfo::default()
+            let alloc_info = CommandBufferAllocateInfo::default()
                 .command_pool(self.command_pool)
-                .level(vk::CommandBufferLevel::PRIMARY)
+                .level(CommandBufferLevel::PRIMARY)
                 .command_buffer_count(1);
 
             self.ash_device.allocate_command_buffers(&alloc_info).unwrap()[0]
@@ -226,8 +267,8 @@ impl Debug {
         unsafe {
             self.ash_device.begin_command_buffer(
                 command_buffer,
-                &vk::CommandBufferBeginInfo::default()
-                    .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT)
+                &CommandBufferBeginInfo::default()
+                    .flags(CommandBufferUsageFlags::ONE_TIME_SUBMIT)
             )
             .unwrap();
 
@@ -249,16 +290,16 @@ impl Debug {
                 )
                 .clear_values(std::slice::from_ref(&clear_value));
 
-            let barrier = vk::ImageMemoryBarrier::default()
+            let barrier = ImageMemoryBarrier::default()
                 .src_access_mask(AccessFlags::empty())
                 .dst_access_mask(AccessFlags::COLOR_ATTACHMENT_READ | AccessFlags::COLOR_ATTACHMENT_WRITE)
                 .old_layout(ImageLayout::PRESENT_SRC_KHR)
                 .new_layout(ImageLayout::TRANSFER_DST_OPTIMAL)
-                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .src_queue_family_index(ash::vk::QUEUE_FAMILY_IGNORED)
+                .dst_queue_family_index(ash::vk::QUEUE_FAMILY_IGNORED)
                 .image(self.images[image_index as usize].handle())
-                .subresource_range(vk::ImageSubresourceRange {
-                    aspect_mask: vk::ImageAspectFlags::COLOR,
+                .subresource_range(ImageSubresourceRange {
+                    aspect_mask: ImageAspectFlags::COLOR,
                     base_mip_level: 0,
                     level_count: 1,
                     base_array_layer: 0,
@@ -269,7 +310,7 @@ impl Debug {
                 command_buffer,
                 PipelineStageFlags::BOTTOM_OF_PIPE,
                 PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-                vk::DependencyFlags::empty(),
+                DependencyFlags::empty(),
                 &[],
                 &[],
                 std::slice::from_ref(&barrier),

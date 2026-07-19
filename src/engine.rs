@@ -14,7 +14,8 @@ use vulkano::{
     buffer::{
         Buffer,
         BufferUsage,
-        BufferCreateInfo
+        BufferCreateInfo,
+        BufferContents
     },
     command_buffer::{
         AutoCommandBufferBuilder,
@@ -91,9 +92,22 @@ use vulkano::{
 
 use dear_imgui_reflect::ImGuiReflect;
 
-use crate::shader::{
-    cs::{self, PushConstants}, rayCastShader::{self, RayParams}, rs
+use crate::{
+    shader::{
+        cs::{
+            self, 
+            PushConstants
+        }, 
+        rayCastShader::{
+            self, 
+            RayParams}, 
+            rs   
+    },
+    common::RayHit
 };
+
+use getset::{Getters, CloneGetters, CopyGetters, MutGetters};
+
 
 #[derive(Debug, Clone, Copy, ImGuiReflect)]
 #[imgui(enum_style = "dropdown")]
@@ -107,6 +121,8 @@ pub enum RENDERMODE {
 }
 
 #[derive(ImGuiReflect)]
+#[derive(Copy)]
+#[derive(Clone)]
 pub struct Flags {
     quit: bool,
     gravity: bool,
@@ -147,8 +163,10 @@ impl Flags {
     }
 }
 
+#[derive(CopyGetters, Getters, MutGetters, CloneGetters)]
 #[allow(unused)]
 pub struct Engine {
+    #[getset(get_copy = "pub with_prefix")]
     delta_time: u128,
     last_frame: u128,
     start: time::Instant,
@@ -159,14 +177,21 @@ pub struct Engine {
     sdl_context: sdl3::Sdl,
     video: VideoSubsystem,
 
+    #[getset(get = "pub with_prefix")]
     window: Window,
 
+    #[getset(get_clone = "pub with_prefix")]
     library: Arc<VulkanLibrary>,
+    #[getset(get_clone = "pub with_prefix")]
     instance: Arc<Instance>,
     surface: Arc<Surface>,
+    #[getset(get_clone = "pub with_prefix")]
     device: Arc<Device>,
+    #[getset(get_clone = "pub with_prefix")]
     queue: Arc<Queue>,
+    #[getset(get_clone = "pub with_prefix")]
     swapchain: Arc<Swapchain>,
+    #[getset(get_clone = "pub with_prefix")]
     images: Vec<Arc<Image>>,
 
     memory_allocator: Arc<StandardMemoryAllocator>,
@@ -186,16 +211,22 @@ pub struct Engine {
     view: Arc<ImageView>,
 
     previous_future: Option<Box<dyn GpuFuture + Send + Sync>>,
+    #[getset(get_copy = "pub with_prefix")]
     current_image_index: u32,
     current_acquire_future: Option<SwapchainAcquireFuture>,
 
+    #[getset(get_clone = "pub with_prefix")]
     render_complete_semaphore: Arc<Semaphore>,
 
+    #[getset(get = "pub with_prefix")]
     event: EventPump,
 
+    #[getset(get = "pub with_prefix")]
     collected_events: Vec<Event>,
 
+    #[getset(get_copy = "pub with_prefix")]
     x_offset: f32,
+    #[getset(get_copy = "pub with_prefix")]
     y_offset: f32,
     accum_x: f32,
     accum_y: f32,
@@ -204,7 +235,9 @@ pub struct Engine {
     last_x: f32,
     last_y: f32,
 
+    #[getset(get_mut = "pub with_prefix")]
     current_render_mode: RENDERMODE,
+    #[getset(get_mut = "pub with_prefix")]
     ray_length: f32,
 
     scale: f32,
@@ -212,6 +245,7 @@ pub struct Engine {
     x: f32,
     y: f32,
 
+    #[getset(get_copy = "pub with_prefix", get_mut = "pub with_prefix")]
     flags: Flags,
 }
 
@@ -498,7 +532,7 @@ impl Engine {
             event,
             collected_events: Vec::new(),
 
-            current_render_mode: RENDERMODE::COORD,
+            current_render_mode: RENDERMODE::NORMAL,
             ray_length: 400.0,
 
             x_offset: 0.0,
@@ -515,6 +549,14 @@ impl Engine {
             y: 0.0,
             flags,
         }
+    }
+
+    pub fn start_text_input(&self) {
+        self.sdl_context.video().unwrap().text_input().start(&self.window);
+    }
+
+    pub fn stop_text_input(&self) {
+        self.sdl_context.video().unwrap().text_input().stop(&self.window);
     }
 }
 
@@ -614,80 +656,8 @@ impl Engine {
 // getters
 
 impl Engine {
-    pub fn get_flags(&self) -> &Flags {
-        &self.flags
-    }
-
-    pub fn get_flags_mut(&mut self) -> &mut Flags {
-        &mut self.flags
-    }
-
-    pub fn get_render_mode_mut(&mut self) -> &mut RENDERMODE {
-        &mut self.current_render_mode
-    }
-
-    pub fn get_ray_length_mut(&mut self) -> &mut f32 {
-        &mut self.ray_length
-    }
-
-    pub fn get_event(&self) -> &EventPump {
-        &self.event
-    }
-
-    pub fn get_x_offset(&self) -> f32 {
-        self.x_offset
-    }
-
-    pub fn get_y_offset(&self) -> f32 {
-        self.y_offset
-    }
-
-    pub fn get_delta_time(&self) -> u128 {
-        self.delta_time
-    }
-
     pub fn get_dimensions(&self) -> (u16, u16) {
         (self.width, self.height)
-    }
-
-    pub fn get_device(&self) -> Arc<Device> {
-        self.device.clone()
-    }
-
-    pub fn get_queue(&self) -> Arc<Queue> {
-        self.queue.clone()
-    }
-
-    pub fn get_instance(&self) -> Arc<Instance> {
-        self.instance.clone()
-    }
-
-    pub fn get_swapchain(&self) -> Arc<Swapchain> {
-        self.swapchain.clone()
-    }
-
-    pub fn get_images(&self) -> Vec<Arc<Image>> {
-        self.images.clone()
-    }
-
-    pub fn get_library(&self) -> Arc<VulkanLibrary> {
-        self.library.clone()
-    }
-
-    pub fn get_window(&self) -> &Window {
-        &self.window
-    }
-
-    pub fn get_current_image_index(&self) -> u32 {
-        self.current_image_index
-    }
-
-    pub fn get_render_complete_semaphore(&self) -> Arc<Semaphore> {
-        self.render_complete_semaphore.clone()
-    }
-
-    pub fn get_collected_events(&self) -> &[Event] {
-        &self.collected_events
     }
 
     pub fn get_hardware_info(&self) -> String {
@@ -698,21 +668,15 @@ impl Engine {
     pub fn get_frame_rate(&self) -> u64 {
         (1000.0 / self.delta_time as f64).round() as u64
     }
-
-    pub fn start_text_input(&self) {
-    self.sdl_context.video().unwrap().text_input().start(&self.window);
-    }
-
-    pub fn stop_text_input(&self) {
-        self.sdl_context.video().unwrap().text_input().stop(&self.window);
-    }
-
 }
 
 // raycast
 
 impl Engine {
-    pub fn ray_hit_world(&self, origin: glam::Mat4, direction: glam::Vec3, ray_length: f32, resolution: [u32; 3]) -> bool{
+    pub fn ray_hit_world(&self, origin: glam::Vec3, direction: glam::Vec3, ray_length: f32, resolution: [u32; 3]) -> RayHit {
+
+        let data = RayHit{hit: 0, distance: 0.0};
+
         let result_buffer = Buffer::from_data(
             self.memory_allocator.clone(),
             BufferCreateInfo {
@@ -723,7 +687,7 @@ impl Engine {
                 memory_type_filter: MemoryTypeFilter::PREFER_DEVICE | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
                 ..Default::default()
             },
-            0u32
+            data
         )
         .unwrap();
 
@@ -745,7 +709,7 @@ impl Engine {
         .unwrap();
 
         let push_data = RayParams {
-            pixel_to_ray: origin.to_cols_array_2d(),
+            origin: origin.to_array().into(),
             direction: direction.to_array(),
             max_distance: ray_length,
             voxel_resolution: resolution
@@ -790,9 +754,8 @@ impl Engine {
 
         let result = result_buffer.read().unwrap();
 
-        println!("{}", *result);
 
-        *result != 0
+        RayHit { hit: result.hit, distance: result.distance }
     }
 }
 

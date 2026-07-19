@@ -253,7 +253,7 @@ pub mod rayCastShader {
             layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
             layout(push_constant) uniform RayParams {
-                mat4 pixel_to_ray;
+                vec3 origin;
                 vec3 direction;
                 float max_distance;
                 uvec3 voxel_resolution;
@@ -262,6 +262,7 @@ pub mod rayCastShader {
             layout(set = 0, binding = 0, rgba32ui) readonly uniform uimage3D voxelImage;
             layout(set = 1, binding = 0) buffer RaycastResult {
                 uint hit;
+                float distance;
             } result;
 
             bool readVoxel(uvec3 coord, inout uvec4 texel, inout ivec3 texel_coord) {
@@ -275,6 +276,7 @@ pub mod rayCastShader {
             }
 
             const float FLT_MAX = 3.4028235e+38;
+            const float EPSILON = 1e-4;
 
             bool traversal(vec3 origin, vec3 dir, inout uint steps) {
                 if(length(dir) < 1e-6) return false;
@@ -313,9 +315,12 @@ pub mod rayCastShader {
 
                 origin += dir * tmin;
 
-                ivec3 icoord = ivec3(clamp(floor(origin), vec3(0), res -1.0));
+
+                vec3 snapped = origin + EPSILON * dir;
+                ivec3 icoord = ivec3(clamp(floor(snapped), vec3(0), res -1.0));
                 ivec3 istep = ivec3(sgn_dir);
                 vec3 t = (vec3(icoord) + 0.5 * (1.0 + sgn_dir) - origin) * inv_dir;
+                t = max(t, vec3(0.0));
                 vec3 delta = inv_dir * sgn_dir;
 
                 uint max_steps = ray.voxel_resolution.x + ray.voxel_resolution.y + ray.voxel_resolution.z + 10u;
@@ -351,21 +356,23 @@ pub mod rayCastShader {
                         }
                     }
 
-                    if (min(t.x, min(t.y, t.z)) - min(delta.x, min(delta.y, delta.z)) > tmax) return false;
+                    if (min(t.x, min(t.y, t.z)) > tmax) return false;
 
                     if(any(lessThan(icoord, ivec3(0))) ||
                     any(greaterThanEqual(icoord, ivec3(ray.voxel_resolution))))
                     return false;
 
-                    if(readVoxel(uvec3(icoord), texel, texel_coord))
-                    break;
+                    if(readVoxel(uvec3(icoord), texel, texel_coord)) {
+                        result.distance = min(t.x, min(t.y, t.z));
+                        break;
+                    }
                 }
 
                 return true;
             }
 
             void main(){
-                vec3 o = ray.pixel_to_ray[3].xyz;
+                vec3 o = ray.origin;
                 vec3 d = normalize(ray.direction);
 
                 uint steps = 0;

@@ -1,20 +1,33 @@
 use dear_imgui_reflect::ImGuiReflect;
 use crate::common::Updateable;
+use getset::{CopyGetters, Setters};
+
 
 #[derive(ImGuiReflect)]
+#[derive(CopyGetters, Setters)]
+#[derive(Debug)]
 pub struct Camera {
     #[imgui(slider, min = 0.0, max = 200.0)]
+    #[getset(get_copy = "pub with_prefix", set = "pub")]
     fov: f32,
+    #[getset(get_copy = "pub with_prefix", set = "pub")]
     near: f32,
+    #[getset(get_copy = "pub with_prefix", set = "pub")]
     far: f32,
+    #[getset(set = "pub")]
     camera_position: glam::Vec3,
+    #[getset(get_copy = "pub with_prefix")]
     front: glam::Vec3,
+    #[getset(get_copy = "pub with_prefix")]
     up: glam::Vec3,
+    #[getset(get_copy = "pub with_prefix")]
     right: glam::Vec3,
     camera_orientation: glam::Quat,
     #[imgui(slider, min = 0.0, max = 360.0)]
+    #[getset(get_copy = "pub with_prefix", set = "pub")]
     yaw: f32,
     #[imgui(slider, min = -89.9, max = 89.9)]
+    #[getset(get_copy = "pub with_prefix", set = "pub")]
     pitch: f32,
     dimensions: (u16, u16),
 }
@@ -35,45 +48,14 @@ impl Camera {
             dimensions: (w, h),
         }
     }
-    pub fn get_fov(&self) -> f32 {
-        self.fov
-    }
-    pub fn get_near(&self) -> f32 {
-        self.near
-    }
-    pub fn get_far(&self) -> f32 {
-        self.far
-    }
-    pub fn get_front(&self) -> glam::Vec3 {
-        self.front
-    }
-    pub fn get_up(&self) -> glam::Vec3 {
-        self.up
-    }
-    pub fn get_right(&self) -> glam::Vec3 {
-        self.right
-    }
-    pub fn get_yaw(&self) -> f32 {
-        self.yaw
-    }
-    pub fn get_pitch(&self) -> f32 {
-        self.pitch
-    }
-    pub fn set_yaw(&mut self, value: f32) {
-        self.yaw = value;
-    }
-    pub fn set_pitch(&mut self, value: f32) {
-        self.pitch = value;
-    }
+
     pub fn add_to_yaw(&mut self, value: f32) {
         self.yaw += value;
     }
     pub fn add_to_pitch(&mut self, value: f32) {
         self.pitch += value;
     }
-    pub fn set_camera_position(&mut self, value: glam::Vec3) {
-        self.camera_position = value;
-    }
+
     pub fn get_pixel_to_ray_matrix(&self) -> glam::Mat4 {
         let (w, h) = self.dimensions;
         let (w, h) = (w as f32, h as f32);
@@ -105,6 +87,7 @@ impl Camera {
  
     }
 }
+
 impl Camera {
     fn update_orientation(&mut self) {
         //println!("{}  {}", self. yaw, self.pitch);
@@ -125,6 +108,7 @@ impl Camera {
             .normalize();
     }
 }
+
 impl Updateable for Camera {
     fn update(&mut self, delta_time: u128) {
         let _ = delta_time;

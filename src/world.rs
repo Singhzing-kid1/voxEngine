@@ -1,10 +1,16 @@
 use crate::perlin::FractalNoise;
+
 use glam::Vec3;
 
+use getset::CloneGetters;
+
 #[allow(unused)]
+#[derive(CloneGetters)]
 pub struct World {
+    #[getset(get_clone = "pub with_prefix")]
     world: Vec<u128>,
     height_map: FractalNoise,
+    #[getset(get_clone = "pub with_prefix")]
     dimensions: Vec3,
 }
 
@@ -52,10 +58,6 @@ impl World {
         }
     }
 
-    pub fn get_dimensions(&self) -> Vec3 {
-        self.dimensions.clone()
-    }
-
     pub fn get_dimensions_as_arr(&self) -> [u32; 3] {
         [
             self.dimensions.x as u32,
@@ -65,16 +67,12 @@ impl World {
     }
 
     pub fn dimensions_metres(&self) -> (f64, f64, f64) {
-        const VOXEL_SIZE_M: f64 = 0.50;
+        const VOXEL_SIZE_M: f64 = 1.0;
         (
             self.dimensions.x as f64 * VOXEL_SIZE_M,
             self.dimensions.y as f64 * VOXEL_SIZE_M,
             self.dimensions.z as f64 * VOXEL_SIZE_M,
         )
-    }
-
-    pub fn get_world(&self) -> Vec<u128> {
-        self.world.clone()
     }
 
     pub fn get_world_as_u32(&self) -> Vec<u32> {
@@ -90,6 +88,23 @@ impl World {
                 ]
             })
             .collect()
+    }
+
+    pub fn get_voxel(&self, coord: Vec3) -> u128 {
+        let texel_x = self.dimensions.x as usize / 4;
+        let texel_y = self.dimensions.y as usize / 4;
+        let texel_z = self.dimensions.z as usize / 8;
+
+        let tx = (coord.x as usize) / 4;
+        let ty = (coord.y as usize) / 4;
+        let tz = (coord.z as usize) / 8;
+        let texel = tx + ty * texel_x + tz * texel_x * texel_y;
+
+        let channel = (coord.x as usize) % 4;
+        let bit_in_channel = ((coord.y as usize) % 4) + ((coord.z as usize) % 8) * 4;
+        let bit = channel * 32 + bit_in_channel;
+
+        (self.world[texel] >> bit) & 1u128
     }
 }
 

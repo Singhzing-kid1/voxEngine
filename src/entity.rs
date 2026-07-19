@@ -1,25 +1,37 @@
 use dear_imgui_reflect::ImGuiReflect;
 
-use glam::Vec3;
+use glam::{Vec3};
+
+use getset::{CopyGetters, Setters};
 
 use crate::common::{Updateable, AABB};
 
 #[derive(ImGuiReflect)]
+#[derive(CopyGetters, Setters)]
+#[derive(Debug)]
 pub struct Entity {
     #[imgui(input)]
+    #[getset(get_copy = "pub with_prefix")]
     mass: f32,
 
+    #[getset(get_copy = "pub with_prefix")]
     size: glam::Vec3,
 
+    #[getset(get_copy = "pub with_prefix")]
     position: glam::Vec3,
+    #[getset(get_copy = "pub with_prefix", set = "pub")]
     velocity: glam::Vec3,
     acceleration: glam::Vec3,
 
+    #[getset(get_copy = "pub with_prefix")]
     net_force: glam::Vec3,
     normal_force: glam::Vec3,
+    #[getset(get_copy = "pub with_prefix")]
     applied_force: glam::Vec3,
 
+    #[getset(get_copy = "pub with_prefix", set = "pub")]
     r_yaw: f32,
+    #[getset(get_copy = "pub with_prefix", set = "pub")]
     r_pitch: f32,
 }
 
@@ -51,41 +63,22 @@ impl Entity {
         self.normal_force = self.normal_force + force;
     }
 
-    pub fn get_mass(&self) -> f32 {
-        self.mass
+    pub fn increment_position(&mut self, value: glam::Vec3) {
+        self.position += value;
     }
 
-    pub fn get_size(&self) -> glam::Vec3 {
-        self.size
+    pub fn reset_normal_force(&mut self) {
+        self.normal_force = Vec3::ZERO;
     }
 
-    pub fn get_position(&self) -> glam::Vec3 {
-        self.position
+    pub fn reset_applied_force(&mut self) {
+        self.applied_force = Vec3::ZERO;
     }
 
-    pub fn get_velocity(&self) -> glam::Vec3 {
-        self.velocity
+    pub fn reset_net_force(&mut self) {
+        self.net_force = Vec3::ZERO;
     }
 
-    pub fn get_applied_force(&self) -> glam::Vec3 {
-        self.applied_force
-    }
-
-    pub fn get_r_yaw(&self) -> f32 {
-        self.r_yaw
-    }
-
-    pub fn get_r_pitch(&self) -> f32 {
-        self.r_pitch
-    }
-
-    pub fn set_r_yaw(&mut self, value: f32) {
-        self.r_yaw = value;
-    }
-
-    pub fn set_r_pitch(&mut self, value: f32) {
-        self.r_pitch = value;
-    }
 }
 
 impl Entity {
@@ -107,12 +100,8 @@ impl Updateable for Entity {
     fn update(&mut self, delta_time: u128) {
         let delta_time = delta_time as f32 / 1000.0;
         self.calculate_acceleration();
+        self.reset_applied_force();
         self.calculate_velocity(delta_time);
-        self.calculate_position(delta_time);
-
-        self.normal_force = glam::Vec3::ZERO;
-        self.applied_force = glam::Vec3::ZERO;
-        self.net_force = glam::Vec3::ZERO;
     }
 }
 
@@ -121,6 +110,28 @@ impl AABB for Entity {
         let position = self.position;
         let size = self.size;
 
+        let width = size.x * 0.5;
+        let depth = size.z * 0.5;
+        let height = size.y;
+
+        let min = glam::vec3(
+            position.x - width,
+            position.y - height,
+            position.z - depth
+        );
+
+        let max = glam::vec3(
+            position.x + width,
+            position.y,
+            position.z + depth
+        );
+
+        [min, max]
+    }
+
+    fn gen_aabb(&self, position: Vec3) -> [Vec3; 2] {
+        let size = self.size;
+        
         let width = size.x * 0.5;
         let depth = size.z * 0.5;
         let height = size.y;

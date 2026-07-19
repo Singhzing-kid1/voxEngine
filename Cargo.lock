@@ -279,6 +279,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "getset"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6cf442baaabe4213ce7d1239afc26c039180b6456da2cededa316ae2c8a77a77"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "glam"
 version = "0.32.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -984,6 +995,7 @@ dependencies = [
  "dear-imgui-reflect",
  "dear-imgui-rs",
  "dear-imgui-sdl3",
+ "getset",
  "glam",
  "sdl3",
  "sdl3-sys",

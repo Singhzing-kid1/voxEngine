@@ -1,18 +1,30 @@
-use sdl3::EventPump;
-use sdl3::keyboard::Scancode;
+use sdl3::{
+    EventPump,
+    keyboard::Scancode
+};
 
 use dear_imgui_reflect::ImGuiReflect;
 
-use crate::camera::Camera;
-use crate::common::{HasEntity, Updateable};
-use crate::entity::Entity;
+use crate::{
+    common::{
+        HasEntity,
+        Updateable
+    },
+    camera::Camera,
+    entity::Entity
+};
+
+use getset::Getters;
 
 #[allow(unused)]
 #[derive(ImGuiReflect)]
+#[derive(Getters)]
+#[derive(Debug)]
 pub struct Player {
     movement_force: f32,
     reach: i32,
 
+    #[getset(get = "pub with_prefix")]
     camera: Camera,
     entity: Entity,
 }
@@ -37,14 +49,6 @@ impl Player {
             camera: Camera::new(fov, near, far, w, h, position),
             entity: Entity::new(mass, size, position),
         }
-    }
-
-    pub fn get_camera(&self) -> &Camera {
-        &self.camera
-    }
-
-    pub fn get_controller(&self) -> &Entity {
-        &self.entity
     }
 
     pub fn collect_inputs(&mut self, event_pump: &EventPump, x_offset: f32, y_offset: f32) {
