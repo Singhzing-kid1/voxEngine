@@ -1,28 +1,26 @@
-use sdl3::{
-    EventPump,
-    keyboard::Scancode
-};
+use sdl3::{EventPump, keyboard::Scancode};
 
 use dear_imgui_reflect::ImGuiReflect;
 
 use crate::{
-    common::{
-        HasEntity,
-        Updateable
-    },
     camera::Camera,
-    entity::Entity
+    common::{HasEntity, Updateable},
+    entity::Entity,
+    physics::Physics
 };
 
 use getset::Getters;
 
+const MAX_GROUND_SPEED: f32 = 7.0;
+const JUMP_FORCE_FRAMES: u32 = 6;
+
 #[allow(unused)]
-#[derive(ImGuiReflect)]
-#[derive(Getters)]
-#[derive(Debug)]
+#[derive(ImGuiReflect, Getters, Debug)]
 pub struct Player {
     movement_force: f32,
     reach: i32,
+    #[imgui(slider, min = 0.1, max = 1.0)]
+    mouse_sensitivity: f32,
 
     #[getset(get = "pub with_prefix")]
     camera: Camera,
@@ -41,68 +39,70 @@ impl Player {
         h: u16,
         position: glam::Vec3,
         size: glam::Vec3,
+        mouse_sensitivity: f32,
+        physics: &mut Physics
     ) -> Self {
         Player {
             movement_force,
             reach,
+            mouse_sensitivity,
 
             camera: Camera::new(fov, near, far, w, h, position),
-            entity: Entity::new(mass, size, position),
+            entity: Entity::new(mass, size, position, physics),
         }
     }
 
     pub fn collect_inputs(&mut self, event_pump: &EventPump, x_offset: f32, y_offset: f32) {
-        self.camera.add_to_yaw(x_offset);
-        self.camera.add_to_pitch(y_offset);
+        self.camera.add_to_yaw(x_offset * self.mouse_sensitivity);
+        self.camera.add_to_pitch(y_offset * self.mouse_sensitivity);
 
         self.entity.set_r_yaw(self.camera.get_yaw().to_radians());
         self.entity
             .set_r_pitch(self.camera.get_pitch().to_radians());
 
         let front_horizontal =
-            glam::vec3(self.camera.get_front().x, 0.0, self.camera.get_front().z).normalize_or_zero();
+            glam::vec3(self.camera.get_front().x, 0.0, self.camera.get_front().z)
+                .normalize_or_zero();
         let right_horizontal =
-            glam::vec3(self.camera.get_right().x, 0.0, self.camera.get_right().z).normalize_or_zero();
+            glam::vec3(self.camera.get_right().x, 0.0, self.camera.get_right().z)
+                .normalize_or_zero();
+
+        let mut wish_dir = glam::Vec3::ZERO;
 
         if event_pump.keyboard_state().is_scancode_pressed(Scancode::W) {
-            self.entity
-                .add_applied_force(self.movement_force * front_horizontal);
+            wish_dir += front_horizontal;
         }
 
         if event_pump.keyboard_state().is_scancode_pressed(Scancode::S) {
-            self.entity
-                .add_applied_force(-self.movement_force * front_horizontal);
+            wish_dir -= front_horizontal;
         }
 
         if event_pump.keyboard_state().is_scancode_pressed(Scancode::D) {
-            self.entity
-                .add_applied_force(self.movement_force * right_horizontal);
+            wish_dir += right_horizontal;
         }
 
         if event_pump.keyboard_state().is_scancode_pressed(Scancode::A) {
-            self.entity
-                .add_applied_force(-self.movement_force * right_horizontal);
+            wish_dir -= right_horizontal;
         }
+
+        let wish_dir = wish_dir.normalize_or_zero();
+        self.entity.set_wish_move(wish_dir, MAX_GROUND_SPEED);
 
         if event_pump
             .keyboard_state()
             .is_scancode_pressed(Scancode::Space)
+            && self.entity.get_grounded()
         {
-            let weight = self.entity.get_mass() * 9.81;
-            let jump_force = weight + weight * 0.1;
-
-            self.entity
-                .add_applied_force(jump_force * self.camera.get_up());
+            self.entity.start_jump(self.camera.get_up(), JUMP_FORCE_FRAMES);
         }
     }
 }
 
 impl Updateable for Player {
-    fn update(&mut self, delta_time: u128) {
+    fn update(&mut self, delta_time: u128, physics: &mut Physics) {
         self.camera.set_camera_position(self.entity.get_position());
-
-        self.entity.update(delta_time);
-        self.camera.update(delta_time);
+        self.entity.update(delta_time, physics);
+        self.camera.update(delta_time, physics);
     }
 }
 

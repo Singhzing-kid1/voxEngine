@@ -1,136 +1,149 @@
+use rapier3d::{
+    control::KinematicCharacterController, parry::query::DefaultQueryDispatcher, prelude::*,
+};
+use std::collections::HashMap;
 use crate::{
-    common::HasEntity,
-    entity::Entity,
-    engine::Engine,
-    world::World
+    common::conversions::{FromRapier, ToRapier},
+    world::World,
 };
-use glam::{
-    Mat4, Vec3, Vec4Swizzles, vec3, vec4
-};
+
+const CHUNK_LOAD_RADIUS: i32 = 4;
 
 pub struct Physics {
-    gravity: f32,
-    gravity_direction: Vec3,
-    skin_width: f32
+    rigid_body_set: RigidBodySet,
+    collider_set: ColliderSet,
+    physics_pipeline: PhysicsPipeline,
+    island_manager: IslandManager,
+    broad_phase: BroadPhaseBvh,
+    narrow_phase: NarrowPhase,
+    impulse_joint_set: ImpulseJointSet,
+    multibody_joint_set: MultibodyJointSet,
+    ccd_solver: CCDSolver,
+    integration_parameters: IntegrationParameters,
+    gravity: glam::Vec3,
+    loaded_chunks: HashMap<glam::IVec3, ColliderHandle>,
+    chunk_size: i32,
 }
 
-
 impl Physics {
-    pub fn new(gravity: f32) -> Self {
-        Physics {
+    pub fn new(world: &World, gravity: glam::Vec3, chunk_size: i32) -> Self {
+        let mut physics = Physics {
+            rigid_body_set: RigidBodySet::new(),
+            collider_set: ColliderSet::new(),
+            physics_pipeline: PhysicsPipeline::new(),
+            island_manager: IslandManager::new(),
+            broad_phase: BroadPhaseBvh::new(),
+            narrow_phase: NarrowPhase::new(),
+            impulse_joint_set: ImpulseJointSet::new(),
+            multibody_joint_set: MultibodyJointSet::new(),
+            ccd_solver: CCDSolver::new(),
+            integration_parameters: IntegrationParameters::default(),
             gravity,
-            gravity_direction: Vec3::NEG_Y,
-            skin_width: 0.01
-        }
-    }
-}
-
-impl Physics {
-    pub fn step(&self, entities: &mut [&mut dyn HasEntity], engine: &Engine, world: &World) {
-        for entity in entities.iter_mut() {
-            entity.entity_mut().reset_normal_force();
-            if engine.get_flags().get_gravity_state(){
-                let mass = entity.entity().get_mass();
-                entity.entity_mut().add_applied_force(mass * self.gravity * self.gravity_direction);
-            }
-
-            let entity_velocity = entity.entity().get_velocity();
-
-            self.resolve_axis(entity.entity_mut(), engine, Vec3::X, world.get_dimensions_as_arr(), entity_velocity.x * (engine.get_delta_time() as f32 / 1000.0));
-            self.resolve_axis(entity.entity_mut(), engine, Vec3::Y, world.get_dimensions_as_arr(), entity_velocity.y * (engine.get_delta_time() as f32 / 1000.0));
-            self.resolve_axis(entity.entity_mut(), engine, Vec3::Z, world.get_dimensions_as_arr(), entity_velocity.z * (engine.get_delta_time() as f32 / 1000.0));
-        }
-    }
-}
-
-impl Physics {
-    fn resolve_axis(&self, entity: &mut Entity, engine: &Engine, axis: Vec3, resolution: [u32; 3], delta: f32){
-        if delta == 0.0 { 
-            entity.increment_position(axis * delta);    
-            return; 
-        }
-
-        let move_direction = delta.signum();
-        let move_distance = delta.abs();
-
-        let corners: Mat4 = self.calculate_corners(entity, axis, move_direction);
-
-        let corners = [corners.x_axis, corners.y_axis, corners.z_axis, corners.w_axis, vec4(corners.x_axis.w, corners.y_axis.w, corners.z_axis.w, corners.w_axis.w)];
-
-        let ray_direction = axis * move_direction;
-
-        let mut closest_distance = move_distance;
-        let mut any_hit = false;
-
-        for corner in corners {
-            debug_assert!(ray_direction.abs().cmpge(Vec3::ONE).any(), "weird");
-            let hit = engine.ray_hit_world(corner.xyz(), ray_direction, move_distance, resolution);
-
-            if hit.hit != 0 {
-                any_hit = true;
-                closest_distance = closest_distance.min(hit.distance);
-            }
-        }
-
-        let safe_distance = 0_f32.max(closest_distance - self.skin_width);
-
-        if !any_hit {
-            entity.increment_position(axis * delta);
-            return;
-        }
-
-        entity.increment_position(move_direction * axis * safe_distance);
-
-        let hit_normal = axis * -move_direction;
-
-        self.collision(entity, axis, hit_normal);
-    }
-
-
-    fn calculate_corners(&self, entity: &Entity, axis: Vec3, direction: f32) -> Mat4 {
-        let half_size = entity.get_size() * 0.5;
-
-        let mut face_center = entity.get_position();
-
-        match axis {
-            Vec3::X => {face_center.x += direction * half_size.x},
-            Vec3::Y => {face_center.y += direction * half_size.y},
-            Vec3::Z => {face_center.z += direction * half_size.z},
-            _ => {}
+            loaded_chunks: HashMap::new(),
+            chunk_size,
         };
+        physics
+    }
 
-        let (mut axis_a, mut axis_b) = match axis {
-            Vec3::X => {(Vec3::Y, Vec3::Z)}
-            Vec3::Y => {(Vec3::X, Vec3::Z)},
-            Vec3::Z => {(Vec3::X, Vec3::Y)},
-            _ => {(Vec3::ZERO, Vec3::ZERO)}
-        }; 
+    pub fn update_loaded_chunks(&mut self, world: &World, player_position: glam::Vec3) {
+        let player_chunk = glam::ivec3(
+            (player_position.x as i32).div_euclid(self.chunk_size),
+            (player_position.y as i32).div_euclid(self.chunk_size),
+            (player_position.z as i32).div_euclid(self.chunk_size),
+        );
 
-        axis_a = half_size.dot(axis_a) - self.skin_width * axis_a;
-        axis_b = half_size.dot(axis_b) - self.skin_width * axis_b;
+        let collider_set = &mut self.collider_set;
+        let island_manager = &mut self.island_manager;
+        let rigid_body_set = &mut self.rigid_body_set;
 
-        Mat4::from_cols(
-            (face_center + axis_a + axis_b).extend(face_center.x), 
-            (face_center + axis_a - axis_b).extend(face_center.y), 
-            (face_center - axis_a + axis_b).extend(face_center.z), 
-            (face_center - axis_a - axis_b).extend(0.0),
+        self.loaded_chunks.retain(|&chunk_key, &mut handle| {
+            let in_range = chebyshev_distance(chunk_key, player_chunk) <= CHUNK_LOAD_RADIUS;
+            if !in_range {
+                collider_set.remove(handle, island_manager, rigid_body_set, false);
+            }
+            in_range
+        });
+
+        for &chunk_key in world.chunk_keys() {
+            if chebyshev_distance(chunk_key, player_chunk) <= CHUNK_LOAD_RADIUS
+                && !self.loaded_chunks.contains_key(&chunk_key)
+            {
+                if let Some(collider) = world.build_chunk_collider(chunk_key) {
+                    let handle = self.collider_set.insert(collider);
+                    self.loaded_chunks.insert(chunk_key, handle);
+                }
+            }
+        }
+    }
+
+    pub fn step(&mut self) {
+        self.physics_pipeline.step(
+            self.gravity.to_rapier(),
+            &self.integration_parameters,
+            &mut self.island_manager,
+            &mut self.broad_phase,
+            &mut self.narrow_phase,
+            &mut self.rigid_body_set,
+            &mut self.collider_set,
+            &mut self.impulse_joint_set,
+            &mut self.multibody_joint_set,
+            &mut self.ccd_solver,
+            &(),
+            &(),
+        );
+    }
+
+    pub fn create_capsule_collider(
+        &mut self,
+        half_height: f32,
+        radius: f32,
+        position: glam::Vec3,
+    ) -> ColliderHandle {
+        let collider = ColliderBuilder::capsule_y(half_height, radius)
+            .translation(position.to_rapier())
+            .build();
+        self.collider_set.insert(collider)
+    }
+
+    pub fn collider_translation(&self, handle: ColliderHandle) -> glam::Vec3 {
+        self.collider_set[handle].translation().from_rapier()
+    }
+
+    pub fn apply_collider_movement(&mut self, handle: ColliderHandle, movement: glam::Vec3) {
+        let collider = &mut self.collider_set[handle];
+        let new_pos = collider.translation() + movement.to_rapier();
+        collider.set_translation(new_pos);
+    }
+
+    pub fn move_entity(
+        &self,
+        dt: f32,
+        controller: &KinematicCharacterController,
+        handle: ColliderHandle,
+        desired_translation: glam::Vec3,
+    ) -> (glam::Vec3, bool) {
+        let collider = &self.collider_set[handle];
+        let query_pipeline = self.broad_phase.as_query_pipeline(
+            &DefaultQueryDispatcher,
+            &self.rigid_body_set,
+            &self.collider_set,
+            QueryFilter::default().exclude_collider(handle),
+        );
+        let effective_movement = controller.move_shape(
+            dt,
+            &query_pipeline,
+            collider.shape(),
+            collider.position(),
+            desired_translation.to_rapier(),
+            |_collision| {},
+        );
+        (
+            effective_movement.translation.from_rapier(),
+            effective_movement.grounded,
         )
     }
+}
 
-    fn collision(&self, entity: &mut Entity, axis: Vec3, normal: Vec3) {
-        let incoming_vel = entity.get_velocity();
-        let normal_incoming_vel = incoming_vel.abs().dot(axis) * normal;
-        debug_assert!((incoming_vel + normal_incoming_vel).abs().cmple(vec3(1000000.0, 1000000.0, 1000000.0)).any(), "what the fuck");
-        entity.set_velocity(incoming_vel + normal_incoming_vel);
-
-        if axis == Vec3::Y && normal.y > 0_f32 {
-            entity.add_normal_force(normal * entity.get_mass() * self.gravity);
-        } else {
-            let push = entity.get_applied_force().dot(normal);
-
-            if push < 0_f32 {
-                entity.add_normal_force(normal * -push);
-            }
-        }
-    }
+fn chebyshev_distance(a: glam::IVec3, b: glam::IVec3) -> i32 {
+    (a.x - b.x).abs().max((a.y - b.y).abs()).max((a.z - b.z).abs())
 }

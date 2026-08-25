@@ -1,113 +1,53 @@
 use std::{sync::Arc, time};
 
-use sdl3::{
-    EventPump,
-    VideoSubsystem,
-    event::Event,
-    keyboard::Keycode,
-    video::Window
-};
+use sdl3::{EventPump, VideoSubsystem, event::Event, keyboard::Keycode, video::Window};
 
 use vulkano::{
-    VulkanLibrary,
-    VulkanObject,
-    buffer::{
-        Buffer,
-        BufferUsage,
-        BufferCreateInfo,
-        BufferContents
-    },
+    VulkanLibrary, VulkanObject,
+    buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage},
     command_buffer::{
-        AutoCommandBufferBuilder,
-        ClearColorImageInfo,
-        CommandBufferUsage,
-        CopyBufferToImageInfo,
-        CopyImageInfo,
-        PrimaryCommandBufferAbstract,
-        allocator::StandardCommandBufferAllocator
+        AutoCommandBufferBuilder, ClearColorImageInfo, CommandBufferUsage, CopyBufferToImageInfo,
+        CopyImageInfo, PrimaryCommandBufferAbstract, allocator::StandardCommandBufferAllocator,
     },
     descriptor_set::{
-        DescriptorSet,
-        WriteDescriptorSet,
-        allocator::StandardDescriptorSetAllocator
+        DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator,
     },
     device::{
-        Device,
-        DeviceCreateInfo,
-        DeviceExtensions,
-        Queue,
-        QueueCreateInfo,
-        QueueFlags,
-        physical::PhysicalDeviceType
+        Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags,
+        physical::PhysicalDeviceType,
     },
-    format::{
-        ClearColorValue,
-        Format
-    },
+    format::{ClearColorValue, Format},
     image::{
-        Image,
-        ImageCreateInfo,
-        ImageUsage,
-        view::{
-            ImageView,
-            ImageViewCreateInfo
-        }
+        Image, ImageCreateInfo, ImageUsage,
+        view::{ImageView, ImageViewCreateInfo},
     },
-    instance::{
-        Instance,
-        InstanceCreateFlags,
-        InstanceCreateInfo
-    },
-    memory::{
-        allocator::{
-            AllocationCreateInfo,
-            MemoryTypeFilter,
-            StandardMemoryAllocator
-        }
-    },
+    instance::{Instance, InstanceCreateFlags, InstanceCreateInfo},
+    memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator},
     pipeline::{
-        ComputePipeline,
-        Pipeline,
-        PipelineBindPoint,
-        PipelineLayout,
-        PipelineShaderStageCreateInfo,
-        compute::ComputePipelineCreateInfo,
-        layout::PipelineDescriptorSetLayoutCreateInfo
+        ComputePipeline, Pipeline, PipelineBindPoint, PipelineLayout,
+        PipelineShaderStageCreateInfo, compute::ComputePipelineCreateInfo,
+        layout::PipelineDescriptorSetLayoutCreateInfo,
     },
     swapchain::{
-        self,
-        Surface,
-        Swapchain,
-        SwapchainCreateInfo,
-        SurfaceApi,
+        self, Surface, SurfaceApi, Swapchain, SwapchainAcquireFuture, SwapchainCreateInfo,
         SwapchainPresentInfo,
-        SwapchainAcquireFuture
     },
     sync,
-    sync::{
-        GpuFuture,
-        semaphore::Semaphore
-    }
+    sync::{GpuFuture, semaphore::Semaphore},
 };
 
 use dear_imgui_reflect::ImGuiReflect;
 
 use crate::{
+    common::RayHit,
     shader::{
-        cs::{
-            self, 
-            PushConstants
-        }, 
-        rayCastShader::{
-            self, 
-            RayParams}, 
-            rs   
+        cs::{self, PushConstants},
+        rayCastShader::{self, RayParams},
+        rs,
     },
-    common::RayHit
 };
 
-use getset::{Getters, CloneGetters, CopyGetters, MutGetters};
-
+use getset::{CloneGetters, CopyGetters, Getters, MutGetters};
 
 #[derive(Debug, Clone, Copy, ImGuiReflect)]
 #[imgui(enum_style = "dropdown")]
@@ -117,16 +57,16 @@ pub enum RENDERMODE {
     STEPS,
     NORMAL,
     UV,
-    DEPTH
+    DEPTH,
 }
 
-#[derive(ImGuiReflect)]
-#[derive(Copy)]
-#[derive(Clone)]
+// implement getset on flags struct
+
+#[derive(ImGuiReflect, Copy, Clone)]
 pub struct Flags {
     quit: bool,
     gravity: bool,
-    capture_mouse: bool
+    capture_mouse: bool,
 }
 
 impl Flags {
@@ -270,14 +210,14 @@ impl Engine {
         let mut enabled_extensions = vulkano::instance::InstanceExtensions::empty();
 
         for ext in &extensions {
-                match ext.as_str() {
-                    "VK_KHR_wayland_surface" => enabled_extensions.khr_wayland_surface = true,
-                    "VK_KHR_xlib_surface" => enabled_extensions.khr_xlib_surface = true,
-                    "VK_KHR_xcb_surface" => enabled_extensions.khr_xcb_surface = true,
-                    "VK_KHR_surface" => enabled_extensions.khr_surface = true,
-                    "VK_KHR_win32_surface" => enabled_extensions.khr_win32_surface = true,
-                    _ => {
-                        eprintln!("Unknown Vulkan instance extension: {}", ext);
+            match ext.as_str() {
+                "VK_KHR_wayland_surface" => enabled_extensions.khr_wayland_surface = true,
+                "VK_KHR_xlib_surface" => enabled_extensions.khr_xlib_surface = true,
+                "VK_KHR_xcb_surface" => enabled_extensions.khr_xcb_surface = true,
+                "VK_KHR_surface" => enabled_extensions.khr_surface = true,
+                "VK_KHR_win32_surface" => enabled_extensions.khr_win32_surface = true,
+                _ => {
+                    eprintln!("Unknown Vulkan instance extension: {}", ext);
                 }
             }
         }
@@ -362,8 +302,9 @@ impl Engine {
             .unwrap_or_else(|| {
                 physical_device
                     .surface_formats(&surface, Default::default())
-                    .unwrap()[0].0
-        });
+                    .unwrap()[0]
+                    .0
+            });
 
         let (swapchain, images) = Swapchain::new(
             device.clone(),
@@ -434,14 +375,14 @@ impl Engine {
             device.clone(),
             PipelineDescriptorSetLayoutCreateInfo::from_stages([&stage])
                 .into_pipeline_layout_create_info(device.clone())
-                .unwrap()
+                .unwrap(),
         )
         .unwrap();
 
         let raycast_compute_pipeline = ComputePipeline::new(
             device.clone(),
             None,
-            ComputePipelineCreateInfo::stage_layout(stage, layout)
+            ComputePipelineCreateInfo::stage_layout(stage, layout),
         )
         .unwrap();
 
@@ -480,10 +421,7 @@ impl Engine {
             Some(Box::new(vulkano::sync::now(device.clone())) as Box<dyn GpuFuture + Send + Sync>);
 
         let render_complete_semaphore = Arc::new(
-            vulkano::sync::semaphore::Semaphore::new(
-                device.clone(),
-                Default::default()
-            ).unwrap()
+            vulkano::sync::semaphore::Semaphore::new(device.clone(), Default::default()).unwrap(),
         );
 
         Engine {
@@ -552,11 +490,19 @@ impl Engine {
     }
 
     pub fn start_text_input(&self) {
-        self.sdl_context.video().unwrap().text_input().start(&self.window);
+        self.sdl_context
+            .video()
+            .unwrap()
+            .text_input()
+            .start(&self.window);
     }
 
     pub fn stop_text_input(&self) {
-        self.sdl_context.video().unwrap().text_input().stop(&self.window);
+        self.sdl_context
+            .video()
+            .unwrap()
+            .text_input()
+            .stop(&self.window);
     }
 }
 
@@ -595,10 +541,12 @@ impl Engine {
                     keycode: Some(Keycode::M),
                     ..
                 } => {
-                    self.flags.set_capture_mouse_state(!self.flags.get_capture_mouse_state());
-                    self.sdl_context
-                        .mouse()
-                        .set_relative_mouse_mode(&self.window, self.flags.get_capture_mouse_state());
+                    self.flags
+                        .set_capture_mouse_state(!self.flags.get_capture_mouse_state());
+                    self.sdl_context.mouse().set_relative_mouse_mode(
+                        &self.window,
+                        self.flags.get_capture_mouse_state(),
+                    );
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::R),
@@ -673,9 +621,17 @@ impl Engine {
 // raycast
 
 impl Engine {
-    pub fn ray_hit_world(&self, origin: glam::Vec3, direction: glam::Vec3, ray_length: f32, resolution: [u32; 3]) -> RayHit {
-
-        let data = RayHit{hit: 0, distance: 0.0};
+    pub fn ray_hit_world(
+        &self,
+        origin: glam::Vec3,
+        direction: glam::Vec3,
+        ray_length: f32,
+        resolution: [u32; 3],
+    ) -> RayHit {
+        let data = RayHit {
+            hit: 0,
+            distance: 0.0,
+        };
 
         let result_buffer = Buffer::from_data(
             self.memory_allocator.clone(),
@@ -683,28 +639,27 @@ impl Engine {
                 usage: BufferUsage::STORAGE_BUFFER | BufferUsage::TRANSFER_SRC,
                 ..Default::default()
             },
-            AllocationCreateInfo{ 
-                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+            AllocationCreateInfo {
+                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
+                    | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
                 ..Default::default()
             },
-            data
+            data,
         )
         .unwrap();
 
         let layout = self
-        .raycast_compute_pipeline
-        .layout()
-        .set_layouts()
-        .get(1)
-        .unwrap();
+            .raycast_compute_pipeline
+            .layout()
+            .set_layouts()
+            .get(1)
+            .unwrap();
 
         let query_set = DescriptorSet::new(
             self.descriptor_set_allocator.clone(),
             layout.clone(),
-            [
-                WriteDescriptorSet::buffer(0, result_buffer.clone())
-            ],
-            []
+            [WriteDescriptorSet::buffer(0, result_buffer.clone())],
+            [],
         )
         .unwrap();
 
@@ -712,17 +667,17 @@ impl Engine {
             origin: origin.to_array().into(),
             direction: direction.to_array(),
             max_distance: ray_length,
-            voxel_resolution: resolution
+            voxel_resolution: resolution,
         };
 
         let mut builder = AutoCommandBufferBuilder::primary(
             self.command_buffer_allocator.clone(),
             self.queue.queue_family_index(),
-            CommandBufferUsage::OneTimeSubmit
+            CommandBufferUsage::OneTimeSubmit,
         )
         .unwrap();
 
-        unsafe{
+        unsafe {
             builder
                 .bind_pipeline_compute(self.raycast_compute_pipeline.clone())
                 .unwrap()
@@ -730,10 +685,7 @@ impl Engine {
                     PipelineBindPoint::Compute,
                     self.raycast_compute_pipeline.layout().clone(),
                     0,
-                    vec![
-                        self.voxel_set.as_ref().unwrap().clone(),
-                        query_set.clone()
-                    ]
+                    vec![self.voxel_set.as_ref().unwrap().clone(), query_set.clone()],
                 )
                 .unwrap()
                 .push_constants(self.raycast_compute_pipeline.layout().clone(), 0, push_data)
@@ -754,8 +706,10 @@ impl Engine {
 
         let result = result_buffer.read().unwrap();
 
-
-        RayHit { hit: result.hit, distance: result.distance }
+        RayHit {
+            hit: result.hit,
+            distance: result.distance,
+        }
     }
 }
 
@@ -893,7 +847,7 @@ impl Engine {
             pixelToRay: pixel_to_ray.to_cols_array_2d(),
             voxel_resolution: resolution,
             render_mode: self.current_render_mode as u32,
-            max_ray_length: self.ray_length
+            max_ray_length: self.ray_length,
         };
 
         unsafe {
@@ -950,8 +904,6 @@ impl Engine {
             .unwrap()
             .boxed_send_sync();
 
-
-
         self.previous_future = Some(Box::new(future));
 
         if let Some(future) = &mut self.previous_future {
@@ -962,7 +914,6 @@ impl Engine {
     }
 
     pub fn present(&mut self) {
-
         let future = self.previous_future.take().unwrap();
 
         let present = future
@@ -970,8 +921,8 @@ impl Engine {
                 self.queue.clone(),
                 SwapchainPresentInfo::swapchain_image_index(
                     self.swapchain.clone(),
-                    self.current_image_index
-                )
+                    self.current_image_index,
+                ),
             )
             .then_signal_fence_and_flush()
             .unwrap();

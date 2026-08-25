@@ -1,11 +1,8 @@
+use crate::{common::Updateable, physics::{self, Physics}};
 use dear_imgui_reflect::ImGuiReflect;
-use crate::common::Updateable;
 use getset::{CopyGetters, Setters};
 
-
-#[derive(ImGuiReflect)]
-#[derive(CopyGetters, Setters)]
-#[derive(Debug)]
+#[derive(ImGuiReflect, CopyGetters, Setters, Debug)]
 pub struct Camera {
     #[imgui(slider, min = 0.0, max = 200.0)]
     #[getset(get_copy = "pub with_prefix", set = "pub")]
@@ -71,7 +68,7 @@ impl Camera {
         let k_inv = glam::Mat3::from_cols(
             glam::vec3(1.0 / f_x, 0.0, 0.0),
             glam::vec3(0.0, -1.0 / f_y, 0.0),
-            glam::vec3(-cx / f_x, cy / f_y, -1.0)
+            glam::vec3(-cx / f_x, cy / f_y, -1.0),
         );
 
         let r = glam::Mat3::from_quat(self.camera_orientation);
@@ -82,9 +79,13 @@ impl Camera {
             glam::vec4(m.col(0).x, m.col(0).y, m.col(0).z, 0.0),
             glam::vec4(m.col(1).x, m.col(1).y, m.col(1).z, 0.0),
             glam::vec4(m.col(2).x, m.col(2).y, m.col(2).z, 0.0),
-            glam::vec4(self.camera_position.x,self.camera_position.y, self.camera_position.z, 1.0)
+            glam::vec4(
+                self.camera_position.x,
+                self.camera_position.y,
+                self.camera_position.z,
+                1.0,
+            ),
         )
- 
     }
 }
 
@@ -110,7 +111,7 @@ impl Camera {
 }
 
 impl Updateable for Camera {
-    fn update(&mut self, delta_time: u128) {
+    fn update(&mut self, delta_time: u128, _physics: &mut Physics) {
         let _ = delta_time;
         self.update_orientation();
         self.calculate_right();
