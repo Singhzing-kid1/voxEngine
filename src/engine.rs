@@ -1,4 +1,4 @@
-use std::{sync::Arc, time};
+use std::{sync::Arc, time::{self, Duration}};
 
 use sdl3::{EventPump, VideoSubsystem, event::Event, keyboard::Keycode, video::Window};
 
@@ -108,7 +108,7 @@ impl Flags {
 pub struct Engine {
     #[getset(get_copy = "pub with_prefix")]
     delta_time: u128,
-    last_frame: u128,
+    last_frame: time::Instant,
     start: time::Instant,
 
     width: u16,
@@ -193,14 +193,19 @@ pub struct Engine {
 
 impl Engine {
     #[allow(unused_mut)]
-    pub fn new(title: &str, width: u16, height: u16, start: time::Instant, flags: Flags) -> Self {
+    pub fn new(title: &str, start: time::Instant, flags: Flags) -> Self {
         let sdl_context = sdl3::init().unwrap();
         let video = sdl_context.video().unwrap();
         let event = sdl_context.event_pump().unwrap();
 
+        let display = video.get_primary_display().unwrap();
+        let (width, height) = (display.get_mode().unwrap().w as u16, display.get_mode().unwrap().h as u16);
+
+
         let window = video
             .window(title, width.into(), height.into())
-            .position_centered()
+            .borderless()
+            .position(0, 0)
             .vulkan()
             .build()
             .unwrap();
@@ -426,7 +431,7 @@ impl Engine {
 
         Engine {
             delta_time: 0,
-            last_frame: 0,
+            last_frame: start,
             start,
 
             width,
@@ -510,10 +515,6 @@ impl Engine {
 
 impl Engine {
     pub fn event_handling(&mut self) {
-        let current_frame = self.start.elapsed().as_millis();
-        self.delta_time = current_frame - self.last_frame;
-        self.last_frame = current_frame;
-
         self.x_offset = self.accum_x - self.last_x;
         self.y_offset = self.last_y - self.accum_y;
 
@@ -591,6 +592,21 @@ impl Engine {
                 }
                 _ => {}
             }
+        }
+    }
+
+    pub fn frame_start(&mut self) {
+        let current_frame = time::Instant::now();
+        self.delta_time = (current_frame - self.last_frame).as_millis();
+        self.last_frame = current_frame;
+    }
+
+    pub fn frame_end(&mut self, target_fps: u32) {
+        let target_dt = Duration::from_secs_f64(1.0 / target_fps as f64);
+        let frame_duration = self.last_frame.elapsed();
+
+        if frame_duration < target_dt {
+            std::thread::sleep(target_dt - frame_duration);
         }
     }
 

@@ -51,6 +51,12 @@ impl Camera {
     }
     pub fn add_to_pitch(&mut self, value: f32) {
         self.pitch += value;
+
+        if self.pitch > 89.9 {
+            self.pitch = 89.9;
+        } else if self.pitch < -89.9 {
+            self.pitch = -89.9;
+        }
     }
 
     pub fn get_pixel_to_ray_matrix(&self) -> glam::Mat4 {

@@ -27,8 +27,6 @@ fn main() {
 
     let mut engine = Engine::new(
         "vox engine using rust",
-        2560,
-        1080,
         time::Instant::now(),
         flags,
     );
@@ -68,6 +66,7 @@ fn main() {
     );
 
     while !engine.get_flags().get_quit_state() {
+        engine.frame_start();
         let view = player.get_camera().get_pixel_to_ray_matrix();
         engine.event_handling();
 
@@ -92,5 +91,6 @@ fn main() {
         engine.render(view, world.get_dimensions_as_arr());
         debug.render(&mut engine, &mut player);
         engine.present();
+        engine.frame_end(60);
     }
 }

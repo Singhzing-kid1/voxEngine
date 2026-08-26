@@ -9,7 +9,7 @@ use crate::physics::Physics;
 const MAX_GROUND_SPEED: f32 = 7.0;
 const GROUND_ACCEL: f32 = 10.0;
 const AIR_ACCEL: f32 = 2.0;
-const GROUND_FRICTION: f32 = 6.0;
+const GROUND_FRICTION: f32 = 10.0;
 const STOP_SPEED: f32 = 1.5;
 const GRAVITY: f32 = -9.81;
 
@@ -68,8 +68,8 @@ impl Entity {
         let mut controller = KinematicCharacterController::default();
         controller.offset = CharacterLength::Absolute(0.01);
         controller.autostep = Some(CharacterAutostep {
-            max_height: CharacterLength::Absolute(0.5),
-            min_width: CharacterLength::Absolute(0.2),
+            max_height: CharacterLength::Absolute(2.0),
+            min_width: CharacterLength::Absolute(0.1),
             include_dynamic_bodies: true,
         });
         controller.snap_to_ground = Some(CharacterLength::Absolute(0.3));
@@ -164,8 +164,8 @@ impl Entity {
             return;
         }
         let weight = self.mass * 9.81;
-        let jump_force = 12.0 * weight;
-        self.jump_force_vector = up * jump_force;
+        let jump_force = 6.0 * weight;
+        self.jump_force_vector = Vec3::Y * jump_force;
         self.jump_frames_remaining = frames;
     }
 
