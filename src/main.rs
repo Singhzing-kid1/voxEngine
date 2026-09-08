@@ -25,7 +25,7 @@ fn main() {
 
     flags.set_capture_mouse_state(true);
 
-    let mut engine = Engine::new("vox engine using rust", time::Instant::now(), 4, flags);
+    let mut engine = Engine::new("vox engine using rust", time::Instant::now(), 3, flags);
     println!("initialized engine");
 
     let mut debug = Debug::new(&engine);

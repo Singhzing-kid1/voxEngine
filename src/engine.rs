@@ -494,7 +494,7 @@ impl Engine {
             collected_events: Vec::new(),
 
             current_render_mode: RENDERMODE::DEFAULT,
-            ray_length: 400.0,
+            ray_length: 450.0,
 
             x_offset: 0.0,
             y_offset: 0.0,
