@@ -1,7 +1,10 @@
 use dear_imgui_reflect::ImGuiReflect;
-use glam::Vec3;
 use getset::{CopyGetters, Setters};
-use rapier3d::{prelude::ColliderHandle, control::{KinematicCharacterController, CharacterLength, CharacterAutostep}};
+use glam::Vec3;
+use rapier3d::{
+    control::{CharacterAutostep, CharacterLength, KinematicCharacterController},
+    prelude::ColliderHandle,
+};
 
 use crate::common::{AABB, Updateable};
 use crate::physics::Physics;
@@ -57,8 +60,7 @@ pub struct Entity {
 
 impl Entity {
     pub fn new(mass: f32, size: glam::Vec3, position: glam::Vec3, physics: &mut Physics) -> Self {
-        let collider_handle =
-            physics.create_capsule_collider(size.y * 0.5, size.x * 0.5, position);
+        let collider_handle = physics.create_capsule_collider(size.y * 0.5, size.x * 0.5, position);
 
         let mut controller = KinematicCharacterController::default();
         controller.offset = CharacterLength::Absolute(0.01);
@@ -84,7 +86,7 @@ impl Entity {
             collider_handle,
             controller,
             wish_dir: glam::Vec3::ZERO,
-            wish_speed: 0.0
+            wish_speed: 0.0,
         }
     }
 
@@ -153,7 +155,6 @@ impl Entity {
     }
 
     pub fn start_jump(&mut self, _up: Vec3, _frames: u32) {
-
         let weight = self.mass * 9.81;
         let jump_force = 24.0 * weight;
 
@@ -175,7 +176,11 @@ impl Updateable for Entity {
 
         self.calculate_velocity(dt);
 
-        let accel = if self.grounded { GROUND_ACCEL } else { AIR_ACCEL };
+        let accel = if self.grounded {
+            GROUND_ACCEL
+        } else {
+            AIR_ACCEL
+        };
         if self.grounded {
             self.apply_ground_friction(dt);
         }

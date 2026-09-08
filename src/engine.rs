@@ -1,4 +1,7 @@
-use std::{sync::Arc, time::{self, Duration}};
+use std::{
+    sync::Arc,
+    time::{self, Duration},
+};
 
 use sdl3::{EventPump, VideoSubsystem, event::Event, keyboard::Keycode, video::Window};
 
@@ -41,8 +44,8 @@ use dear_imgui_reflect::ImGuiReflect;
 use crate::{
     common::RayHit,
     shader::{
-        render_compute_shader::{self, PushConstants},
         raycast_shader::{self, RayParams},
+        render_compute_shader::{self, PushConstants},
         resample_compute_shader,
     },
 };
@@ -205,8 +208,10 @@ impl Engine {
         let event = sdl_context.event_pump().unwrap();
 
         let display = video.get_primary_display().unwrap();
-        let (width, height) = (display.get_mode().unwrap().w as u16, display.get_mode().unwrap().h as u16);
-
+        let (width, height) = (
+            display.get_mode().unwrap().w as u16,
+            display.get_mode().unwrap().h as u16,
+        );
 
         let window = video
             .window(title, width.into(), height.into())
@@ -343,7 +348,8 @@ impl Engine {
             Default::default(),
         ));
 
-        let render_shader = render_compute_shader::load(device.clone()).expect("cannot load shader");
+        let render_shader =
+            render_compute_shader::load(device.clone()).expect("cannot load shader");
         let cs = render_shader.entry_point("main").unwrap();
         let stage = PipelineShaderStageCreateInfo::new(cs);
         let layout = PipelineLayout::new(
@@ -361,7 +367,8 @@ impl Engine {
         )
         .unwrap();
 
-        let resample_shader = resample_compute_shader::load(device.clone()).expect("cannot load shader");
+        let resample_shader =
+            resample_compute_shader::load(device.clone()).expect("cannot load shader");
         let rs = resample_shader.entry_point("main").unwrap();
         let stage = PipelineShaderStageCreateInfo::new(rs);
         let layout = PipelineLayout::new(
@@ -402,7 +409,11 @@ impl Engine {
             ImageCreateInfo {
                 image_type: vulkano::image::ImageType::Dim2d,
                 format: image_format,
-                extent: [(width / render_scale) as u32, (height / render_scale) as u32, 1],
+                extent: [
+                    (width / render_scale) as u32,
+                    (height / render_scale) as u32,
+                    1,
+                ],
                 usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC | ImageUsage::TRANSFER_DST,
                 ..Default::default()
             },
@@ -878,7 +889,7 @@ impl Engine {
             voxel_resolution: resolution,
             render_mode: self.current_render_mode as u32,
             max_ray_length: self.ray_length,
-            max_height: self.max_fog_height
+            max_height: self.max_fog_height,
         };
 
         unsafe {
@@ -902,7 +913,11 @@ impl Engine {
                 .unwrap()
                 .push_constants(self.render_compute_pipeline.layout().clone(), 0, push_data)
                 .unwrap()
-                .dispatch([(self.width / self.render_scale) as u32 / 8, (self.height / self.render_scale) as u32 / 8, 1])
+                .dispatch([
+                    (self.width / self.render_scale) as u32 / 8,
+                    (self.height / self.render_scale) as u32 / 8,
+                    1,
+                ])
                 .unwrap()
                 .bind_pipeline_compute(self.resample_compute_pipeline.clone())
                 .unwrap()
@@ -910,7 +925,7 @@ impl Engine {
                     PipelineBindPoint::Compute,
                     self.resample_compute_pipeline.layout().clone(),
                     0,
-                    vec![resample_set.clone()]
+                    vec![resample_set.clone()],
                 )
                 .unwrap()
                 .dispatch([self.width as u32 / 8, self.height as u32 / 8, 1])

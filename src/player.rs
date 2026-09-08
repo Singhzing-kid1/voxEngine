@@ -6,7 +6,7 @@ use crate::{
     camera::Camera,
     common::{HasEntity, Updateable},
     entity::Entity,
-    physics::Physics
+    physics::Physics,
 };
 
 use getset::Getters;
@@ -40,7 +40,7 @@ impl Player {
         position: glam::Vec3,
         size: glam::Vec3,
         mouse_sensitivity: f32,
-        physics: &mut Physics
+        physics: &mut Physics,
     ) -> Self {
         Player {
             movement_force,
@@ -93,7 +93,8 @@ impl Player {
             .is_scancode_pressed(Scancode::Space)
             && self.entity.get_grounded()
         {
-            self.entity.start_jump(self.camera.get_up(), JUMP_FORCE_FRAMES);
+            self.entity
+                .start_jump(self.camera.get_up(), JUMP_FORCE_FRAMES);
         }
     }
 }

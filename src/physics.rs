@@ -1,11 +1,11 @@
-use rapier3d::{
-    control::KinematicCharacterController, parry::query::DefaultQueryDispatcher, prelude::*,
-};
-use std::collections::HashMap;
 use crate::{
     common::conversions::{FromRapier, ToRapier},
     world::World,
 };
+use rapier3d::{
+    control::KinematicCharacterController, parry::query::DefaultQueryDispatcher, prelude::*,
+};
+use std::collections::HashMap;
 
 const CHUNK_LOAD_RADIUS: i32 = 4;
 
@@ -152,5 +152,8 @@ impl Physics {
 }
 
 fn chebyshev_distance(a: glam::IVec3, b: glam::IVec3) -> i32 {
-    (a.x - b.x).abs().max((a.y - b.y).abs()).max((a.z - b.z).abs())
+    (a.x - b.x)
+        .abs()
+        .max((a.y - b.y).abs())
+        .max((a.z - b.z).abs())
 }

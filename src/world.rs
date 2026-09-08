@@ -1,7 +1,7 @@
+use crate::common::conversions::{ToRapier, ToRapierVec};
 use crate::perlin::FractalNoise;
-use crate::common::conversions::{ToRapierVec, ToRapier};
-use glam::{IVec3, Vec3, ivec3, vec3};
 use getset::CloneGetters;
+use glam::{IVec3, Vec3, ivec3, vec3};
 use rapier3d::prelude::*;
 use std::collections::HashMap;
 
@@ -162,9 +162,15 @@ impl World {
                         let y = ty * 4 + local_y;
                         let z = tz * 8 + local_z;
 
-                        let neighbor_solid = |dchan: i32, dy: i32, dz: i32, dx: i32, dz_global: i32| -> bool {
+                        let neighbor_solid = |dchan: i32,
+                                              dy: i32,
+                                              dz: i32,
+                                              dx: i32,
+                                              dz_global: i32|
+                         -> bool {
                             let (nchan, nly, nlz) = (channel + dchan, local_y + dy, local_z + dz);
-                            if nchan >= 0 && nchan < 4 && nly >= 0 && nly < 4 && nlz >= 0 && nlz < 8 {
+                            if nchan >= 0 && nchan < 4 && nly >= 0 && nly < 4 && nlz >= 0 && nlz < 8
+                            {
                                 let nbit = nchan * 32 + nly + nlz * 4;
                                 (word >> nbit) & 1 != 0
                             } else {

@@ -1,4 +1,4 @@
-use crate::{common::Updateable, physics::{Physics}};
+use crate::{common::Updateable, physics::Physics};
 use dear_imgui_reflect::ImGuiReflect;
 use dear_imgui_rs::render;
 use getset::{CopyGetters, Setters};
@@ -50,7 +50,7 @@ impl Camera {
     pub fn add_to_yaw(&mut self, value: f32) {
         self.yaw += value;
     }
-    
+
     pub fn add_to_pitch(&mut self, value: f32) {
         self.pitch += value;
 

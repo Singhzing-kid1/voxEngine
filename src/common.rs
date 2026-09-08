@@ -2,10 +2,7 @@ use glam::Vec3;
 use std::fmt::Debug;
 use vulkano::buffer::BufferContents;
 
-use crate::{
-    physics::Physics,
-    entity::Entity
-};
+use crate::{entity::Entity, physics::Physics};
 
 #[derive(BufferContents)]
 #[repr(C)]

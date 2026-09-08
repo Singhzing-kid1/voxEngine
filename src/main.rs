@@ -25,12 +25,7 @@ fn main() {
 
     flags.set_capture_mouse_state(true);
 
-    let mut engine = Engine::new(
-        "vox engine using rust",
-        time::Instant::now(),
-        4,
-        flags,
-    );
+    let mut engine = Engine::new("vox engine using rust", time::Instant::now(), 4, flags);
     println!("initialized engine");
 
     let mut debug = Debug::new(&engine);
@@ -45,7 +40,11 @@ fn main() {
     println!("creating physics engine");
     let mut physics = Physics::new(&world, vec3(0.0, -9.81, 0.0), 32);
 
-    engine.send_world_data(world.get_world_as_u32(), world.get_dimensions_as_arr(), world.get_dimensions().y);
+    engine.send_world_data(
+        world.get_world_as_u32(),
+        world.get_dimensions_as_arr(),
+        world.get_dimensions().y,
+    );
     println!("sent world data to gpu");
 
     engine.toggle_mouse(engine.get_flags().get_capture_mouse_state());
@@ -62,13 +61,15 @@ fn main() {
         h,
         glam::vec3(100.0, 550.0, 100.0),
         vec3(1.0, 2.0, 1.0),
-        0.2, 
-        &mut physics
+        0.2,
+        &mut physics,
     );
 
     while !engine.get_flags().get_quit_state() {
         engine.frame_start();
-        let view = player.get_camera().get_pixel_to_ray_matrix(*engine.get_render_scale());
+        let view = player
+            .get_camera()
+            .get_pixel_to_ray_matrix(*engine.get_render_scale());
         engine.event_handling();
 
         let dt = engine.get_delta_time();
