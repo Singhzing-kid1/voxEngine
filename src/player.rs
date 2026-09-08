@@ -90,20 +90,23 @@ impl Player {
 
         if event_pump
             .keyboard_state()
-            .is_scancode_pressed(Scancode::Space)
-            && self.entity.get_grounded()
+            .is_scancode_pressed(Scancode::Space) &&
+            self.entity.get_grounded()
         {
-            self.entity
-                .start_jump(self.camera.get_up(), JUMP_FORCE_FRAMES);
+            self.entity.request_jump();
         }
     }
 }
 
 impl Updateable for Player {
-    fn update(&mut self, delta_time: u128, physics: &mut Physics) {
-        self.camera.set_camera_position(self.entity.get_position());
-        self.entity.update(delta_time, physics);
-        self.camera.update(delta_time, physics);
+    fn fixed_update(&mut self, physics: &mut Physics) {
+        self.entity.fixed_update(physics);
+    }
+
+
+    fn update(&mut self, alpha: f32, physics: &mut Physics) {
+        self.camera.set_camera_position(self.entity.interpolated_position(alpha));
+        self.camera.update(alpha, physics);
     }
 }
 

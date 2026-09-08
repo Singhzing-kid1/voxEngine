@@ -65,17 +65,20 @@ fn main() {
         &mut physics,
     );
 
+
+    let mut accumulator: f32 = 0.0;
+
     while !engine.get_flags().get_quit_state() {
         engine.frame_start();
-        let view = player
-            .get_camera()
-            .get_pixel_to_ray_matrix(*engine.get_render_scale());
         engine.event_handling();
 
-        let dt = engine.get_delta_time();
-
-        if dt > 30 {
-            println!("SPIKE: {}ms", dt);
+        let dt_ms = engine.get_delta_time();
+        if dt_ms > 30 {
+            println!("SPIKE: {}ms", dt_ms);
+        }
+        let mut frame_time = dt_ms as f32 / 1000.0;
+        if frame_time > common::MAX_FRAME_TIME {
+            frame_time = common::MAX_FRAME_TIME;
         }
 
         player.collect_inputs(
@@ -83,16 +86,24 @@ fn main() {
             engine.get_x_offset(),
             engine.get_y_offset(),
         );
-
         physics.update_loaded_chunks(&world, player.entity().get_position());
 
-        physics.step();
+        accumulator += frame_time;
+        while accumulator >= common::TICK_RATE {
+            physics.step();
+            player.fixed_update(&mut physics);
+            accumulator -= common::TICK_RATE;
+        }
 
-        player.update(engine.get_delta_time(), &mut physics);
+        let alpha = accumulator / common::TICK_RATE;
+        player.update(alpha, &mut physics);
 
+        let view = player
+            .get_camera()
+            .get_pixel_to_ray_matrix(*engine.get_render_scale());
         engine.render(view, world.get_dimensions_as_arr());
         debug.render(&mut engine, &mut player);
         engine.present();
-        engine.frame_end(-1);
+        engine.frame_end(500);
     }
 }

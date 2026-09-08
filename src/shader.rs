@@ -44,7 +44,7 @@ pub mod render_compute_shader {
             vec3 applyFog(vec3 baseColor, float depth) {
                 float fog_start = pc.max_ray_length * 0.60;
                 float fog_amount = smoothstep(fog_start, pc.max_ray_length, depth);
-                vec3 fog_color = vec3(1.0, 1.0, 1.0);
+                vec3 fog_color = vec3(0.75, 0.7, 0.7);
                 return mix(baseColor, fog_color, fog_amount);
             }
 

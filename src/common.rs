@@ -4,6 +4,9 @@ use vulkano::buffer::BufferContents;
 
 use crate::{entity::Entity, physics::Physics};
 
+pub(crate) const TICK_RATE: f32 = 1.0/60.0; // 1 / fps -> matches rapier internals
+pub(crate) const MAX_FRAME_TIME: f32 = 0.25;
+
 #[derive(BufferContents)]
 #[repr(C)]
 pub struct RayHit {
@@ -12,7 +15,9 @@ pub struct RayHit {
 }
 
 pub trait Updateable {
-    fn update(&mut self, delta_time: u128, physics: &mut Physics);
+    fn fixed_update(&mut self, physics: &mut Physics);
+
+    fn update(&mut self, alpha: f32, physics: &mut Physics);
 }
 
 pub trait HasEntity: Debug {

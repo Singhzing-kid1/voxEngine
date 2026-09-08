@@ -27,6 +27,8 @@ pub struct Entity {
 
     #[getset(get_copy = "pub with_prefix")]
     position: glam::Vec3,
+    #[getset(get_copy = "pub with_prefix")]
+    prev_position: glam::Vec3,
 
     #[getset(get_copy = "pub with_prefix", set = "pub")]
     velocity: glam::Vec3,
@@ -56,6 +58,8 @@ pub struct Entity {
     wish_dir: glam::Vec3,
     #[imgui(skip)]
     wish_speed: f32,
+    #[imgui(skip)]
+    jump_requested: bool
 }
 
 impl Entity {
@@ -75,6 +79,7 @@ impl Entity {
             mass,
             size,
             position,
+            prev_position: position,
             velocity: glam::Vec3::ZERO,
             acceleration: glam::Vec3::ZERO,
             net_force: glam::Vec3::ZERO,
@@ -87,6 +92,7 @@ impl Entity {
             controller,
             wish_dir: glam::Vec3::ZERO,
             wish_speed: 0.0,
+            jump_requested: false
         }
     }
 
@@ -154,17 +160,25 @@ impl Entity {
         self.wish_speed = wish_speed;
     }
 
-    pub fn start_jump(&mut self, _up: Vec3, _frames: u32) {
-        let weight = self.mass * 9.81;
-        let jump_force = 24.0 * weight;
+    pub fn request_jump(&mut self) {
+        self.jump_requested = true;
+    }
 
-        self.applied_force += jump_force * Vec3::Y;
+    pub fn interpolated_position(&self, alpha: f32) -> Vec3 {
+        self.prev_position.lerp(self.position, alpha)
     }
 }
 
 impl Updateable for Entity {
-    fn update(&mut self, delta_time: u128, physics: &mut Physics) {
-        let dt = delta_time as f32 / 1000.0;
+    fn fixed_update(&mut self, physics: &mut Physics) {
+        let dt = crate::common::TICK_RATE;
+
+        self.prev_position = self.position;
+
+        if self.jump_requested && self.grounded {
+            self.velocity.y += 3.0 * 9.81 * 0.3; // derived from v = a * t = (3F / m) * t = (3ma / m) * t = (3a) * t
+        }
+        self.jump_requested = false;
 
         self.add_applied_force(Vec3::new(0.0, GRAVITY * self.mass, 0.0));
 
@@ -210,10 +224,9 @@ impl Updateable for Entity {
 
         physics.apply_collider_movement(self.collider_handle, effective);
         self.position = physics.collider_translation(self.collider_handle);
-
-        self.wish_dir = Vec3::ZERO;
-        self.wish_speed = 0.0;
     }
+
+    fn update(&mut self, _alpha: f32, _physics: &mut Physics) { }
 }
 
 impl AABB for Entity {

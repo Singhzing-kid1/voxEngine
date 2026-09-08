@@ -575,14 +575,15 @@ impl Engine {
                     ..
                 } => {
                     let render_mode = self.current_render_mode as u32;
-                    let new_render_mode = (render_mode + 1) % 5;
+                    let new_render_mode = (render_mode + 1) % 6;
                     self.current_render_mode = match new_render_mode {
-                        0 => RENDERMODE::COORD,
-                        1 => RENDERMODE::STEPS,
-                        2 => RENDERMODE::NORMAL,
-                        3 => RENDERMODE::UV,
-                        4 => RENDERMODE::DEPTH,
-                        _ => RENDERMODE::STEPS,
+                        0 => RENDERMODE::DEFAULT,
+                        1 => RENDERMODE::COORD,
+                        2 => RENDERMODE::STEPS,
+                        3 => RENDERMODE::NORMAL,
+                        4 => RENDERMODE::UV,
+                        5 => RENDERMODE::DEPTH,
+                        _ => RENDERMODE::DEFAULT,
                     }
                 }
                 Event::MouseMotion {
