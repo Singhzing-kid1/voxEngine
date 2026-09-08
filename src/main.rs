@@ -65,7 +65,6 @@ fn main() {
         &mut physics,
     );
 
-
     let mut accumulator: f32 = 0.0;
 
     while !engine.get_flags().get_quit_state() {

@@ -59,7 +59,7 @@ pub struct Entity {
     #[imgui(skip)]
     wish_speed: f32,
     #[imgui(skip)]
-    jump_requested: bool
+    jump_requested: bool,
 }
 
 impl Entity {
@@ -92,7 +92,7 @@ impl Entity {
             controller,
             wish_dir: glam::Vec3::ZERO,
             wish_speed: 0.0,
-            jump_requested: false
+            jump_requested: false,
         }
     }
 
@@ -226,7 +226,7 @@ impl Updateable for Entity {
         self.position = physics.collider_translation(self.collider_handle);
     }
 
-    fn update(&mut self, _alpha: f32, _physics: &mut Physics) { }
+    fn update(&mut self, _alpha: f32, _physics: &mut Physics) {}
 }
 
 impl AABB for Entity {

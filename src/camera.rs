@@ -119,8 +119,8 @@ impl Camera {
 }
 
 impl Updateable for Camera {
-    fn fixed_update(&mut self, _physics: &mut Physics) { }
-    
+    fn fixed_update(&mut self, _physics: &mut Physics) {}
+
     fn update(&mut self, _alpha: f32, _physics: &mut Physics) {
         self.update_orientation();
         self.calculate_right();
