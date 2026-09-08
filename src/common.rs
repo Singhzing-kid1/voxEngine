@@ -1,10 +1,11 @@
 use glam::Vec3;
-use rapier3d::prelude::Vec3 as RVec3;
 use std::fmt::Debug;
 use vulkano::buffer::BufferContents;
-use crate::physics::Physics;
 
-use crate::entity::Entity;
+use crate::{
+    physics::Physics,
+    entity::Entity
+};
 
 #[derive(BufferContents)]
 #[repr(C)]

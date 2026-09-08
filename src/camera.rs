@@ -1,5 +1,6 @@
-use crate::{common::Updateable, physics::{self, Physics}};
+use crate::{common::Updateable, physics::{Physics}};
 use dear_imgui_reflect::ImGuiReflect;
+use dear_imgui_rs::render;
 use getset::{CopyGetters, Setters};
 
 #[derive(ImGuiReflect, CopyGetters, Setters, Debug)]
@@ -49,6 +50,7 @@ impl Camera {
     pub fn add_to_yaw(&mut self, value: f32) {
         self.yaw += value;
     }
+    
     pub fn add_to_pitch(&mut self, value: f32) {
         self.pitch += value;
 
@@ -59,9 +61,9 @@ impl Camera {
         }
     }
 
-    pub fn get_pixel_to_ray_matrix(&self) -> glam::Mat4 {
+    pub fn get_pixel_to_ray_matrix(&self, render_scale: u16) -> glam::Mat4 {
         let (w, h) = self.dimensions;
-        let (w, h) = (w as f32, h as f32);
+        let (w, h) = ((w / render_scale) as f32, (h / render_scale) as f32);
 
         let tan_fov = (self.fov.to_radians() * 0.5).tan();
 
@@ -97,12 +99,12 @@ impl Camera {
 
 impl Camera {
     fn update_orientation(&mut self) {
-        //println!("{}  {}", self. yaw, self.pitch);
-
         let r_yaw = self.yaw.to_radians();
         let r_pitch = self.pitch.to_radians();
+
         let q_yaw = glam::Quat::from_axis_angle(glam::Vec3::Y, r_yaw);
         let q_pitch = glam::Quat::from_axis_angle(glam::Vec3::X, r_pitch);
+
         self.camera_orientation = (q_yaw * q_pitch).normalize();
     }
     fn calculate_right(&mut self) {
@@ -117,8 +119,7 @@ impl Camera {
 }
 
 impl Updateable for Camera {
-    fn update(&mut self, delta_time: u128, _physics: &mut Physics) {
-        let _ = delta_time;
+    fn update(&mut self, _delta_time: u128, _physics: &mut Physics) {
         self.update_orientation();
         self.calculate_right();
         self.calculate_front();

@@ -26,8 +26,8 @@ pub struct Physics {
 }
 
 impl Physics {
-    pub fn new(world: &World, gravity: glam::Vec3, chunk_size: i32) -> Self {
-        let mut physics = Physics {
+    pub fn new(_world: &World, gravity: glam::Vec3, chunk_size: i32) -> Self {
+        let physics = Physics {
             rigid_body_set: RigidBodySet::new(),
             collider_set: ColliderSet::new(),
             physics_pipeline: PhysicsPipeline::new(),
@@ -121,7 +121,7 @@ impl Physics {
         controller: &KinematicCharacterController,
         handle: ColliderHandle,
         desired_translation: glam::Vec3,
-    ) -> (glam::Vec3, bool) {
+    ) -> (glam::Vec3, bool, Vec<glam::Vec3>) {
         let collider = &self.collider_set[handle];
         let query_pipeline = self.broad_phase.as_query_pipeline(
             &DefaultQueryDispatcher,
@@ -129,17 +129,24 @@ impl Physics {
             &self.collider_set,
             QueryFilter::default().exclude_collider(handle),
         );
+
+        let mut collision_normals = Vec::new();
+
         let effective_movement = controller.move_shape(
             dt,
             &query_pipeline,
             collider.shape(),
             collider.position(),
             desired_translation.to_rapier(),
-            |_collision| {},
+            |collision| {
+                collision_normals.push(collision.hit.normal1.from_rapier());
+            },
         );
+
         (
             effective_movement.translation.from_rapier(),
             effective_movement.grounded,
+            collision_normals,
         )
     }
 }

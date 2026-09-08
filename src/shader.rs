@@ -1,14 +1,15 @@
-pub mod cs {
+pub mod render_compute_shader {
     vulkano_shaders::shader! {
         ty: "compute",
         src: r"
             #version 460
 
-            const uint COORD = 0;
-            const uint STEPS = 1;
-            const uint NORMAL = 2;
-            const uint UV = 3;
-            const uint DEPTH = 4;
+            const uint DEFAULT = 0; 
+            const uint COORD = 1;
+            const uint STEPS = 2;
+            const uint NORMAL = 3;
+            const uint UV = 4;
+            const uint DEPTH = 5;
 
             layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
@@ -17,6 +18,7 @@ pub mod cs {
                 uvec3 voxel_resolution;  // now per-axis: (4000, 4000, 2000)
                 uint render_mode;
                 float max_ray_length;
+                float max_height;
             } pc;
 
             layout(set = 0, binding = 0, rgba8) writeonly uniform image2D targetImage;
@@ -38,6 +40,18 @@ pub mod cs {
                 float t = float(int(steps - start)) / float(end - start);
                 return inferno(clamp(t, 0.0, 1.0));
             }
+            
+            vec3 applyFog(vec3 baseColor, float depth) {
+                float fog_start = pc.max_ray_length * 0.60;
+                float fog_amount = smoothstep(fog_start, pc.max_ray_length, depth);
+                vec3 fog_color = vec3(1.0, 1.0, 1.0);
+                return mix(baseColor, fog_color, fog_amount);
+            }
+
+            vec3 applyFogHeightLimited(vec3 baseColor, float depth, float pointY) {
+                if (pointY > pc.max_height) return baseColor; 
+                return applyFog(baseColor, depth);
+            }
 
             bool readVoxel(uvec3 coord, inout uvec4 texel, inout ivec3 texel_coord) {
                 ivec3 new_texel_coord = ivec3(coord.x / 4, coord.y / 4, coord.z / 8);
@@ -54,6 +68,7 @@ pub mod cs {
 
                 if (length(dir) < 1e-6) return false;
 
+                float playerY = origin.y;
                 vec3 res = vec3(pc.voxel_resolution);  // (4000, 4000, 2000)
 
                 vec3 inv_dir = 1.0 / dir;
@@ -75,7 +90,13 @@ pub mod cs {
 
                 tmax = min(tmax, pc.max_ray_length);
 
-                if (tmin > tmax) return false;
+                if (tmin > tmax) {
+                        if (pc.render_mode == DEFAULT) {
+                            float missY = origin.y + dir.y * tmax;
+                            color = applyFogHeightLimited(vec3(0.0), tmax, missY);
+                        }
+                    return false;
+                }
 
                 uint stepped_axis;
                 if (tmins.x < tmins.y) {
@@ -103,7 +124,10 @@ pub mod cs {
                 if (!instantHit)
                 while (true) {
                     steps++;
-                    if (steps > max_steps) return false;
+                    if (steps > max_steps) {
+                        if (pc.render_mode == DEFAULT) color = applyFog(vec3(0.0), pc.max_ray_length);
+                        return false;
+                    }
 
                     if (t.x < t.y) {
                         if (t.x < t.z) {
@@ -127,11 +151,22 @@ pub mod cs {
                         }
                     }
 
-                    if (min(t.x, min(t.y, t.z)) - min(delta.x, min(delta.y, delta.z)) > tmax) return false;
+                    if (min(t.x, min(t.y, t.z)) - min(delta.x, min(delta.y, delta.z)) > tmax) {
+                        if (pc.render_mode == DEFAULT) {
+                            float missY = origin.y + dir.y * tmax;
+                            color = applyFogHeightLimited(vec3(0.0), tmax, missY);
+                        }
+                        return false;
+                    }
 
                     if (any(lessThan(icoord, ivec3(0))) ||
-                        any(greaterThanEqual(icoord, ivec3(pc.voxel_resolution))))
+                        any(greaterThanEqual(icoord, ivec3(pc.voxel_resolution)))) {
+                        if (pc.render_mode == DEFAULT) {
+                            float missY = origin.y + dir.y * tmax;
+                            color = applyFogHeightLimited(vec3(0.0), tmax, missY);
+                        }
                         return false;
+                    }
 
                     if (readVoxel(uvec3(icoord), texel, texel_coord))
                         break;
@@ -142,15 +177,30 @@ pub mod cs {
                 float t_inside = dot(t, mask) - dot(delta, mask);
 
                 switch (pc.render_mode) {
-                    case COORD:
+                    case DEFAULT: {
+                        vec3 normal = -mask * sgn_dir;
+                        color = max(normal.xyz, 0.0) - min(normal.yxz + normal.zyx, 0.0);
+
+                        float depth = (tmin + t_inside) * length(dir);
+
+                        color = applyFog(color, depth);
+
+                        break;
+                    }
+
+                    case COORD: {
                         // Normalize each axis by its own resolution
                         color = vec3(icoord) / (res - 1.0);
                         break;
-                    case NORMAL:
+                    }
+
+                    case NORMAL: {
                         vec3 normal = -mask * sgn_dir;
                         color = max(normal.xyz, 0.0) - min(normal.yxz + normal.zyx, 0.0);
                         break;
-                    case UV:
+                    }
+
+                    case UV: {
                         vec3 hit = origin + dir * t_inside;
                         vec3 local_hit = hit - vec3(icoord);
                         vec2 uv;
@@ -159,13 +209,16 @@ pub mod cs {
                         else                        uv = local_hit.xy;
                         color = vec3(uv, 0.0);
                         break;
-                    case DEPTH:
+                    }
+                    
+                    case DEPTH: {
                         // Normalize depth by the max possible diagonal (in voxels)
                         float max_diagonal = length(res);
                         float depth = (tmin + t_inside) * length(dir);
                         color = vec3(1.0 / (1.0 + depth / max_diagonal))
                             + vec3(0.3, 0.0, 0.7) / 256.0;
                         break;
+                    }
                 }
                 return true;
             }
@@ -173,21 +226,20 @@ pub mod cs {
             void main() {
                 ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
                 ivec2 imgSize = imageSize(targetImage);
-
                 if (any(greaterThanEqual(pixelCoord, imgSize))) return;
 
                 vec3 o = pc.pixelToRay[3].xyz;
-                vec3 d = mat3(pc.pixelToRay) * vec3(pixelCoord, 1);
-                d = normalize(d);
+                vec3 d = normalize(mat3(pc.pixelToRay) * vec3(pixelCoord, 1));
 
                 vec3 color;
                 uint steps = 0;
-                if (traversal(o, d, color, steps) && pc.render_mode != STEPS) {
-                    imageStore(targetImage, pixelCoord, vec4(color, 1));
-                }
+                bool hit = traversal(o, d, color, steps);
+
                 if (pc.render_mode == STEPS) {
                     uint max_steps = pc.voxel_resolution.x + pc.voxel_resolution.y + pc.voxel_resolution.z;
                     color = stepsToInferno(steps, 0u, max_steps);
+                    imageStore(targetImage, pixelCoord, vec4(color, 1));
+                } else if (hit || pc.render_mode == DEFAULT) {
                     imageStore(targetImage, pixelCoord, vec4(color, 1));
                 }
             }
@@ -195,7 +247,7 @@ pub mod cs {
     }
 }
 
-pub mod rs {
+pub mod resample_compute_shader {
     vulkano_shaders::shader! {
         ty: "compute",
         src: r"
@@ -207,44 +259,22 @@ pub mod rs {
             layout(set = 0, binding = 1, rgba8) writeonly uniform image2D outputImage;
 
             void main() {
-                ivec2 outputCoords = ivec2(gl_GlobalInvocationID.xy);
+                ivec2 out_coord = ivec2(gl_GlobalInvocationID.xy);
+                ivec2 out_size = imageSize(outputImage);
 
-                ivec2 inputSize = imageSize(inputImage);
-                ivec2 outputSize = imageSize(outputImage);
+                if(any(greaterThanEqual(out_coord, out_size))) return;
 
-                if (outputCoords.x >= outputSize.x || outputCoords.y >= outputSize.y) {
-                    return;
-                }
+                ivec2 in_size = imageSize(inputImage);
+                ivec2 in_coord = (out_coord * in_size) / out_size;
+                in_coord = clamp(in_coord, ivec2(0), in_size - 1);
 
-                vec2 ratio = vec2(inputSize) / vec2(outputSize);
-                vec2 inputRegionMin = vec2(outputCoords) * ratio;
-                vec2 inputRegionMax = vec2(outputCoords + 1) * ratio;
-
-                vec4 areaWeightedSum = vec4(0.0);
-                for (int y = int(floor(inputRegionMin.y)); y < int(ceil(inputRegionMax.y)); ++y) {
-                    for (int x = int(floor(inputRegionMin.x)); x < int(ceil(inputRegionMax.x)); ++x) {
-                        vec2 pixelMin = vec2(x, y);
-                        vec2 pixelMax = pixelMin + 1.0;
-                        vec2 overlapMin = max(pixelMin, inputRegionMin);
-                        vec2 overlapMax = min(pixelMax, inputRegionMax);
-                        vec2 overlapSize = max(overlapMax - overlapMin, 0.0);
-                        float overlapArea = overlapSize.x * overlapSize.y;
-
-                        areaWeightedSum += imageLoad(inputImage, ivec2(x, y)) * overlapArea;
-                    }
-                }
-
-                vec2 inputRegionSize = inputRegionMax - inputRegionMin;
-                float totalArea = inputRegionSize.x * inputRegionSize.y;
-
-                vec4 areaWeightedAvg = areaWeightedSum / totalArea;
-                imageStore(outputImage, outputCoords, areaWeightedAvg);
+                imageStore(outputImage, out_coord, imageLoad(inputImage, in_coord));
             }
         "
     }
 }
 
-pub mod rayCastShader {
+pub mod raycast_shader {
     vulkano_shaders::shader! {
         ty: "compute",
         src: r"

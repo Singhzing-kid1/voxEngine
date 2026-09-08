@@ -4,7 +4,7 @@ use sdl3::{EventPump, VideoSubsystem, event::Event, keyboard::Keycode, video::Wi
 
 use vulkano::{
     VulkanLibrary, VulkanObject,
-    buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage},
+    buffer::{Buffer, BufferCreateInfo, BufferUsage},
     command_buffer::{
         AutoCommandBufferBuilder, ClearColorImageInfo, CommandBufferUsage, CopyBufferToImageInfo,
         CopyImageInfo, PrimaryCommandBufferAbstract, allocator::StandardCommandBufferAllocator,
@@ -41,9 +41,9 @@ use dear_imgui_reflect::ImGuiReflect;
 use crate::{
     common::RayHit,
     shader::{
-        cs::{self, PushConstants},
-        rayCastShader::{self, RayParams},
-        rs,
+        render_compute_shader::{self, PushConstants},
+        raycast_shader::{self, RayParams},
+        resample_compute_shader,
     },
 };
 
@@ -53,6 +53,7 @@ use getset::{CloneGetters, CopyGetters, Getters, MutGetters};
 #[imgui(enum_style = "dropdown")]
 #[allow(unused)]
 pub enum RENDERMODE {
+    DEFAULT,
     COORD,
     STEPS,
     NORMAL,
@@ -113,6 +114,9 @@ pub struct Engine {
 
     width: u16,
     height: u16,
+
+    #[getset(get = "pub with_prefix")]
+    render_scale: u16,
 
     sdl_context: sdl3::Sdl,
     video: VideoSubsystem,
@@ -182,6 +186,8 @@ pub struct Engine {
 
     scale: f32,
 
+    max_fog_height: f32,
+
     x: f32,
     y: f32,
 
@@ -193,7 +199,7 @@ pub struct Engine {
 
 impl Engine {
     #[allow(unused_mut)]
-    pub fn new(title: &str, start: time::Instant, flags: Flags) -> Self {
+    pub fn new(title: &str, start: time::Instant, render_scale: u16, flags: Flags) -> Self {
         let sdl_context = sdl3::init().unwrap();
         let video = sdl_context.video().unwrap();
         let event = sdl_context.event_pump().unwrap();
@@ -337,7 +343,7 @@ impl Engine {
             Default::default(),
         ));
 
-        let render_shader = cs::load(device.clone()).expect("cannot load shader");
+        let render_shader = render_compute_shader::load(device.clone()).expect("cannot load shader");
         let cs = render_shader.entry_point("main").unwrap();
         let stage = PipelineShaderStageCreateInfo::new(cs);
         let layout = PipelineLayout::new(
@@ -355,7 +361,7 @@ impl Engine {
         )
         .unwrap();
 
-        let resample_shader = rs::load(device.clone()).expect("cannot load shader");
+        let resample_shader = resample_compute_shader::load(device.clone()).expect("cannot load shader");
         let rs = resample_shader.entry_point("main").unwrap();
         let stage = PipelineShaderStageCreateInfo::new(rs);
         let layout = PipelineLayout::new(
@@ -373,7 +379,7 @@ impl Engine {
         )
         .unwrap();
 
-        let raycast_shader = rayCastShader::load(device.clone()).expect("cannot load shader");
+        let raycast_shader = raycast_shader::load(device.clone()).expect("cannot load shader");
         let raycast = raycast_shader.entry_point("main").unwrap();
         let stage = PipelineShaderStageCreateInfo::new(raycast);
         let layout = PipelineLayout::new(
@@ -396,7 +402,7 @@ impl Engine {
             ImageCreateInfo {
                 image_type: vulkano::image::ImageType::Dim2d,
                 format: image_format,
-                extent: [width as u32, height as u32, 1],
+                extent: [(width / render_scale) as u32, (height / render_scale) as u32, 1],
                 usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC | ImageUsage::TRANSFER_DST,
                 ..Default::default()
             },
@@ -436,6 +442,7 @@ impl Engine {
 
             width,
             height,
+            render_scale,
 
             sdl_context,
             video,
@@ -475,7 +482,7 @@ impl Engine {
             event,
             collected_events: Vec::new(),
 
-            current_render_mode: RENDERMODE::NORMAL,
+            current_render_mode: RENDERMODE::DEFAULT,
             ray_length: 400.0,
 
             x_offset: 0.0,
@@ -488,6 +495,9 @@ impl Engine {
             last_y: 0.0,
 
             scale: 2.5,
+
+            max_fog_height: 0.0,
+
             x: 0.0,
             y: 0.0,
             flags,
@@ -601,7 +611,10 @@ impl Engine {
         self.last_frame = current_frame;
     }
 
-    pub fn frame_end(&mut self, target_fps: u32) {
+    pub fn frame_end(&mut self, target_fps: i32) {
+        if target_fps == -1 {
+            return;
+        }
         let target_dt = Duration::from_secs_f64(1.0 / target_fps as f64);
         let frame_duration = self.last_frame.elapsed();
 
@@ -617,7 +630,7 @@ impl Engine {
     }
 }
 
-// getters
+// custom(non get-set) getters
 
 impl Engine {
     pub fn get_dimensions(&self) -> (u16, u16) {
@@ -732,7 +745,7 @@ impl Engine {
 // rendering
 
 impl Engine {
-    pub fn send_world_data(&mut self, world: Vec<u32>, resolution: [u32; 3]) {
+    pub fn send_world_data(&mut self, world: Vec<u32>, resolution: [u32; 3], max_height: f32) {
         let voxels = Image::new(
             self.memory_allocator.clone(),
             ImageCreateInfo {
@@ -802,6 +815,7 @@ impl Engine {
         .unwrap();
 
         self.voxel_set = Some(voxel_set);
+        self.max_fog_height = max_height * 0.33;
     }
 
     pub fn render(&mut self, pixel_to_ray: glam::Mat4, resolution: [u32; 3]) {
@@ -864,6 +878,7 @@ impl Engine {
             voxel_resolution: resolution,
             render_mode: self.current_render_mode as u32,
             max_ray_length: self.ray_length,
+            max_height: self.max_fog_height
         };
 
         unsafe {
@@ -887,7 +902,7 @@ impl Engine {
                 .unwrap()
                 .push_constants(self.render_compute_pipeline.layout().clone(), 0, push_data)
                 .unwrap()
-                .dispatch([self.width as u32 / 8, self.height as u32 / 8, 1])
+                .dispatch([(self.width / self.render_scale) as u32 / 8, (self.height / self.render_scale) as u32 / 8, 1])
                 .unwrap()
                 .bind_pipeline_compute(self.resample_compute_pipeline.clone())
                 .unwrap()
@@ -895,7 +910,7 @@ impl Engine {
                     PipelineBindPoint::Compute,
                     self.resample_compute_pipeline.layout().clone(),
                     0,
-                    vec![resample_set.clone()],
+                    vec![resample_set.clone()]
                 )
                 .unwrap()
                 .dispatch([self.width as u32 / 8, self.height as u32 / 8, 1])

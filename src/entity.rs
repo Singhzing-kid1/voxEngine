@@ -3,7 +3,7 @@ use glam::Vec3;
 use getset::{CopyGetters, Setters};
 use rapier3d::{prelude::ColliderHandle, control::{KinematicCharacterController, CharacterLength, CharacterAutostep}};
 
-use crate::common::AABB;
+use crate::common::{AABB, Updateable};
 use crate::physics::Physics;
 
 const MAX_GROUND_SPEED: f32 = 7.0;
@@ -53,11 +53,6 @@ pub struct Entity {
     wish_dir: glam::Vec3,
     #[imgui(skip)]
     wish_speed: f32,
-
-    #[imgui(skip)]
-    jump_force_vector: glam::Vec3,
-    #[imgui(skip)]
-    jump_frames_remaining: u32,
 }
 
 impl Entity {
@@ -89,9 +84,7 @@ impl Entity {
             collider_handle,
             controller,
             wish_dir: glam::Vec3::ZERO,
-            wish_speed: 0.0,
-            jump_force_vector: glam::Vec3::ZERO,
-            jump_frames_remaining: 0,
+            wish_speed: 0.0
         }
     }
 
@@ -159,25 +152,20 @@ impl Entity {
         self.wish_speed = wish_speed;
     }
 
-    pub fn start_jump(&mut self, up: Vec3, frames: u32) {
-        if self.jump_frames_remaining > 0 {
-            return;
-        }
-        let weight = self.mass * 9.81;
-        let jump_force = 6.0 * weight;
-        self.jump_force_vector = Vec3::Y * jump_force;
-        self.jump_frames_remaining = frames;
-    }
+    pub fn start_jump(&mut self, _up: Vec3, _frames: u32) {
 
-    pub fn update(&mut self, delta_time: u128, physics: &mut Physics) {
+        let weight = self.mass * 9.81;
+        let jump_force = 24.0 * weight;
+
+        self.applied_force += jump_force * Vec3::Y;
+    }
+}
+
+impl Updateable for Entity {
+    fn update(&mut self, delta_time: u128, physics: &mut Physics) {
         let dt = delta_time as f32 / 1000.0;
 
         self.add_applied_force(Vec3::new(0.0, GRAVITY * self.mass, 0.0));
-
-        if self.jump_frames_remaining > 0 {
-            self.add_applied_force(self.jump_force_vector);
-            self.jump_frames_remaining -= 1;
-        }
 
         self.calculate_acceleration();
 
@@ -193,8 +181,8 @@ impl Entity {
         }
         self.accelerate(self.wish_dir, self.wish_speed, accel, dt);
 
-        let desired = self.velocity * dt;
-        let (effective, grounded) =
+        let desired = self.velocity * dt + 0.5 * self.acceleration * dt.powi(2);
+        let (effective, grounded, collision_normals) =
             physics.move_entity(dt, &self.controller, self.collider_handle, desired);
 
         self.grounded = grounded;
@@ -205,6 +193,14 @@ impl Entity {
         }
         if grounded && self.velocity.y < 0.0 {
             self.velocity.y = 0.0;
+        }
+
+        for normal in &collision_normals {
+            let n = normal.normalize_or_zero();
+            let vel_into_surface = self.velocity.dot(n);
+            if vel_into_surface < 0.0 {
+                self.velocity -= n * vel_into_surface;
+            }
         }
 
         physics.apply_collider_movement(self.collider_handle, effective);
