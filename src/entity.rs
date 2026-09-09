@@ -9,7 +9,6 @@ use rapier3d::{
 use crate::common::{AABB, Updateable};
 use crate::physics::Physics;
 
-const MAX_GROUND_SPEED: f32 = 7.0;
 const GROUND_ACCEL: f32 = 10.0;
 const AIR_ACCEL: f32 = 2.0;
 const GROUND_FRICTION: f32 = 10.0;

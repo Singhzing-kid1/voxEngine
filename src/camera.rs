@@ -1,6 +1,5 @@
 use crate::{common::Updateable, physics::Physics};
 use dear_imgui_reflect::ImGuiReflect;
-use dear_imgui_rs::render;
 use getset::{CopyGetters, Setters};
 
 #[derive(ImGuiReflect, CopyGetters, Setters, Debug)]

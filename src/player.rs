@@ -12,7 +12,6 @@ use crate::{
 use getset::Getters;
 
 const MAX_GROUND_SPEED: f32 = 7.0;
-const JUMP_FORCE_FRAMES: u32 = 6;
 
 #[allow(unused)]
 #[derive(ImGuiReflect, Getters, Debug)]

@@ -1,7 +1,7 @@
 use crate::common::conversions::{ToRapier, ToRapierVec};
 use crate::perlin::FractalNoise;
 use getset::CloneGetters;
-use glam::{IVec3, Vec3, ivec3, vec3};
+use glam::{IVec3, Vec3, ivec3};
 use rapier3d::prelude::*;
 use std::collections::HashMap;
 
