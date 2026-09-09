@@ -1,113 +1,72 @@
-use std::{sync::Arc, time};
-
-use sdl3::{
-    EventPump,
-    VideoSubsystem,
-    event::Event,
-    keyboard::Keycode,
-    video::Window
+use std::{
+    sync::Arc,
+    time::{self, Duration},
 };
 
+use sdl3::{EventPump, VideoSubsystem, event::Event, keyboard::Keycode, video::Window};
+
 use vulkano::{
-    VulkanLibrary,
-    VulkanObject,
-    buffer::{
-        Buffer,
-        BufferUsage,
-        BufferCreateInfo
-    },
+    VulkanLibrary, VulkanObject,
+    buffer::{Buffer, BufferCreateInfo, BufferUsage},
     command_buffer::{
-        AutoCommandBufferBuilder,
-        ClearColorImageInfo,
-        CommandBufferUsage,
-        CopyBufferToImageInfo,
-        CopyImageInfo,
-        PrimaryCommandBufferAbstract,
-        allocator::StandardCommandBufferAllocator
+        AutoCommandBufferBuilder, ClearColorImageInfo, CommandBufferUsage, CopyBufferToImageInfo,
+        CopyImageInfo, PrimaryCommandBufferAbstract, allocator::StandardCommandBufferAllocator,
     },
     descriptor_set::{
-        DescriptorSet,
-        WriteDescriptorSet,
-        allocator::StandardDescriptorSetAllocator
+        DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator,
     },
     device::{
-        Device,
-        DeviceCreateInfo,
-        DeviceExtensions,
-        Queue,
-        QueueCreateInfo,
-        QueueFlags,
-        physical::PhysicalDeviceType
+        Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags,
+        physical::PhysicalDeviceType,
     },
-    format::{
-        ClearColorValue,
-        Format
-    },
+    format::{ClearColorValue, Format},
     image::{
-        Image,
-        ImageCreateInfo,
-        ImageUsage,
-        view::{
-            ImageView,
-            ImageViewCreateInfo
-        }
+        Image, ImageCreateInfo, ImageUsage,
+        view::{ImageView, ImageViewCreateInfo},
     },
-    instance::{
-        Instance,
-        InstanceCreateFlags,
-        InstanceCreateInfo
-    },
-    memory::{
-        allocator::{
-            AllocationCreateInfo,
-            MemoryTypeFilter,
-            StandardMemoryAllocator
-        }
-    },
+    instance::{Instance, InstanceCreateFlags, InstanceCreateInfo},
+    memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator},
     pipeline::{
-        ComputePipeline,
-        Pipeline,
-        PipelineBindPoint,
-        PipelineLayout,
-        PipelineShaderStageCreateInfo,
-        compute::ComputePipelineCreateInfo,
-        layout::PipelineDescriptorSetLayoutCreateInfo
+        ComputePipeline, Pipeline, PipelineBindPoint, PipelineLayout,
+        PipelineShaderStageCreateInfo, compute::ComputePipelineCreateInfo,
+        layout::PipelineDescriptorSetLayoutCreateInfo,
     },
     swapchain::{
-        self,
-        Surface,
-        Swapchain,
-        SwapchainCreateInfo,
-        SurfaceApi,
+        self, Surface, SurfaceApi, Swapchain, SwapchainAcquireFuture, SwapchainCreateInfo,
         SwapchainPresentInfo,
-        SwapchainAcquireFuture
     },
-    sync::{
-        GpuFuture,
-        semaphore::Semaphore
-    }
+    sync,
+    sync::{GpuFuture, semaphore::Semaphore},
 };
 
 use dear_imgui_reflect::ImGuiReflect;
 
 use crate::{
-    cs,
-    cs::PushConstants,
-    rs
+    common::RayHit,
+    shader::{
+        raycast_shader::{self, RayParams},
+        render_compute_shader::{self, PushConstants},
+        resample_compute_shader,
+    },
 };
+
+use getset::{CloneGetters, CopyGetters, Getters, MutGetters};
 
 #[derive(Debug, Clone, Copy, ImGuiReflect)]
 #[imgui(enum_style = "dropdown")]
 #[allow(unused)]
 pub enum RENDERMODE {
+    DEFAULT,
     COORD,
     STEPS,
     NORMAL,
     UV,
-    DEPTH
+    DEPTH,
 }
 
-#[derive(ImGuiReflect)]
+// implement getset on flags struct
+
+#[derive(ImGuiReflect, Copy, Clone)]
 pub struct Flags {
     quit: bool,
     gravity: bool,
@@ -148,26 +107,38 @@ impl Flags {
     }
 }
 
+#[derive(CopyGetters, Getters, MutGetters, CloneGetters)]
 #[allow(unused)]
 pub struct Engine {
+    #[getset(get_copy = "pub with_prefix")]
     delta_time: u128,
-    last_frame: u128,
+    last_frame: time::Instant,
     start: time::Instant,
 
     width: u16,
     height: u16,
 
+    #[getset(get = "pub with_prefix")]
+    render_scale: u16,
+
     sdl_context: sdl3::Sdl,
     video: VideoSubsystem,
 
+    #[getset(get = "pub with_prefix")]
     window: Window,
 
+    #[getset(get_clone = "pub with_prefix")]
     library: Arc<VulkanLibrary>,
+    #[getset(get_clone = "pub with_prefix")]
     instance: Arc<Instance>,
     surface: Arc<Surface>,
+    #[getset(get_clone = "pub with_prefix")]
     device: Arc<Device>,
+    #[getset(get_clone = "pub with_prefix")]
     queue: Arc<Queue>,
+    #[getset(get_clone = "pub with_prefix")]
     swapchain: Arc<Swapchain>,
+    #[getset(get_clone = "pub with_prefix")]
     images: Vec<Arc<Image>>,
 
     memory_allocator: Arc<StandardMemoryAllocator>,
@@ -177,6 +148,8 @@ pub struct Engine {
     render_compute_pipeline: Arc<ComputePipeline>,
     resample_compute_pipeline: Arc<ComputePipeline>,
 
+    raycast_compute_pipeline: Arc<ComputePipeline>,
+
     voxel_set: Option<Arc<DescriptorSet>>,
     render_set: Arc<DescriptorSet>,
     image_format: Format,
@@ -185,16 +158,22 @@ pub struct Engine {
     view: Arc<ImageView>,
 
     previous_future: Option<Box<dyn GpuFuture + Send + Sync>>,
+    #[getset(get_copy = "pub with_prefix")]
     current_image_index: u32,
     current_acquire_future: Option<SwapchainAcquireFuture>,
 
+    #[getset(get_clone = "pub with_prefix")]
     render_complete_semaphore: Arc<Semaphore>,
 
+    #[getset(get = "pub with_prefix")]
     event: EventPump,
 
+    #[getset(get = "pub with_prefix")]
     collected_events: Vec<Event>,
 
+    #[getset(get_copy = "pub with_prefix")]
     x_offset: f32,
+    #[getset(get_copy = "pub with_prefix")]
     y_offset: f32,
     accum_x: f32,
     accum_y: f32,
@@ -203,13 +182,19 @@ pub struct Engine {
     last_x: f32,
     last_y: f32,
 
+    #[getset(get_mut = "pub with_prefix")]
     current_render_mode: RENDERMODE,
+    #[getset(get_mut = "pub with_prefix")]
+    ray_length: f32,
 
     scale: f32,
+
+    max_fog_height: f32,
 
     x: f32,
     y: f32,
 
+    #[getset(get_copy = "pub with_prefix", get_mut = "pub with_prefix")]
     flags: Flags,
 }
 
@@ -217,14 +202,21 @@ pub struct Engine {
 
 impl Engine {
     #[allow(unused_mut)]
-    pub fn new(title: &str, width: u16, height: u16, start: time::Instant, flags: Flags) -> Self {
+    pub fn new(title: &str, start: time::Instant, render_scale: u16, flags: Flags) -> Self {
         let sdl_context = sdl3::init().unwrap();
         let video = sdl_context.video().unwrap();
         let event = sdl_context.event_pump().unwrap();
 
+        let display = video.get_primary_display().unwrap();
+        let (width, height) = (
+            display.get_mode().unwrap().w as u16,
+            display.get_mode().unwrap().h as u16,
+        );
+
         let window = video
             .window(title, width.into(), height.into())
-            .position_centered()
+            .borderless()
+            .position(0, 0)
             .vulkan()
             .build()
             .unwrap();
@@ -234,14 +226,14 @@ impl Engine {
         let mut enabled_extensions = vulkano::instance::InstanceExtensions::empty();
 
         for ext in &extensions {
-                match ext.as_str() {
-                    "VK_KHR_wayland_surface" => enabled_extensions.khr_wayland_surface = true,
-                    "VK_KHR_xlib_surface" => enabled_extensions.khr_xlib_surface = true,
-                    "VK_KHR_xcb_surface" => enabled_extensions.khr_xcb_surface = true,
-                    "VK_KHR_surface" => enabled_extensions.khr_surface = true,
-                    "VK_KHR_win32_surface" => enabled_extensions.khr_win32_surface = true,
-                    _ => {
-                        eprintln!("Unknown Vulkan instance extension: {}", ext);
+            match ext.as_str() {
+                "VK_KHR_wayland_surface" => enabled_extensions.khr_wayland_surface = true,
+                "VK_KHR_xlib_surface" => enabled_extensions.khr_xlib_surface = true,
+                "VK_KHR_xcb_surface" => enabled_extensions.khr_xcb_surface = true,
+                "VK_KHR_surface" => enabled_extensions.khr_surface = true,
+                "VK_KHR_win32_surface" => enabled_extensions.khr_win32_surface = true,
+                _ => {
+                    eprintln!("Unknown Vulkan instance extension: {}", ext);
                 }
             }
         }
@@ -326,8 +318,9 @@ impl Engine {
             .unwrap_or_else(|| {
                 physical_device
                     .surface_formats(&surface, Default::default())
-                    .unwrap()[0].0
-        });
+                    .unwrap()[0]
+                    .0
+            });
 
         let (swapchain, images) = Swapchain::new(
             device.clone(),
@@ -355,7 +348,8 @@ impl Engine {
             Default::default(),
         ));
 
-        let render_shader = cs::load(device.clone()).expect("cannot load shader");
+        let render_shader =
+            render_compute_shader::load(device.clone()).expect("cannot load shader");
         let cs = render_shader.entry_point("main").unwrap();
         let stage = PipelineShaderStageCreateInfo::new(cs);
         let layout = PipelineLayout::new(
@@ -373,7 +367,8 @@ impl Engine {
         )
         .unwrap();
 
-        let resample_shader = rs::load(device.clone()).expect("cannot load shader");
+        let resample_shader =
+            resample_compute_shader::load(device.clone()).expect("cannot load shader");
         let rs = resample_shader.entry_point("main").unwrap();
         let stage = PipelineShaderStageCreateInfo::new(rs);
         let layout = PipelineLayout::new(
@@ -391,12 +386,34 @@ impl Engine {
         )
         .unwrap();
 
+        let raycast_shader = raycast_shader::load(device.clone()).expect("cannot load shader");
+        let raycast = raycast_shader.entry_point("main").unwrap();
+        let stage = PipelineShaderStageCreateInfo::new(raycast);
+        let layout = PipelineLayout::new(
+            device.clone(),
+            PipelineDescriptorSetLayoutCreateInfo::from_stages([&stage])
+                .into_pipeline_layout_create_info(device.clone())
+                .unwrap(),
+        )
+        .unwrap();
+
+        let raycast_compute_pipeline = ComputePipeline::new(
+            device.clone(),
+            None,
+            ComputePipelineCreateInfo::stage_layout(stage, layout),
+        )
+        .unwrap();
+
         let image = Image::new(
             memory_allocator.clone(),
             ImageCreateInfo {
                 image_type: vulkano::image::ImageType::Dim2d,
                 format: image_format,
-                extent: [width as u32, height as u32, 1],
+                extent: [
+                    (width / render_scale) as u32,
+                    (height / render_scale) as u32,
+                    1,
+                ],
                 usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC | ImageUsage::TRANSFER_DST,
                 ..Default::default()
             },
@@ -426,19 +443,17 @@ impl Engine {
             Some(Box::new(vulkano::sync::now(device.clone())) as Box<dyn GpuFuture + Send + Sync>);
 
         let render_complete_semaphore = Arc::new(
-            vulkano::sync::semaphore::Semaphore::new(
-                device.clone(),
-                Default::default()
-            ).unwrap()
+            vulkano::sync::semaphore::Semaphore::new(device.clone(), Default::default()).unwrap(),
         );
 
         Engine {
             delta_time: 0,
-            last_frame: 0,
+            last_frame: start,
             start,
 
             width,
             height,
+            render_scale,
 
             sdl_context,
             video,
@@ -460,6 +475,8 @@ impl Engine {
             render_compute_pipeline,
             resample_compute_pipeline,
 
+            raycast_compute_pipeline,
+
             render_set,
             voxel_set: None,
 
@@ -476,7 +493,8 @@ impl Engine {
             event,
             collected_events: Vec::new(),
 
-            current_render_mode: RENDERMODE::COORD,
+            current_render_mode: RENDERMODE::DEFAULT,
+            ray_length: 450.0,
 
             x_offset: 0.0,
             y_offset: 0.0,
@@ -488,10 +506,29 @@ impl Engine {
             last_y: 0.0,
 
             scale: 2.5,
+
+            max_fog_height: 0.0,
+
             x: 0.0,
             y: 0.0,
             flags,
         }
+    }
+
+    pub fn start_text_input(&self) {
+        self.sdl_context
+            .video()
+            .unwrap()
+            .text_input()
+            .start(&self.window);
+    }
+
+    pub fn stop_text_input(&self) {
+        self.sdl_context
+            .video()
+            .unwrap()
+            .text_input()
+            .stop(&self.window);
     }
 }
 
@@ -499,10 +536,6 @@ impl Engine {
 
 impl Engine {
     pub fn event_handling(&mut self) {
-        let current_frame = self.start.elapsed().as_millis();
-        self.delta_time = current_frame - self.last_frame;
-        self.last_frame = current_frame;
-
         self.x_offset = self.accum_x - self.last_x;
         self.y_offset = self.last_y - self.accum_y;
 
@@ -530,24 +563,27 @@ impl Engine {
                     keycode: Some(Keycode::M),
                     ..
                 } => {
-                    self.flags.set_capture_mouse_state(!self.flags.get_capture_mouse_state());
-                    self.sdl_context
-                        .mouse()
-                        .set_relative_mouse_mode(&self.window, self.flags.get_capture_mouse_state());
+                    self.flags
+                        .set_capture_mouse_state(!self.flags.get_capture_mouse_state());
+                    self.sdl_context.mouse().set_relative_mouse_mode(
+                        &self.window,
+                        self.flags.get_capture_mouse_state(),
+                    );
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::R),
                     ..
                 } => {
                     let render_mode = self.current_render_mode as u32;
-                    let new_render_mode = (render_mode + 1) % 5;
+                    let new_render_mode = (render_mode + 1) % 6;
                     self.current_render_mode = match new_render_mode {
-                        0 => RENDERMODE::COORD,
-                        1 => RENDERMODE::STEPS,
-                        2 => RENDERMODE::NORMAL,
-                        3 => RENDERMODE::UV,
-                        4 => RENDERMODE::DEPTH,
-                        _ => RENDERMODE::STEPS,
+                        0 => RENDERMODE::DEFAULT,
+                        1 => RENDERMODE::COORD,
+                        2 => RENDERMODE::STEPS,
+                        3 => RENDERMODE::NORMAL,
+                        4 => RENDERMODE::UV,
+                        5 => RENDERMODE::DEPTH,
+                        _ => RENDERMODE::DEFAULT,
                     }
                 }
                 Event::MouseMotion {
@@ -581,6 +617,24 @@ impl Engine {
         }
     }
 
+    pub fn frame_start(&mut self) {
+        let current_frame = time::Instant::now();
+        self.delta_time = (current_frame - self.last_frame).as_millis();
+        self.last_frame = current_frame;
+    }
+
+    pub fn frame_end(&mut self, target_fps: i32) {
+        if target_fps == -1 {
+            return;
+        }
+        let target_dt = Duration::from_secs_f64(1.0 / target_fps as f64);
+        let frame_duration = self.last_frame.elapsed();
+
+        if frame_duration < target_dt {
+            std::thread::sleep(target_dt - frame_duration);
+        }
+    }
+
     pub fn toggle_mouse(&self, toggle: bool) {
         self.sdl_context
             .mouse()
@@ -588,79 +642,11 @@ impl Engine {
     }
 }
 
-// getters
+// custom(non get-set) getters
 
 impl Engine {
-    pub fn get_flags(&self) -> &Flags {
-        &self.flags
-    }
-
-    pub fn get_flags_mut(&mut self) -> &mut Flags {
-        &mut self.flags
-    }
-
-    pub fn get_render_mode_mut(&mut self) -> &mut RENDERMODE {
-        &mut self.current_render_mode
-    }
-
-    pub fn get_event(&self) -> &EventPump {
-        &self.event
-    }
-
-    pub fn get_x_offset(&self) -> f32 {
-        self.x_offset
-    }
-
-    pub fn get_y_offset(&self) -> f32 {
-        self.y_offset
-    }
-
-    pub fn get_delta_time(&self) -> u128 {
-        self.delta_time
-    }
-
     pub fn get_dimensions(&self) -> (u16, u16) {
         (self.width, self.height)
-    }
-
-    pub fn get_device(&self) -> Arc<Device> {
-        self.device.clone()
-    }
-
-    pub fn get_queue(&self) -> Arc<Queue> {
-        self.queue.clone()
-    }
-
-    pub fn get_instance(&self) -> Arc<Instance> {
-        self.instance.clone()
-    }
-
-    pub fn get_swapchain(&self) -> Arc<Swapchain> {
-        self.swapchain.clone()
-    }
-
-    pub fn get_images(&self) -> Vec<Arc<Image>> {
-        self.images.clone()
-    }
-
-    pub fn get_library(&self) -> Arc<VulkanLibrary> {
-        self.library.clone()
-    }
-
-    pub fn get_window(&self) -> &Window {
-        &self.window
-    }
-
-    pub fn get_current_image_index(&self) -> u32 {
-        self.current_image_index
-    }
-
-    pub fn get_render_complete_semaphore(&self) -> Arc<Semaphore> {
-        self.render_complete_semaphore.clone()
-    }
-
-    pub fn get_collected_events(&self) -> &[Event] {
-        &self.collected_events
     }
 
     pub fn get_hardware_info(&self) -> String {
@@ -671,14 +657,107 @@ impl Engine {
     pub fn get_frame_rate(&self) -> u64 {
         (1000.0 / self.delta_time as f64).round() as u64
     }
+}
 
+// raycast
 
+impl Engine {
+    pub fn ray_hit_world(
+        &self,
+        origin: glam::Vec3,
+        direction: glam::Vec3,
+        ray_length: f32,
+        resolution: [u32; 3],
+    ) -> RayHit {
+        let data = RayHit {
+            hit: 0,
+            distance: 0.0,
+        };
+
+        let result_buffer = Buffer::from_data(
+            self.memory_allocator.clone(),
+            BufferCreateInfo {
+                usage: BufferUsage::STORAGE_BUFFER | BufferUsage::TRANSFER_SRC,
+                ..Default::default()
+            },
+            AllocationCreateInfo {
+                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
+                    | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+                ..Default::default()
+            },
+            data,
+        )
+        .unwrap();
+
+        let layout = self
+            .raycast_compute_pipeline
+            .layout()
+            .set_layouts()
+            .get(1)
+            .unwrap();
+
+        let query_set = DescriptorSet::new(
+            self.descriptor_set_allocator.clone(),
+            layout.clone(),
+            [WriteDescriptorSet::buffer(0, result_buffer.clone())],
+            [],
+        )
+        .unwrap();
+
+        let push_data = RayParams {
+            origin: origin.to_array().into(),
+            direction: direction.to_array(),
+            max_distance: ray_length,
+            voxel_resolution: resolution,
+        };
+
+        let mut builder = AutoCommandBufferBuilder::primary(
+            self.command_buffer_allocator.clone(),
+            self.queue.queue_family_index(),
+            CommandBufferUsage::OneTimeSubmit,
+        )
+        .unwrap();
+
+        unsafe {
+            builder
+                .bind_pipeline_compute(self.raycast_compute_pipeline.clone())
+                .unwrap()
+                .bind_descriptor_sets(
+                    PipelineBindPoint::Compute,
+                    self.raycast_compute_pipeline.layout().clone(),
+                    0,
+                    vec![self.voxel_set.as_ref().unwrap().clone(), query_set.clone()],
+                )
+                .unwrap()
+                .push_constants(self.raycast_compute_pipeline.layout().clone(), 0, push_data)
+                .unwrap()
+                .dispatch([1, 1, 1])
+                .unwrap();
+        }
+
+        let command_buffer = builder.build().unwrap();
+
+        let future = sync::now(self.device.clone())
+            .then_execute(self.queue.clone(), command_buffer)
+            .unwrap()
+            .then_signal_fence_and_flush()
+            .unwrap();
+
+        future.wait(None).unwrap();
+
+        let result = result_buffer.read().unwrap();
+
+        RayHit {
+            hit: result.hit,
+            distance: result.distance,
+        }
+    }
 }
 
 // rendering
 
 impl Engine {
-    pub fn send_world_data(&mut self, world: Vec<u32>, resolution: [u32; 3]) {
+    pub fn send_world_data(&mut self, world: Vec<u32>, resolution: [u32; 3], max_height: f32) {
         let voxels = Image::new(
             self.memory_allocator.clone(),
             ImageCreateInfo {
@@ -748,6 +827,7 @@ impl Engine {
         .unwrap();
 
         self.voxel_set = Some(voxel_set);
+        self.max_fog_height = max_height * 0.33;
     }
 
     pub fn render(&mut self, pixel_to_ray: glam::Mat4, resolution: [u32; 3]) {
@@ -809,6 +889,8 @@ impl Engine {
             pixelToRay: pixel_to_ray.to_cols_array_2d(),
             voxel_resolution: resolution,
             render_mode: self.current_render_mode as u32,
+            max_ray_length: self.ray_length,
+            max_height: self.max_fog_height,
         };
 
         unsafe {
@@ -832,7 +914,11 @@ impl Engine {
                 .unwrap()
                 .push_constants(self.render_compute_pipeline.layout().clone(), 0, push_data)
                 .unwrap()
-                .dispatch([self.width as u32 / 8, self.height as u32 / 8, 1])
+                .dispatch([
+                    (self.width / self.render_scale) as u32 / 8,
+                    (self.height / self.render_scale) as u32 / 8,
+                    1,
+                ])
                 .unwrap()
                 .bind_pipeline_compute(self.resample_compute_pipeline.clone())
                 .unwrap()
@@ -865,8 +951,6 @@ impl Engine {
             .unwrap()
             .boxed_send_sync();
 
-
-
         self.previous_future = Some(Box::new(future));
 
         if let Some(future) = &mut self.previous_future {
@@ -877,7 +961,6 @@ impl Engine {
     }
 
     pub fn present(&mut self) {
-
         let future = self.previous_future.take().unwrap();
 
         let present = future
@@ -885,8 +968,8 @@ impl Engine {
                 self.queue.clone(),
                 SwapchainPresentInfo::swapchain_image_index(
                     self.swapchain.clone(),
-                    self.current_image_index
-                )
+                    self.current_image_index,
+                ),
             )
             .then_signal_fence_and_flush()
             .unwrap();
