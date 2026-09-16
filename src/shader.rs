@@ -11,19 +11,65 @@ pub mod render_compute_shader {
             const uint UV = 4;
             const uint DEPTH = 5;
 
+            const vec3 COLOR_DESERT     = vec3(0.88, 0.75, 0.40);
+            const vec3 COLOR_GRASSLAND  = vec3(0.55, 0.70, 0.30);
+            const vec3 COLOR_FOREST     = vec3(0.15, 0.45, 0.20);
+            const vec3 COLOR_TUNDRA     = vec3(0.65, 0.70, 0.65);
+            const vec3 COLOR_TAIGA      = vec3(0.30, 0.45, 0.40);
+            const vec3 COLOR_SAVANNA    = vec3(0.80, 0.65, 0.35);
+            const vec3 COLOR_SWAMP      = vec3(0.25, 0.35, 0.20);
+            const vec3 COLOR_MOUNTAIN   = vec3(0.50, 0.45, 0.42);
+            const vec3 COLOR_SNOWPEAK   = vec3(0.97, 0.97, 1.00);
+
             layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
             layout(push_constant) uniform PushConstants {
                 mat4 pixelToRay;
-                uvec3 voxel_resolution;  // now per-axis: (4000, 4000, 2000)
+                uvec3 voxel_resolution; 
                 uint render_mode;
                 float max_ray_length;
                 float max_height;
             } pc;
 
             layout(set = 0, binding = 0, rgba8) writeonly uniform image2D targetImage;
-            layout(set = 1, binding = 0, rgba32ui) readonly uniform uimage3D voxelImage;
 
+            layout(set = 1, binding = 0, rgba32ui) readonly uniform uimage3D voxelImage;
+            layout(set = 1, binding = 1, rgba8) readonly uniform image2D biomeImage;
+
+            vec3 getBiomeColor(float height, float temperature, float moisture) {
+                // --- High elevation overrides ---
+                if (height > 0.90) {
+                    return COLOR_SNOWPEAK;
+                }
+                if (height > 0.75) {
+                    // Cold + moist high ground becomes taiga instead of bare rock
+                    if (temperature < 0.40 && moisture > 0.40) {
+                        return COLOR_TAIGA;
+                    }
+                    return COLOR_MOUNTAIN;
+                }
+
+                // --- Low-mid elevation: main biome logic ---
+                if (temperature < 0.25) {
+                    return COLOR_TUNDRA;
+                }
+                if (temperature > 0.65) {
+                    if (moisture < 0.25) {
+                        return COLOR_DESERT;
+                    } else if (moisture < 0.55) {
+                        return COLOR_SAVANNA;
+                    } else {
+                        return COLOR_SWAMP; // hot + very wet
+                    }
+                }
+
+                // Moderate temperature
+                if (moisture > 0.55) {
+                    return COLOR_FOREST;
+                }
+                return COLOR_GRASSLAND;
+            }
+            
             // https://www.shadertoy.com/view/WlfXRN
             vec3 inferno(float t) {
                 const vec3 c0 = vec3(0.0002189403691192265, 0.001651004631001012, -0.01948089843709184);
@@ -180,6 +226,10 @@ pub mod render_compute_shader {
                     case DEFAULT: {
                         vec3 normal = -mask * sgn_dir;
                         color = max(normal.xyz, 0.0) - min(normal.yxz + normal.zyx, 0.0);
+
+                        vec4 biome = imageLoad(biomeImage, ivec2(icoord.x, icoord.z));
+
+                        color = getBiomeColor(biome.g, biome.r, biome.b);
 
                         float depth = (tmin + t_inside) * length(dir);
 

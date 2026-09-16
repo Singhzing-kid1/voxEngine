@@ -40,11 +40,7 @@ fn main() {
     println!("creating physics engine");
     let mut physics = Physics::new(&world, vec3(0.0, -9.81, 0.0), 32);
 
-    engine.send_world_data(
-        world.get_world_as_u32(),
-        world.get_dimensions_as_arr(),
-        world.get_dimensions().y,
-    );
+    engine.send_world_data(&world);
     println!("sent world data to gpu");
 
     engine.toggle_mouse(engine.get_flags().get_capture_mouse_state());

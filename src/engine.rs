@@ -3,7 +3,12 @@ use std::{
     time::{self, Duration},
 };
 
-use sdl3::{EventPump, VideoSubsystem, event::Event, keyboard::Keycode, video::Window};
+use sdl3::{
+    EventPump, VideoSubsystem,
+    event::Event,
+    keyboard::Keycode::{self, D},
+    video::Window,
+};
 
 use vulkano::{
     VulkanLibrary, VulkanObject,
@@ -48,6 +53,7 @@ use crate::{
         render_compute_shader::{self, PushConstants},
         resample_compute_shader,
     },
+    world::World,
 };
 
 use getset::{CloneGetters, CopyGetters, Getters, MutGetters};
@@ -757,13 +763,29 @@ impl Engine {
 // rendering
 
 impl Engine {
-    pub fn send_world_data(&mut self, world: Vec<u32>, resolution: [u32; 3], max_height: f32) {
+    pub fn send_world_data(&mut self, world: &World) {
+        let resolution = world.get_dimensions_as_arr();
+        let max_height = world.get_dimensions().y;
+
         let voxels = Image::new(
             self.memory_allocator.clone(),
             ImageCreateInfo {
                 image_type: vulkano::image::ImageType::Dim3d,
                 format: Format::R32G32B32A32_UINT,
                 extent: [resolution[0] / 4, resolution[1] / 4, resolution[2] / 8],
+                usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_DST,
+                ..Default::default()
+            },
+            AllocationCreateInfo::default(),
+        )
+        .unwrap();
+
+        let biomes = Image::new(
+            self.memory_allocator.clone(),
+            ImageCreateInfo {
+                image_type: vulkano::image::ImageType::Dim2d,
+                format: Format::R8G8B8A8_UNORM,
+                extent: [resolution[0], resolution[2], 1],
                 usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_DST,
                 ..Default::default()
             },
@@ -782,9 +804,22 @@ impl Engine {
                     | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
                 ..Default::default()
             },
-            world,
+            world.get_world_as_u32(),
         )
         .unwrap();
+
+        let biomes_staging_buffer = Buffer::from_iter(
+            self.memory_allocator.clone(),
+            BufferCreateInfo {
+                usage: BufferUsage::TRANSFER_SRC,
+                ..Default::default()
+            },
+            AllocationCreateInfo {
+                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+                ..Default::default()
+            },
+            world.get_biomes()
+        ).unwrap(); 
 
         let mut builder = AutoCommandBufferBuilder::primary(
             self.command_buffer_allocator.clone(),
@@ -800,6 +835,10 @@ impl Engine {
                 voxel_staging_buffer,
                 voxels.clone(),
             ))
+            .unwrap()
+            .clear_color_image(ClearColorImageInfo::image(biomes.clone()))
+            .unwrap()
+            .copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(biomes_staging_buffer, biomes.clone()))
             .unwrap();
 
         let _ = builder
@@ -808,20 +847,23 @@ impl Engine {
             .execute(self.queue.clone())
             .unwrap();
 
-        let view =
+        let voxels_view =
             ImageView::new(voxels.clone(), ImageViewCreateInfo::from_image(&voxels)).unwrap();
 
-        let layout = self
-            .render_compute_pipeline
-            .layout()
-            .set_layouts()
-            .get(0)
+
+        let biomes_view = ImageView::new(biomes.clone(), ImageViewCreateInfo::from_image(&biomes)).unwrap();
+        
+        let pipeline_layout = self.render_compute_pipeline.layout();
+        let set_layouts = pipeline_layout.set_layouts();
+
+        let layout = set_layouts
+            .get(1)
             .unwrap();
 
         let voxel_set = DescriptorSet::new(
             self.descriptor_set_allocator.clone(),
             layout.clone(),
-            [WriteDescriptorSet::image_view(0, view)],
+            [WriteDescriptorSet::image_view(0, voxels_view), WriteDescriptorSet::image_view(1, biomes_view)],
             [],
         )
         .unwrap();
