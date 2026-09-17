@@ -34,7 +34,7 @@ fn main() {
     let (w, h) = engine.get_dimensions();
 
     println!("start world generation");
-    let world = World::new(12999003378434, vec3(2000.0, 1000.0, 2000.0));
+    let world = World::new(12999003378434, vec3(2000.0, 1000.0, 2000.0), 32);
     println!("world generation finished");
 
     println!("creating physics engine");

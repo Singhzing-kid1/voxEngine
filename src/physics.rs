@@ -2,6 +2,7 @@ use crate::{
     common::conversions::{FromRapier, ToRapier},
     world::World,
 };
+use getset::{CopyGetters, Setters};
 use rapier3d::{
     control::KinematicCharacterController, parry::query::DefaultQueryDispatcher, prelude::*,
 };
@@ -9,6 +10,7 @@ use std::collections::HashMap;
 
 const CHUNK_LOAD_RADIUS: i32 = 4;
 
+#[derive(CopyGetters, Setters)]
 pub struct Physics {
     rigid_body_set: RigidBodySet,
     collider_set: ColliderSet,
@@ -20,7 +22,10 @@ pub struct Physics {
     multibody_joint_set: MultibodyJointSet,
     ccd_solver: CCDSolver,
     integration_parameters: IntegrationParameters,
+
+    #[getset(get_copy = "pub with_prefix")]
     gravity: glam::Vec3,
+
     loaded_chunks: HashMap<glam::IVec3, ColliderHandle>,
     chunk_size: i32,
 }

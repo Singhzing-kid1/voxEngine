@@ -11,8 +11,6 @@ use crate::{
 
 use getset::Getters;
 
-const MAX_GROUND_SPEED: f32 = 7.0;
-
 #[allow(unused)]
 #[derive(ImGuiReflect, Getters, Debug)]
 pub struct Player {
@@ -20,6 +18,8 @@ pub struct Player {
     reach: i32,
     #[imgui(slider, min = 0.1, max = 1.0)]
     mouse_sensitivity: f32,
+
+    max_ground_speed: f32,
 
     #[getset(get = "pub with_prefix")]
     camera: Camera,
@@ -45,6 +45,8 @@ impl Player {
             movement_force,
             reach,
             mouse_sensitivity,
+
+            max_ground_speed: 7.0,
 
             camera: Camera::new(fov, near, far, w, h, position),
             entity: Entity::new(mass, size, position, physics),
@@ -85,7 +87,7 @@ impl Player {
         }
 
         let wish_dir = wish_dir.normalize_or_zero();
-        self.entity.set_wish_move(wish_dir, MAX_GROUND_SPEED);
+        self.entity.set_wish_move(wish_dir, self.max_ground_speed);
 
         if event_pump
             .keyboard_state()
@@ -96,6 +98,8 @@ impl Player {
         }
     }
 }
+
+// traits
 
 impl Updateable for Player {
     fn fixed_update(&mut self, physics: &mut Physics) {

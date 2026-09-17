@@ -6,7 +6,7 @@ use std::{
 use sdl3::{
     EventPump, VideoSubsystem,
     event::Event,
-    keyboard::Keycode::{self, D},
+    keyboard::Keycode::{self},
     video::Window,
 };
 
@@ -815,11 +815,13 @@ impl Engine {
                 ..Default::default()
             },
             AllocationCreateInfo {
-                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
+                    | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
                 ..Default::default()
             },
-            world.get_biomes()
-        ).unwrap(); 
+            world.get_biomes(),
+        )
+        .unwrap();
 
         let mut builder = AutoCommandBufferBuilder::primary(
             self.command_buffer_allocator.clone(),
@@ -838,7 +840,10 @@ impl Engine {
             .unwrap()
             .clear_color_image(ClearColorImageInfo::image(biomes.clone()))
             .unwrap()
-            .copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(biomes_staging_buffer, biomes.clone()))
+            .copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(
+                biomes_staging_buffer,
+                biomes.clone(),
+            ))
             .unwrap();
 
         let _ = builder
@@ -850,20 +855,21 @@ impl Engine {
         let voxels_view =
             ImageView::new(voxels.clone(), ImageViewCreateInfo::from_image(&voxels)).unwrap();
 
+        let biomes_view =
+            ImageView::new(biomes.clone(), ImageViewCreateInfo::from_image(&biomes)).unwrap();
 
-        let biomes_view = ImageView::new(biomes.clone(), ImageViewCreateInfo::from_image(&biomes)).unwrap();
-        
         let pipeline_layout = self.render_compute_pipeline.layout();
         let set_layouts = pipeline_layout.set_layouts();
 
-        let layout = set_layouts
-            .get(1)
-            .unwrap();
+        let layout = set_layouts.get(1).unwrap();
 
         let voxel_set = DescriptorSet::new(
             self.descriptor_set_allocator.clone(),
             layout.clone(),
-            [WriteDescriptorSet::image_view(0, voxels_view), WriteDescriptorSet::image_view(1, biomes_view)],
+            [
+                WriteDescriptorSet::image_view(0, voxels_view),
+                WriteDescriptorSet::image_view(1, biomes_view),
+            ],
             [],
         )
         .unwrap();
