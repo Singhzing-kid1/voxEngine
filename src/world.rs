@@ -39,15 +39,7 @@ impl World {
         let mut biomes = vec![0u8; ((dimensions.x * dimensions.z) * 4.0) as usize];
 
         let mut set_voxel = |x: usize, y: usize, z: usize| {
-            let tx = x / 4;
-            let ty = y / 4;
-            let tz = z / 8;
-
-            let texel = tx + ty * texel_x + tz * texel_x * texel_y;
-            let channel = x % 4;
-            let bit_in_channel = (y % 4) + (z % 8) * 4;
-
-            let bit = channel * 32 + bit_in_channel;
+            let (texel, bit) = World::voxel_texel_and_bit(x as i32, y as i32, z as i32, texel_x as i32, texel_y as i32);
 
             world[texel] |= 1u128 << bit;
         };
@@ -184,15 +176,7 @@ impl World {
             return false;
         }
 
-        let tx = x / 4;
-        let ty = y / 4;
-        let tz = z / 8;
-
-        let texel = (tx + ty * texel_x + tz * texel_x * texel_y) as usize;
-        let channel = x % 4;
-        let bit_in_channel = (y % 4) + (z % 8) * 4;
-
-        let bit = channel * 32 + bit_in_channel;
+        let (texel, bit) = World::voxel_texel_and_bit(x, y, z, texel_x, texel_y);
 
         (self.world[texel] >> bit) & 1 != 0
     }
@@ -218,11 +202,7 @@ impl World {
                         let bit = w.trailing_zeros();
                         w &= w - 1;
 
-                        let channel = (bit / 32) as i32;
-                        let bit_in_channel = (bit % 32) as i32;
-
-                        let local_y = bit_in_channel % 4;
-                        let local_z = bit_in_channel / 4;
+                        let (channel, local_y, local_z) = World::bit_to_local(bit);
 
                         let x = tx * 4 + channel;
                         let y = ty * 4 + local_y;
@@ -237,7 +217,7 @@ impl World {
                             let (nchan, nly, nlz) = (channel + dchan, local_y + dy, local_z + dz);
                             if nchan >= 0 && nchan < 4 && nly >= 0 && nly < 4 && nlz >= 0 && nlz < 8
                             {
-                                let nbit = nchan * 32 + nly + nlz * 4;
+                                let nbit = World::local_to_bit(nchan, nly, nlz);
                                 (word >> nbit) & 1 != 0
                             } else {
                                 self.is_solid_fast(x + dx, y + dy, z + dz_global, texel_x, texel_y)
@@ -269,5 +249,32 @@ impl World {
                 }
                 a
             })
+    }
+
+    fn voxel_texel_and_bit(x: i32, y: i32, z: i32, texel_x: i32, texel_y: i32) -> (usize, u32) {
+        let tx = x / 4;
+        let ty = y / 4;
+        let tz = z / 8;
+
+        let texel = (tx + ty * texel_x + tz * texel_x * texel_y) as usize;
+        let channel = x % 4;
+        let bit_in_channel = (y % 4) + (z % 8) * 4;
+        let bit = (channel * 32 + bit_in_channel) as u32;
+
+        (texel, bit)
+    }
+
+    fn bit_to_local(bit: u32) -> (i32, i32, i32) {
+        let channel = (bit / 32) as i32;
+        let bit_in_channel = (bit % 32) as i32;
+
+        let local_y = bit_in_channel % 4;
+        let local_z = bit_in_channel / 4;
+
+        (channel, local_y, local_z)
+    }
+
+    fn local_to_bit(channel: i32, local_y: i32, local_z: i32) -> u32 {
+        (channel * 32 + local_y + local_z * 4) as u32
     }
 }

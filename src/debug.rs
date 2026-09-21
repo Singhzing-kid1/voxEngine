@@ -13,7 +13,7 @@ use ash::vk::{
 
 use dear_imgui_ash::AshRenderer;
 use dear_imgui_rs::Context;
-use dear_imgui_sdl3::process_sys_event;
+use dear_imgui_sdl3::{process_sys_event, shutdown};
 
 use vulkano::{
     VulkanObject,
@@ -319,5 +319,12 @@ impl Debug {
                 )
                 .unwrap();
         }
+    }
+}
+
+
+impl Drop for Debug {
+    fn drop(&mut self) {
+        shutdown(&mut self.context);
     }
 }

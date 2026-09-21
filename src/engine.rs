@@ -1,6 +1,4 @@
 use std::{
-    collections::HashMap,
-    net::Shutdown::Write,
     sync::Arc,
     time::{self, Duration},
 };
@@ -30,7 +28,7 @@ use vulkano::{
     format::{ClearColorValue, Format},
     image::{
         Image, ImageCreateInfo, ImageType, ImageUsage,
-        view::{ImageView, ImageViewCreateInfo},
+        view::ImageView,
     },
     instance::{Instance, InstanceCreateFlags, InstanceCreateInfo},
     memory::allocator::{
