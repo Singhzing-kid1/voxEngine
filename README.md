@@ -1,56 +1,30 @@
-# Vox Engine
+# Vox(el) Engine
 
-## Build
+# why a custom engine?
 
-There are prebuilds
+tl;dr: over-ambitious and kinda dumb + otc game engines cant do what i want for same effort.
 
-to compile from source:
-dependencies are
-- glew
-- sdl2
-- sdl2_ttf
-- glm
-- bullet physics
+well i wanted to create a voxel based rogue-lite game, and i wanted to use  
+proper voxel rendering techniques. initially i used traditional rendering techniques to acheive this,  
+but since implementing vulkan, i have moved to using a raymarcher to render my voxels. initially my  
+reasoning behind starting this project was that i wanted to learn the ins and outs of "over-the-counter"  
+game engines like unity or unreal, but at this stage it might genuienly be more difficult to implement  
+the rendering style in a game engine like unity which already handles the rendering for me.
 
-the prebuilds include the required dlls
+## binaries
 
-compile using cmake, there is an included cmakelists.txt
+binaries for windows and linux are under [releases](https://github.com/Singhzing-kid1/voxEngine/releases/tag/v0.2.0-preAlpha)
 
-## other random stuff mostly for the friends(testers)
+## build
 
-NOTE:
-i started redoing this project between v0.0.5 and v0.0.6 to have better mass rendering optimizations.
-v0.0.6 has been REDONE completely from scratch. v0.0.7 will also be redone from scratch using the stuff i learned making v0.0.6, but with vulkan so i can use modern graphics techniques
+make sure you have the latest version of rust installed
 
+clone the project and use `cargo build --release` to build.
 
-i messed up guys  
-vulkan  
-such a pain  
-not doing that  
-going back to openGL  
+the build will output @ `./target/release/`
 
-![ver sad](https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fi.ytimg.com%2Fvi%2FpLe-hanLTPs%2Fmaxresdefault.jpg&f=1&nofb=1&ipt=7bd33c630750f30d20282f5ac1556747157742d5f72b7a086686d43e542af2a3&ipo=images "sad hampter")
+## dev logs
 
-0.0.7 will be openGL w/ openDB for voxel storage and bullet physics for collisions :) <--- might use rigid bodies ;) well see.
+check out [voxEngine devlogs](https://youtube.com/playlist?list=PLkGaFuDyjwONmwLIEOyiIF43p4a-F6Qlz&si=TiN8CTq6OB9KWOlf)
 
-Gonna try to get this (0.0.7) out for end of March.
-
-0.0.7 almost done. trying to sort out so e optimization stuff with parallelization of syncing the world and meshing the world. might also implement a version of a greedy mesher.
-
-# pride versioning
-
-as of v0.1.0 or v1.0.0
-
-i am switching to pride versioning. this would be v0.0.8 but i found pride versioning as a meme  
-but i feel like it is actually a good way for me to stay motivated on this project as i know  
-i take like really long hiatuses and then drop an update. but this way there will be a direct reminder of  
-my progress
-
-anyways pride versioning is as follows:
-
-![pride versioning explaining diagram](https://pridever.org/images/pridever.png)
-
-        
-
-
-            
+i also do devstreams occsionally on [twitch](https://twitch.tv/veersinghlive)
