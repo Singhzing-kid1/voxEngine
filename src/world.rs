@@ -34,7 +34,7 @@ impl World {
         let texel_z = dimensions.z as usize / 8;
 
         let total = texel_x * texel_y * texel_z;
-        
+
         let mut world = vec![0u128; total];
         let mut biomes = vec![0u8; ((dimensions.x * dimensions.z) * 4.0) as usize];
 
