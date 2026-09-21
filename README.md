@@ -9,7 +9,7 @@ proper voxel rendering techniques. initially i used traditional rendering techni
 but since implementing vulkan, i have moved to using a raymarcher to render my voxels. initially my  
 reasoning behind starting this project was that i wanted to learn the ins and outs of "over-the-counter"  
 game engines like unity or unreal, but at this stage it might genuienly be more difficult to implement  
-the rendering style in a game engine like unity which already handles the rendering for me.
+the rendering style i want in a game engine like unity.
 
 ## binaries
 
