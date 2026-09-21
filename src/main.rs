@@ -26,26 +26,19 @@ fn main() {
     flags.set_capture_mouse_state(true);
 
     let mut engine = Engine::new("vox engine using rust", time::Instant::now(), 3, flags);
-    println!("initialized engine");
 
     let mut debug = Debug::new(&engine);
-    println!("initialized debug ui");
 
     let (w, h) = engine.get_dimensions();
 
-    println!("start world generation");
-    let world = World::new(12999003378434, vec3(2000.0, 1000.0, 2000.0));
-    println!("world generation finished");
+    let world = World::new(12999003378434, vec3(2000.0, 1000.0, 2000.0), 32);
 
-    println!("creating physics engine");
     let mut physics = Physics::new(&world, vec3(0.0, -9.81, 0.0), 32);
 
     engine.send_world_data(&world);
-    println!("sent world data to gpu");
 
     engine.toggle_mouse(engine.get_flags().get_capture_mouse_state());
 
-    println!("creating player");
     let mut player = Player::new(
         90.0,
         0.1,

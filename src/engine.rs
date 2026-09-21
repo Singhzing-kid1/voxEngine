@@ -6,42 +6,43 @@ use std::{
 use sdl3::{
     EventPump, VideoSubsystem,
     event::Event,
-    keyboard::Keycode::{self, D},
+    keyboard::Keycode::{self},
     video::Window,
 };
 
 use vulkano::{
     VulkanLibrary, VulkanObject,
-    buffer::{Buffer, BufferCreateInfo, BufferUsage},
+    buffer::{Buffer, BufferCreateInfo, BufferUsage, Subbuffer},
     command_buffer::{
         AutoCommandBufferBuilder, ClearColorImageInfo, CommandBufferUsage, CopyBufferToImageInfo,
         CopyImageInfo, PrimaryCommandBufferAbstract, allocator::StandardCommandBufferAllocator,
     },
     descriptor_set::{
         DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator,
+        layout::DescriptorSetLayout,
     },
     device::{
         Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags,
         physical::PhysicalDeviceType,
     },
     format::{ClearColorValue, Format},
-    image::{
-        Image, ImageCreateInfo, ImageUsage,
-        view::{ImageView, ImageViewCreateInfo},
-    },
+    image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView},
     instance::{Instance, InstanceCreateFlags, InstanceCreateInfo},
-    memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator},
+    memory::allocator::{
+        AllocationCreateInfo, FreeListAllocator, GenericMemoryAllocator, MemoryTypeFilter,
+        StandardMemoryAllocator,
+    },
     pipeline::{
         ComputePipeline, Pipeline, PipelineBindPoint, PipelineLayout,
         PipelineShaderStageCreateInfo, compute::ComputePipelineCreateInfo,
         layout::PipelineDescriptorSetLayoutCreateInfo,
     },
+    shader::ShaderModule,
     swapchain::{
         self, Surface, SurfaceApi, Swapchain, SwapchainAcquireFuture, SwapchainCreateInfo,
         SwapchainPresentInfo,
     },
-    sync,
-    sync::{GpuFuture, semaphore::Semaphore},
+    sync::{self, GpuFuture, semaphore::Semaphore},
 };
 
 use dear_imgui_reflect::ImGuiReflect;
@@ -68,6 +69,21 @@ pub enum RENDERMODE {
     NORMAL,
     UV,
     DEPTH,
+}
+
+#[derive(Clone)]
+pub(crate) enum DescriptorResource {
+    ImageView(Arc<ImageView>),
+    RayBuffer(Subbuffer<RayHit>),
+}
+
+impl DescriptorResource {
+    fn into_write(self, binding: u32) -> WriteDescriptorSet {
+        match self {
+            DescriptorResource::ImageView(view) => WriteDescriptorSet::image_view(binding, view),
+            DescriptorResource::RayBuffer(buffer) => WriteDescriptorSet::buffer(binding, buffer),
+        }
+    }
 }
 
 // implement getset on flags struct
@@ -126,12 +142,6 @@ pub struct Engine {
 
     #[getset(get = "pub with_prefix")]
     render_scale: u16,
-
-    sdl_context: sdl3::Sdl,
-    video: VideoSubsystem,
-
-    #[getset(get = "pub with_prefix")]
-    window: Window,
 
     #[getset(get_clone = "pub with_prefix")]
     library: Arc<VulkanLibrary>,
@@ -202,6 +212,12 @@ pub struct Engine {
 
     #[getset(get_copy = "pub with_prefix", get_mut = "pub with_prefix")]
     flags: Flags,
+
+    sdl_context: sdl3::Sdl,
+    video: VideoSubsystem,
+
+    #[getset(get = "pub with_prefix")]
+    window: Window,
 }
 
 // Public
@@ -356,94 +372,41 @@ impl Engine {
 
         let render_shader =
             render_compute_shader::load(device.clone()).expect("cannot load shader");
-        let cs = render_shader.entry_point("main").unwrap();
-        let stage = PipelineShaderStageCreateInfo::new(cs);
-        let layout = PipelineLayout::new(
-            device.clone(),
-            PipelineDescriptorSetLayoutCreateInfo::from_stages([&stage])
-                .into_pipeline_layout_create_info(device.clone())
-                .unwrap(),
-        )
-        .unwrap();
-
-        let render_compute_pipeline = ComputePipeline::new(
-            device.clone(),
-            None,
-            ComputePipelineCreateInfo::stage_layout(stage, layout),
-        )
-        .unwrap();
 
         let resample_shader =
             resample_compute_shader::load(device.clone()).expect("cannot load shader");
-        let rs = resample_shader.entry_point("main").unwrap();
-        let stage = PipelineShaderStageCreateInfo::new(rs);
-        let layout = PipelineLayout::new(
-            device.clone(),
-            PipelineDescriptorSetLayoutCreateInfo::from_stages([&stage])
-                .into_pipeline_layout_create_info(device.clone())
-                .unwrap(),
-        )
-        .unwrap();
-
-        let resample_compute_pipeline = ComputePipeline::new(
-            device.clone(),
-            None,
-            ComputePipelineCreateInfo::stage_layout(stage, layout),
-        )
-        .unwrap();
 
         let raycast_shader = raycast_shader::load(device.clone()).expect("cannot load shader");
-        let raycast = raycast_shader.entry_point("main").unwrap();
-        let stage = PipelineShaderStageCreateInfo::new(raycast);
-        let layout = PipelineLayout::new(
-            device.clone(),
-            PipelineDescriptorSetLayoutCreateInfo::from_stages([&stage])
-                .into_pipeline_layout_create_info(device.clone())
-                .unwrap(),
-        )
-        .unwrap();
 
-        let raycast_compute_pipeline = ComputePipeline::new(
-            device.clone(),
-            None,
-            ComputePipelineCreateInfo::stage_layout(stage, layout),
-        )
-        .unwrap();
+        let render_compute_pipeline =
+            Engine::create_pipeline(render_shader, "main", device.clone());
 
-        let image = Image::new(
+        let resample_compute_pipeline =
+            Engine::create_pipeline(resample_shader, "main", device.clone());
+
+        let raycast_compute_pipeline =
+            Engine::create_pipeline(raycast_shader, "main", device.clone());
+
+        let (image, view) = Engine::create_image(
+            ImageType::Dim2d,
+            [
+                (width / render_scale) as u32,
+                (height / render_scale) as u32,
+                1,
+            ],
+            image_format,
+            ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC | ImageUsage::TRANSFER_DST,
+            MemoryTypeFilter::PREFER_DEVICE,
             memory_allocator.clone(),
-            ImageCreateInfo {
-                image_type: vulkano::image::ImageType::Dim2d,
-                format: image_format,
-                extent: [
-                    (width / render_scale) as u32,
-                    (height / render_scale) as u32,
-                    1,
-                ],
-                usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC | ImageUsage::TRANSFER_DST,
-                ..Default::default()
-            },
-            AllocationCreateInfo {
-                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE,
-                ..Default::default()
-            },
-        )
-        .unwrap();
+        );
 
-        let layout = render_compute_pipeline
-            .layout()
-            .set_layouts()
-            .get(0)
-            .unwrap();
-        let view = ImageView::new_default(image.clone()).unwrap();
+        let set_entries = vec![(0, DescriptorResource::ImageView(view.clone()))];
 
-        let render_set = DescriptorSet::new(
+        let render_set = Engine::create_descriptor_set(
             descriptor_set_allocator.clone(),
-            layout.clone(),
-            [WriteDescriptorSet::image_view(0, view.clone())],
-            [],
-        )
-        .unwrap();
+            Engine::get_layout(render_compute_pipeline.clone(), 0),
+            &set_entries,
+        );
 
         let previous_future =
             Some(Box::new(vulkano::sync::now(device.clone())) as Box<dyn GpuFuture + Send + Sync>);
@@ -695,20 +658,13 @@ impl Engine {
         )
         .unwrap();
 
-        let layout = self
-            .raycast_compute_pipeline
-            .layout()
-            .set_layouts()
-            .get(1)
-            .unwrap();
+        let query_set_entries = vec![(0, DescriptorResource::RayBuffer(result_buffer.clone()))];
 
-        let query_set = DescriptorSet::new(
+        let query_set = Engine::create_descriptor_set(
             self.descriptor_set_allocator.clone(),
-            layout.clone(),
-            [WriteDescriptorSet::buffer(0, result_buffer.clone())],
-            [],
-        )
-        .unwrap();
+            Engine::get_layout(self.raycast_compute_pipeline.clone(), 0),
+            &query_set_entries,
+        );
 
         let push_data = RayParams {
             origin: origin.to_array().into(),
@@ -767,31 +723,23 @@ impl Engine {
         let resolution = world.get_dimensions_as_arr();
         let max_height = world.get_dimensions().y;
 
-        let voxels = Image::new(
+        let (voxels, voxels_view) = Engine::create_image(
+            ImageType::Dim3d,
+            [resolution[0] / 4, resolution[1] / 4, resolution[2] / 8],
+            Format::R32G32B32A32_UINT,
+            ImageUsage::STORAGE | ImageUsage::TRANSFER_DST,
+            MemoryTypeFilter::PREFER_DEVICE,
             self.memory_allocator.clone(),
-            ImageCreateInfo {
-                image_type: vulkano::image::ImageType::Dim3d,
-                format: Format::R32G32B32A32_UINT,
-                extent: [resolution[0] / 4, resolution[1] / 4, resolution[2] / 8],
-                usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_DST,
-                ..Default::default()
-            },
-            AllocationCreateInfo::default(),
-        )
-        .unwrap();
+        );
 
-        let biomes = Image::new(
+        let (biomes, biomes_view) = Engine::create_image(
+            ImageType::Dim2d,
+            [resolution[0], resolution[1], 1],
+            Format::R8G8B8A8_UNORM,
+            ImageUsage::STORAGE | ImageUsage::TRANSFER_DST,
+            MemoryTypeFilter::PREFER_DEVICE,
             self.memory_allocator.clone(),
-            ImageCreateInfo {
-                image_type: vulkano::image::ImageType::Dim2d,
-                format: Format::R8G8B8A8_UNORM,
-                extent: [resolution[0], resolution[2], 1],
-                usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_DST,
-                ..Default::default()
-            },
-            AllocationCreateInfo::default(),
-        )
-        .unwrap();
+        );
 
         let voxel_staging_buffer = Buffer::from_iter(
             self.memory_allocator.clone(),
@@ -815,11 +763,13 @@ impl Engine {
                 ..Default::default()
             },
             AllocationCreateInfo {
-                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
+                    | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
                 ..Default::default()
             },
-            world.get_biomes()
-        ).unwrap(); 
+            world.get_biomes(),
+        )
+        .unwrap();
 
         let mut builder = AutoCommandBufferBuilder::primary(
             self.command_buffer_allocator.clone(),
@@ -838,7 +788,10 @@ impl Engine {
             .unwrap()
             .clear_color_image(ClearColorImageInfo::image(biomes.clone()))
             .unwrap()
-            .copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(biomes_staging_buffer, biomes.clone()))
+            .copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(
+                biomes_staging_buffer,
+                biomes.clone(),
+            ))
             .unwrap();
 
         let _ = builder
@@ -847,26 +800,16 @@ impl Engine {
             .execute(self.queue.clone())
             .unwrap();
 
-        let voxels_view =
-            ImageView::new(voxels.clone(), ImageViewCreateInfo::from_image(&voxels)).unwrap();
+        let voxel_set_entries = vec![
+            (0, DescriptorResource::ImageView(voxels_view)),
+            (1, DescriptorResource::ImageView(biomes_view)),
+        ];
 
-
-        let biomes_view = ImageView::new(biomes.clone(), ImageViewCreateInfo::from_image(&biomes)).unwrap();
-        
-        let pipeline_layout = self.render_compute_pipeline.layout();
-        let set_layouts = pipeline_layout.set_layouts();
-
-        let layout = set_layouts
-            .get(1)
-            .unwrap();
-
-        let voxel_set = DescriptorSet::new(
+        let voxel_set = Engine::create_descriptor_set(
             self.descriptor_set_allocator.clone(),
-            layout.clone(),
-            [WriteDescriptorSet::image_view(0, voxels_view), WriteDescriptorSet::image_view(1, biomes_view)],
-            [],
-        )
-        .unwrap();
+            Engine::get_layout(self.render_compute_pipeline.clone(), 1),
+            &voxel_set_entries,
+        );
 
         self.voxel_set = Some(voxel_set);
         self.max_fog_height = max_height * 0.33;
@@ -887,45 +830,25 @@ impl Engine {
         )
         .unwrap();
 
-        let layout = self
-            .resample_compute_pipeline
-            .layout()
-            .set_layouts()
-            .get(0)
-            .unwrap();
-
-        let resample_image = Image::new(
+        let (resample_image, resample_view) = Engine::create_image(
+            ImageType::Dim2d,
+            [self.width as u32, self.height as u32, 1],
+            self.image_format,
+            ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC | ImageUsage::TRANSFER_DST,
+            MemoryTypeFilter::PREFER_DEVICE,
             self.memory_allocator.clone(),
-            ImageCreateInfo {
-                image_type: vulkano::image::ImageType::Dim2d,
-                format: self.image_format,
-                extent: [self.width as u32, self.height as u32, 1],
-                usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC | ImageUsage::TRANSFER_DST,
-                ..Default::default()
-            },
-            AllocationCreateInfo {
-                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE,
-                ..Default::default()
-            },
-        )
-        .unwrap();
+        );
 
-        let resample_view = ImageView::new(
-            resample_image.clone(),
-            ImageViewCreateInfo::from_image(&resample_image),
-        )
-        .unwrap();
+        let resample_set_entries = vec![
+            (0, DescriptorResource::ImageView(self.view.clone())),
+            (1, DescriptorResource::ImageView(resample_view)),
+        ];
 
-        let resample_set = DescriptorSet::new(
+        let resample_set = Engine::create_descriptor_set(
             self.descriptor_set_allocator.clone(),
-            layout.clone(),
-            [
-                WriteDescriptorSet::image_view(0, self.view.clone()),
-                WriteDescriptorSet::image_view(1, resample_view),
-            ],
-            [],
-        )
-        .unwrap();
+            Engine::get_layout(self.resample_compute_pipeline.clone(), 0),
+            &resample_set_entries,
+        );
 
         let push_data = PushConstants {
             pixelToRay: pixel_to_ray.to_cols_array_2d(),
@@ -1023,5 +946,80 @@ impl Engine {
         if let Some(prev) = &mut self.previous_future {
             prev.as_mut().cleanup_finished();
         }
+    }
+}
+
+// helpers
+
+impl Engine {
+    fn create_pipeline(
+        shader: Arc<ShaderModule>,
+        entry_point: &str,
+        device: Arc<Device>,
+    ) -> Arc<ComputePipeline> {
+        let compute_shader = shader.entry_point(entry_point).unwrap();
+
+        let stage = PipelineShaderStageCreateInfo::new(compute_shader);
+
+        let layout = PipelineLayout::new(
+            device.clone(),
+            PipelineDescriptorSetLayoutCreateInfo::from_stages([&stage])
+                .into_pipeline_layout_create_info(device.clone())
+                .unwrap(),
+        )
+        .unwrap();
+
+        ComputePipeline::new(
+            device.clone(),
+            None,
+            ComputePipelineCreateInfo::stage_layout(stage, layout),
+        )
+        .unwrap()
+    }
+
+    fn create_image(
+        image_type: ImageType,
+        extent: [u32; 3],
+        format: Format,
+        usage: ImageUsage,
+        mem_filter: MemoryTypeFilter,
+        allocator: Arc<GenericMemoryAllocator<FreeListAllocator>>,
+    ) -> (Arc<Image>, Arc<ImageView>) {
+        let image = Image::new(
+            allocator.clone(),
+            ImageCreateInfo {
+                image_type,
+                format,
+                extent,
+                usage,
+                ..Default::default()
+            },
+            AllocationCreateInfo {
+                memory_type_filter: mem_filter,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let view = ImageView::new_default(image.clone()).unwrap();
+
+        (image, view)
+    }
+
+    fn get_layout(pipeline: Arc<ComputePipeline>, index: usize) -> Arc<DescriptorSetLayout> {
+        pipeline.layout().set_layouts().get(index).unwrap().clone()
+    }
+
+    fn create_descriptor_set(
+        allocator: Arc<StandardDescriptorSetAllocator>,
+        layout: Arc<DescriptorSetLayout>,
+        data: &[(u32, DescriptorResource)],
+    ) -> Arc<DescriptorSet> {
+        let writes: Vec<WriteDescriptorSet> = data
+            .iter()
+            .map(|(binding, resource)| resource.clone().into_write(*binding))
+            .collect();
+
+        DescriptorSet::new(allocator.clone(), layout.clone(), writes, []).unwrap()
     }
 }

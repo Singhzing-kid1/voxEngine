@@ -6,14 +6,7 @@ use rapier3d::{
     prelude::ColliderHandle,
 };
 
-use crate::common::{AABB, Updateable};
-use crate::physics::Physics;
-
-const GROUND_ACCEL: f32 = 10.0;
-const AIR_ACCEL: f32 = 2.0;
-const GROUND_FRICTION: f32 = 10.0;
-const STOP_SPEED: f32 = 1.5;
-const GRAVITY: f32 = -9.81;
+use crate::{common::Updateable, physics::Physics};
 
 #[derive(ImGuiReflect, CopyGetters, Setters, Debug)]
 pub struct Entity {
@@ -53,13 +46,17 @@ pub struct Entity {
     #[imgui(skip)]
     controller: KinematicCharacterController,
 
-    #[imgui(skip)]
     wish_dir: glam::Vec3,
-    #[imgui(skip)]
     wish_speed: f32,
-    #[imgui(skip)]
     jump_requested: bool,
+
+    ground_accel: f32,
+    air_accel: f32,
+    ground_friction: f32,
+    stop_speed: f32,
 }
+
+// constructor
 
 impl Entity {
     pub fn new(mass: f32, size: glam::Vec3, position: glam::Vec3, physics: &mut Physics) -> Self {
@@ -92,9 +89,17 @@ impl Entity {
             wish_dir: glam::Vec3::ZERO,
             wish_speed: 0.0,
             jump_requested: false,
+            ground_accel: 10.0,
+            air_accel: 2.0,
+            ground_friction: 10.0,
+            stop_speed: 1.5,
         }
     }
+}
 
+// public
+
+impl Entity {
     pub fn add_applied_force(&mut self, force: glam::Vec3) {
         self.applied_force += force;
     }
@@ -115,6 +120,23 @@ impl Entity {
         self.net_force = Vec3::ZERO;
     }
 
+    pub fn set_wish_move(&mut self, wish_dir: Vec3, wish_speed: f32) {
+        self.wish_dir = wish_dir;
+        self.wish_speed = wish_speed;
+    }
+
+    pub fn request_jump(&mut self) {
+        self.jump_requested = true;
+    }
+
+    pub fn interpolated_position(&self, alpha: f32) -> Vec3 {
+        self.prev_position.lerp(self.position, alpha)
+    }
+}
+
+// private
+
+impl Entity {
     fn calculate_acceleration(&mut self) {
         self.net_force += self.applied_force + self.normal_force;
         self.acceleration = self.net_force / self.mass;
@@ -124,7 +146,7 @@ impl Entity {
         self.velocity += self.acceleration * delta_time;
     }
 
-    fn apply_ground_friction(&mut self, dt: f32) {
+    fn apply_ground_friction(&mut self, stop_speed: f32, ground_friction: f32, dt: f32) {
         if !self.grounded {
             return;
         }
@@ -132,8 +154,8 @@ impl Entity {
         if speed < 1e-4 {
             return;
         }
-        let control = speed.max(STOP_SPEED);
-        let drop = control * GROUND_FRICTION * dt;
+        let control = speed.max(stop_speed);
+        let drop = control * ground_friction * dt;
         let new_speed = (speed - drop).max(0.0);
         let scale = new_speed / speed;
         self.velocity.x *= scale;
@@ -153,20 +175,9 @@ impl Entity {
         self.velocity.x += wish_dir.x * accel_speed;
         self.velocity.z += wish_dir.z * accel_speed;
     }
-
-    pub fn set_wish_move(&mut self, wish_dir: Vec3, wish_speed: f32) {
-        self.wish_dir = wish_dir;
-        self.wish_speed = wish_speed;
-    }
-
-    pub fn request_jump(&mut self) {
-        self.jump_requested = true;
-    }
-
-    pub fn interpolated_position(&self, alpha: f32) -> Vec3 {
-        self.prev_position.lerp(self.position, alpha)
-    }
 }
+
+// traits
 
 impl Updateable for Entity {
     fn fixed_update(&mut self, physics: &mut Physics) {
@@ -179,7 +190,7 @@ impl Updateable for Entity {
         }
         self.jump_requested = false;
 
-        self.add_applied_force(Vec3::new(0.0, GRAVITY * self.mass, 0.0));
+        self.add_applied_force(physics.get_gravity() * self.mass);
 
         self.calculate_acceleration();
 
@@ -190,12 +201,12 @@ impl Updateable for Entity {
         self.calculate_velocity(dt);
 
         let accel = if self.grounded {
-            GROUND_ACCEL
+            self.ground_accel
         } else {
-            AIR_ACCEL
+            self.air_accel
         };
         if self.grounded {
-            self.apply_ground_friction(dt);
+            self.apply_ground_friction(self.stop_speed, self.ground_friction, dt);
         }
         self.accelerate(self.wish_dir, self.wish_speed, accel, dt);
 
@@ -226,22 +237,4 @@ impl Updateable for Entity {
     }
 
     fn update(&mut self, _alpha: f32, _physics: &mut Physics) {}
-}
-
-impl AABB for Entity {
-    fn aabb(&self) -> [Vec3; 2] {
-        self.gen_aabb(self.position)
-    }
-
-    fn gen_aabb(&self, position: Vec3) -> [Vec3; 2] {
-        let size = self.size;
-        let width = size.x * 0.5;
-        let depth = size.z * 0.5;
-        let height = size.y;
-
-        let min = glam::vec3(position.x - width, position.y - height, position.z - depth);
-        let max = glam::vec3(position.x + width, position.y, position.z + depth);
-
-        [min, max]
-    }
 }
