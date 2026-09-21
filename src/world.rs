@@ -39,7 +39,13 @@ impl World {
         let mut biomes = vec![0u8; ((dimensions.x * dimensions.z) * 4.0) as usize];
 
         let mut set_voxel = |x: usize, y: usize, z: usize| {
-            let (texel, bit) = World::voxel_texel_and_bit(x as i32, y as i32, z as i32, texel_x as i32, texel_y as i32);
+            let (texel, bit) = World::voxel_texel_and_bit(
+                x as i32,
+                y as i32,
+                z as i32,
+                texel_x as i32,
+                texel_y as i32,
+            );
 
             world[texel] |= 1u128 << bit;
         };

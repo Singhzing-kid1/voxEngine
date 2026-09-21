@@ -26,10 +26,7 @@ use vulkano::{
         physical::PhysicalDeviceType,
     },
     format::{ClearColorValue, Format},
-    image::{
-        Image, ImageCreateInfo, ImageType, ImageUsage,
-        view::ImageView,
-    },
+    image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView},
     instance::{Instance, InstanceCreateFlags, InstanceCreateInfo},
     memory::allocator::{
         AllocationCreateInfo, FreeListAllocator, GenericMemoryAllocator, MemoryTypeFilter,
@@ -146,12 +143,6 @@ pub struct Engine {
     #[getset(get = "pub with_prefix")]
     render_scale: u16,
 
-    sdl_context: sdl3::Sdl,
-    video: VideoSubsystem,
-
-    #[getset(get = "pub with_prefix")]
-    window: Window,
-
     #[getset(get_clone = "pub with_prefix")]
     library: Arc<VulkanLibrary>,
     #[getset(get_clone = "pub with_prefix")]
@@ -221,6 +212,12 @@ pub struct Engine {
 
     #[getset(get_copy = "pub with_prefix", get_mut = "pub with_prefix")]
     flags: Flags,
+
+    sdl_context: sdl3::Sdl,
+    video: VideoSubsystem,
+
+    #[getset(get = "pub with_prefix")]
+    window: Window,
 }
 
 // Public

@@ -322,7 +322,6 @@ impl Debug {
     }
 }
 
-
 impl Drop for Debug {
     fn drop(&mut self) {
         shutdown(&mut self.context);
