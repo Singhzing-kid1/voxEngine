@@ -1,8 +1,9 @@
 use std::{
-    sync::Arc,
-    time::{self, Duration},
+    mem::swap, sync::Arc, time::{self, Duration},
 };
 
+use glam::{Mat4, Vec3};
+use rapier3d::glamx::camera::lh::proj::vulkan;
 use sdl3::{
     EventPump, VideoSubsystem,
     event::Event,
@@ -14,8 +15,9 @@ use vulkano::{
     VulkanLibrary, VulkanObject,
     buffer::{Buffer, BufferCreateInfo, BufferUsage, Subbuffer},
     command_buffer::{
-        AutoCommandBufferBuilder, ClearColorImageInfo, CommandBufferUsage, CopyBufferToImageInfo,
-        CopyImageInfo, PrimaryCommandBufferAbstract, allocator::StandardCommandBufferAllocator,
+        self, AutoCommandBufferBuilder, ClearColorImageInfo, CommandBufferUsage,
+        CopyBufferToImageInfo, CopyImageInfo, PrimaryAutoCommandBuffer,
+        PrimaryCommandBufferAbstract, allocator::StandardCommandBufferAllocator,
     },
     descriptor_set::{
         DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator,
@@ -84,6 +86,17 @@ impl DescriptorResource {
             DescriptorResource::RayBuffer(buffer) => WriteDescriptorSet::buffer(binding, buffer),
         }
     }
+}
+
+#[derive(Getters, MutGetters)]
+pub struct Frame {
+    #[getset(get_mut = "pub with_prefix")]
+    builder: AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
+    #[getset(get = "pub with_prefix")]
+    swapchain_image: Arc<Image>,
+
+    image_index: u32,
+    acquire_future: SwapchainAcquireFuture,
 }
 
 // implement getset on flags struct
@@ -515,11 +528,7 @@ impl Engine {
 
         for event in &self.collected_events {
             match event {
-                Event::Quit { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => {
+                Event::Quit { .. } => {
                     self.flags.set_quit_state(true);
                 }
                 Event::KeyDown {
@@ -815,21 +824,49 @@ impl Engine {
         self.max_fog_height = max_height * 0.33;
     }
 
-    pub fn render(&mut self, pixel_to_ray: glam::Mat4, resolution: [u32; 3]) {
+    pub fn start_frame(&mut self) -> Frame {
         let (image_index, _, acquire_future) =
             swapchain::acquire_next_image(self.swapchain.clone(), None).unwrap();
 
         self.current_image_index = image_index;
+        let swapchain_image = self.images[image_index as usize].clone();
 
-        let swapchain_image = &self.images[image_index as usize];
-
-        let mut builder = AutoCommandBufferBuilder::primary(
+        let builder = AutoCommandBufferBuilder::primary(
             self.command_buffer_allocator.clone(),
             self.queue.queue_family_index(),
             CommandBufferUsage::OneTimeSubmit,
         )
         .unwrap();
 
+        Frame {
+            builder,
+            swapchain_image,
+            image_index,
+            acquire_future,
+        }
+    }
+
+    pub fn finish_frame(&mut self, frame: Frame) {
+        let command_buffer = frame.builder.build().unwrap();
+
+        let previous_future = self
+            .previous_future
+            .take()
+            .unwrap_or_else(|| Box::new(vulkano::sync::now(self.device.clone())));
+
+        let future = previous_future
+            .join(frame.acquire_future)
+            .then_execute(self.queue.clone(), command_buffer)
+            .unwrap()
+            .boxed_send_sync();
+
+        self.previous_future = Some(Box::new(future));
+        if let Some(f) = &mut self.previous_future {
+            f.flush().unwrap();
+        }
+    }
+
+    pub fn record_voxel_pass(&mut self, frame: &mut Frame, pixel_to_ray: Mat4, resolution: [u32; 3]) {
         let (resample_image, resample_view) = Engine::create_image(
             ImageType::Dim2d,
             [self.width as u32, self.height as u32, 1],
@@ -857,6 +894,10 @@ impl Engine {
             max_ray_length: self.ray_length,
             max_height: self.max_fog_height,
         };
+
+        let swapchain_image = frame.get_swapchain_image().clone();
+
+        let builder = frame.get_builder_mut();
 
         unsafe {
             builder
@@ -898,31 +939,21 @@ impl Engine {
                 .unwrap()
                 .copy_image(CopyImageInfo::images(
                     resample_image.clone(),
-                    swapchain_image.clone(),
+                    swapchain_image,
                 ))
                 .unwrap();
         };
+    }
 
-        let command_buffer = builder.build().unwrap();
+    pub fn record_clear(&mut self, frame: &mut Frame, color: Vec3) {
+        let swapchain_image = frame.get_swapchain_image().clone();
 
-        let previous_future = self
-            .previous_future
-            .take()
-            .unwrap_or_else(|| Box::new(vulkano::sync::now(self.device.clone())));
+        let builder = frame.get_builder_mut();
 
-        let future = previous_future
-            .join(acquire_future)
-            .then_execute(self.queue.clone(), command_buffer)
-            .unwrap()
-            .boxed_send_sync();
-
-        self.previous_future = Some(Box::new(future));
-
-        if let Some(future) = &mut self.previous_future {
-            future.flush().unwrap();
-        }
-
-        //println!("swapchain image layout: {:?}", swapchain_image.clone().initial_layout());
+        builder.clear_color_image(ClearColorImageInfo {
+            clear_value: ClearColorValue::Float([color.x, color.y, color.z, 1.0]),
+            ..ClearColorImageInfo::image(swapchain_image)
+        }).unwrap();
     }
 
     pub fn present(&mut self) {
