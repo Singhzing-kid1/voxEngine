@@ -1,0 +1,19 @@
+#version 460
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, rgba8) readonly uniform image2D inputImage;
+layout(set = 0, binding = 1, rgba8) writeonly uniform image2D outputImage;
+
+void main() {
+    ivec2 out_coord = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 out_size = imageSize(outputImage);
+
+    if(any(greaterThanEqual(out_coord, out_size))) return;
+
+    ivec2 in_size = imageSize(inputImage);
+    ivec2 in_coord = (out_coord * in_size) / out_size;
+    in_coord = clamp(in_coord, ivec2(0), in_size - 1);
+
+    imageStore(outputImage, out_coord, imageLoad(inputImage, in_coord));
+}

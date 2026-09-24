@@ -1,6 +1,6 @@
-use crate::{engine::Engine, scene::{Scene, Transition}, scenes::GameplayScene};
+use crate::{engine::{Engine, Frame}, scene::{Scene, Transition}, scenes::GameplayScene};
 use sdl3::{event::Event, keyboard::Keycode};
-use glam::vec3;
+use glam::vec4;
 
 pub struct MainMenuScene;
 
@@ -11,6 +11,7 @@ impl MainMenuScene {
 impl Scene for MainMenuScene {
     fn on_enter(&mut self, engine: &mut Engine) {
         engine.toggle_mouse(false);
+        engine.get_flags_mut().set_capture_mouse_state(false);
     }
 
     fn handle_input(&mut self, _engine: &mut Engine) {}
@@ -37,11 +38,12 @@ impl Scene for MainMenuScene {
         Transition::None
     }
 
-    fn render(&mut self, engine: &mut Engine) {
-        let mut frame = engine.start_frame();
+    fn render(&mut self, engine: &mut Engine, frame: &mut Frame) {
+        engine.record_clear(frame, vec4(0.05, 0.05, 0.08, 1.0));
+    }
 
-        engine.record_clear(&mut frame, vec3(0.05, 0.05, 0.08));
-        engine.finish_frame(frame);
+    fn render_as_overlay(&mut self, engine: &mut Engine, frame: &mut Frame) {
+        engine.record_blur(frame);
     }
 
     fn render_debug(&mut self, engine: &mut Engine, debug: &mut crate::debug::Debug) {

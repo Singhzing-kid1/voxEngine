@@ -21,7 +21,7 @@ use scenes::{MainMenuScene};
 fn main() {
     let mut flags = Flags::new();
 
-    flags.set_capture_mouse_state(true);
+    flags.set_capture_mouse_state(false);
 
     let mut engine = Engine::new("vox engine using rust", time::Instant::now(), 3, flags);
 
@@ -34,9 +34,7 @@ fn main() {
         engine.event_handling();
 
         let dt_ms = engine.get_delta_time();
-        if dt_ms > 30 {
-            println!("SPIKE: {}ms", dt_ms);
-        }
+
         let mut frame_time = dt_ms as f32 / 1000.0;
         if frame_time > common::MAX_FRAME_TIME {
             frame_time = common::MAX_FRAME_TIME;
