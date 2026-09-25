@@ -2,6 +2,8 @@ use crate::{
     debug::Debug, engine::{Engine, Frame}
 };
 
+use dear_imgui_reflect::ImGuiReflect;
+
 pub enum Transition  {
     None,
     Switch(Box<dyn Scene>),
@@ -9,6 +11,7 @@ pub enum Transition  {
     Unpause,
     Quit
 }
+
 
 pub trait Scene {
     fn on_enter(&mut self, _engine: &mut Engine) {}
@@ -26,6 +29,10 @@ pub trait Scene {
     fn render_as_overlay(&mut self, _engine: &mut Engine, _frame: &mut Frame) {}
 
     fn render_debug(&mut self, _engine: &mut Engine, _debug: &mut Debug) {}
+
+    fn imgui_reflect_dyn(&mut self, _ui: &dear_imgui_rs::Ui) -> bool {
+        false
+    }
 }
 
 

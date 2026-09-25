@@ -8,24 +8,38 @@ use rapier3d::{
 };
 use std::collections::HashMap;
 
+use dear_imgui_reflect::ImGuiReflect;
+
+
 const CHUNK_LOAD_RADIUS: i32 = 4;
 
-#[derive(CopyGetters, Setters)]
+#[derive(CopyGetters, Setters, ImGuiReflect)]
 pub struct Physics {
+    #[imgui(skip)]
     rigid_body_set: RigidBodySet,
+    #[imgui(skip)]
     collider_set: ColliderSet,
+    #[imgui(skip)]
     physics_pipeline: PhysicsPipeline,
+    #[imgui(skip)]
     island_manager: IslandManager,
+    #[imgui(skip)]
     broad_phase: BroadPhaseBvh,
+    #[imgui(skip)]
     narrow_phase: NarrowPhase,
+    #[imgui(skip)]
     impulse_joint_set: ImpulseJointSet,
+    #[imgui(skip)]
     multibody_joint_set: MultibodyJointSet,
+    #[imgui(skip)]
     ccd_solver: CCDSolver,
+    #[imgui(skip)]
     integration_parameters: IntegrationParameters,
 
     #[getset(get_copy = "pub with_prefix")]
     gravity: glam::Vec3,
 
+    #[imgui(skip)]
     loaded_chunks: HashMap<glam::IVec3, ColliderHandle>,
     chunk_size: i32,
 }

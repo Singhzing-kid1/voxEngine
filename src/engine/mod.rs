@@ -2,6 +2,7 @@ use std::{
     sync::Arc, time::{self},
 };
 
+use glam::Mat4;
 use sdl3::{
     EventPump, VideoSubsystem,
     event::Event,
@@ -39,8 +40,9 @@ use vulkano::{
     sync::{GpuFuture, semaphore::Semaphore},
 };
 
-use crate::{common::RayHit,
-    shader::*
+use crate::{
+    common::RayHit,
+    shader::*,
 };
 
 use dear_imgui_reflect::ImGuiReflect;
@@ -49,7 +51,6 @@ use getset::{CloneGetters, CopyGetters, Getters, MutGetters};
 
 mod helpers;
 mod render;
-mod raycast;
 mod event;
 mod record;
 
@@ -131,6 +132,14 @@ pub struct Frame {
     acquire_future: SwapchainAcquireFuture,
 }
 
+
+pub trait Record {
+    fn record(&mut self, frame: &mut Frame, engine: &mut Engine);
+    fn init(&mut self, engine: &mut Engine);
+}
+
+
+
 #[derive(CopyGetters, Getters, MutGetters, CloneGetters)]
 #[allow(unused)]
 pub struct Engine {
@@ -139,7 +148,9 @@ pub struct Engine {
     last_frame: time::Instant,
     start: time::Instant,
 
+    #[getset(get = "pub with_prefix")]
     width: u16,
+    #[getset(get = "pub with_prefix")]
     height: u16,
 
     #[getset(get = "pub with_prefix")]
@@ -159,22 +170,23 @@ pub struct Engine {
     #[getset(get_clone = "pub with_prefix")]
     images: Vec<Arc<Image>>,
 
+    #[getset(get_clone = "pub with_prefix")]
     memory_allocator: Arc<StandardMemoryAllocator>,
+    #[getset(get_clone = "pub with_prefix")]
     command_buffer_allocator: Arc<StandardCommandBufferAllocator>,
+    #[getset(get_clone = "pub with_prefix")]
     descriptor_set_allocator: Arc<StandardDescriptorSetAllocator>,
-
-    render_compute_pipeline: Arc<ComputePipeline>,
-    resample_compute_pipeline: Arc<ComputePipeline>,
 
     raycast_compute_pipeline: Arc<ComputePipeline>,
 
     pause_blur_compute_pipeline: Arc<ComputePipeline>,
 
-    voxel_set: Option<Arc<DescriptorSet>>,
-    render_set: Arc<DescriptorSet>,
+    #[getset(get = "pub with_prefix")]
     image_format: Format,
 
+    #[getset(get_clone = "pub with_prefix")]
     image: Arc<Image>,
+    #[getset(get_clone = "pub with_prefix")]
     view: Arc<ImageView>,
 
     previous_future: Option<Box<dyn GpuFuture + Send + Sync>>,
@@ -204,12 +216,8 @@ pub struct Engine {
 
     #[getset(get_mut = "pub with_prefix")]
     current_render_mode: RENDERMODE,
-    #[getset(get_mut = "pub with_prefix")]
-    ray_length: f32,
 
     scale: f32,
-
-    max_fog_height: f32,
 
     x: f32,
     y: f32,
@@ -447,15 +455,9 @@ impl Engine {
             command_buffer_allocator,
             descriptor_set_allocator,
 
-            render_compute_pipeline,
-            resample_compute_pipeline,
-
             raycast_compute_pipeline,
 
             pause_blur_compute_pipeline,
-
-            render_set,
-            voxel_set: None,
 
             image_format,
 
@@ -471,7 +473,6 @@ impl Engine {
             collected_events: Vec::new(),
 
             current_render_mode: RENDERMODE::DEFAULT,
-            ray_length: 450.0,
 
             x_offset: 0.0,
             y_offset: 0.0,
@@ -483,8 +484,6 @@ impl Engine {
             last_y: 0.0,
 
             scale: 2.5,
-
-            max_fog_height: 0.0,
 
             x: 0.0,
             y: 0.0,

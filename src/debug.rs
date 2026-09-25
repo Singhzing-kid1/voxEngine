@@ -26,6 +26,8 @@ use vulkano::{
 use dear_imgui_reflect::ImGuiReflectExt;
 
 use crate::{engine::Engine, player::Player};
+use crate::scene::Scene;
+use crate::scenes::GameplayScene;
 
 #[allow(unused)]
 pub struct Debug {
@@ -198,7 +200,7 @@ impl Debug {
         }
     }
 
-    pub fn render_gameplay(&mut self, engine: &mut Engine, player: &mut Player) {
+    pub fn render(&mut self, engine: &mut Engine, scene: &mut dyn Scene) {
         let image_index = engine.get_current_image_index();
 
         for event in engine.get_collected_events() {
@@ -221,131 +223,9 @@ impl Debug {
             .build(|| {
                 ui.text(engine.get_hardware_info());
                 ui.text(engine.get_frame_rate().to_string());
-                ui.slider("Ray Length", 1.0, 2000.0, engine.get_ray_length_mut());
                 ui.input_reflect("Flags", engine.get_flags_mut());
                 ui.input_reflect("Render Mode", engine.get_current_render_mode_mut());
-                ui.input_reflect("Player", player);
-            });
-
-        let draw_data = self.context.render();
-
-        let command_buffer = unsafe {
-            let alloc_info = CommandBufferAllocateInfo::default()
-                .command_pool(self.command_pool)
-                .level(CommandBufferLevel::PRIMARY)
-                .command_buffer_count(1);
-
-            self.ash_device
-                .allocate_command_buffers(&alloc_info)
-                .unwrap()[0]
-        };
-
-        unsafe {
-            self.ash_device
-                .begin_command_buffer(
-                    command_buffer,
-                    &CommandBufferBeginInfo::default()
-                        .flags(CommandBufferUsageFlags::ONE_TIME_SUBMIT),
-                )
-                .unwrap();
-
-            let clear_value = ClearValue {
-                color: ClearColorValue {
-                    float32: [0.0, 0.0, 0.0, 0.0],
-                },
-            };
-
-            let render_pass_begin = RenderPassBeginInfo::default()
-                .render_pass(self.render_pass)
-                .framebuffer(self.framebuffer[image_index as usize])
-                .render_area(Rect2D {
-                    offset: Offset2D { x: 0, y: 0 },
-                    extent: Extent2D {
-                        width: self.swapchain.image_extent()[0],
-                        height: self.swapchain.image_extent()[1],
-                    },
-                })
-                .clear_values(std::slice::from_ref(&clear_value));
-
-            let barrier = ImageMemoryBarrier::default()
-                .src_access_mask(AccessFlags::empty())
-                .dst_access_mask(
-                    AccessFlags::COLOR_ATTACHMENT_READ | AccessFlags::COLOR_ATTACHMENT_WRITE,
-                )
-                .old_layout(ImageLayout::PRESENT_SRC_KHR)
-                .new_layout(ImageLayout::TRANSFER_DST_OPTIMAL)
-                .src_queue_family_index(ash::vk::QUEUE_FAMILY_IGNORED)
-                .dst_queue_family_index(ash::vk::QUEUE_FAMILY_IGNORED)
-                .image(self.images[image_index as usize].handle())
-                .subresource_range(ImageSubresourceRange {
-                    aspect_mask: ImageAspectFlags::COLOR,
-                    base_mip_level: 0,
-                    level_count: 1,
-                    base_array_layer: 0,
-                    layer_count: 1,
-                });
-
-            self.ash_device.cmd_pipeline_barrier(
-                command_buffer,
-                PipelineStageFlags::BOTTOM_OF_PIPE,
-                PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-                DependencyFlags::empty(),
-                &[],
-                &[],
-                std::slice::from_ref(&barrier),
-            );
-
-            self.ash_device.cmd_begin_render_pass(
-                command_buffer,
-                &render_pass_begin,
-                SubpassContents::INLINE,
-            );
-
-            self.renderer.cmd_draw(command_buffer, &draw_data).unwrap();
-
-            self.ash_device.cmd_end_render_pass(command_buffer);
-            self.ash_device.end_command_buffer(command_buffer).unwrap();
-        }
-
-        let submit_info =
-            SubmitInfo::default().command_buffers(std::slice::from_ref(&command_buffer));
-
-        unsafe {
-            self.ash_device
-                .queue_submit(
-                    self.queue.handle(),
-                    std::slice::from_ref(&submit_info),
-                    Fence::null(),
-                )
-                .unwrap();
-        }
-    }
-
-
-    pub fn render_main_menu(&mut self, engine: &mut Engine) {
-        let image_index = engine.get_current_image_index();
-
-        for event in engine.get_collected_events() {
-            process_sys_event(&event.to_ll().unwrap_or_default());
-        }
-
-        dear_imgui_sdl3::sdl3_new_frame(&mut self.context);
-
-        if self.context.io().want_text_input() && !self.getting_input {
-            engine.start_text_input();
-            self.getting_input = true;
-        } else if !self.context.io().want_text_input() && self.getting_input {
-            engine.stop_text_input();
-        }
-
-        let ui = self.context.frame();
-
-        ui.window("Debug - Main Menu")
-            .size([500.0, 500.0], dear_imgui_rs::Condition::FirstUseEver)
-            .build(|| {
-                ui.text(engine.get_hardware_info());
-                ui.text(engine.get_frame_rate().to_string());
-                ui.input_reflect("Flags", engine.get_flags_mut());
+                scene.imgui_reflect_dyn(ui);
             });
 
         let draw_data = self.context.render();

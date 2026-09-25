@@ -53,7 +53,7 @@ impl Engine {
             .stop(&self.window);
     }
 
-    pub(super) fn create_pipeline(
+    pub fn create_pipeline(
         shader: Arc<ShaderModule>,
         entry_point: &str,
         device: Arc<Device>,
@@ -78,7 +78,7 @@ impl Engine {
         .unwrap()
     }
 
-    pub(super) fn create_image(
+    pub fn create_image(
         image_type: ImageType,
         extent: [u32; 3],
         format: Format,
@@ -107,11 +107,11 @@ impl Engine {
         (image, view)
     }
 
-    pub(super) fn get_layout(pipeline: Arc<ComputePipeline>, index: usize) -> Arc<DescriptorSetLayout> {
+    pub fn get_layout(pipeline: Arc<ComputePipeline>, index: usize) -> Arc<DescriptorSetLayout> {
         pipeline.layout().set_layouts().get(index).unwrap().clone()
     }
 
-    pub(super) fn create_descriptor_set(
+    pub fn create_descriptor_set(
         allocator: Arc<StandardDescriptorSetAllocator>,
         layout: Arc<DescriptorSetLayout>,
         data: &[(u32, DescriptorResource)],

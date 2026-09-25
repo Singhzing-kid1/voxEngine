@@ -2,6 +2,9 @@ use crate::{engine::{Engine, Frame}, scene::{Scene, Transition}, scenes::Gamepla
 use sdl3::{event::Event, keyboard::Keycode};
 use glam::vec4;
 
+use dear_imgui_reflect::{ImGuiReflect, ImGuiReflectExt};
+
+#[derive(ImGuiReflect)]
 pub struct MainMenuScene;
 
 impl MainMenuScene {
@@ -47,7 +50,11 @@ impl Scene for MainMenuScene {
     }
 
     fn render_debug(&mut self, engine: &mut Engine, debug: &mut crate::debug::Debug) {
-        debug.render_main_menu(engine);
+        debug.render(engine, self);
+    }
+
+    fn imgui_reflect_dyn(&mut self, ui: &dear_imgui_rs::Ui) -> bool {
+        ui.input_reflect("Main Menu Scene", self)
     }
 }
 
