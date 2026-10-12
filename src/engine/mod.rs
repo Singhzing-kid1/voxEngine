@@ -1,5 +1,5 @@
 use std::{
-    sync::Arc, time::{self},
+    net::Shutdown::Write, sync::Arc, time::{self},
 };
 
 use glam::Mat4;
@@ -10,34 +10,21 @@ use sdl3::{
 };
 
 use vulkano::{
-    VulkanLibrary, VulkanObject,
-    buffer::Subbuffer,
-    command_buffer::{
+    VulkanLibrary, VulkanObject, buffer::Subbuffer, command_buffer::{
         AutoCommandBufferBuilder,
         PrimaryAutoCommandBuffer,
         allocator::StandardCommandBufferAllocator,
-    },
-    descriptor_set::{
+    }, descriptor_set::{
         DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator,
-    },
-    device::{
+    }, device::{
         Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags,
         physical::PhysicalDeviceType,
-    },
-    format::{Format},
-    image::{Image, ImageType, ImageUsage, view::ImageView},
-    instance::{Instance, InstanceCreateFlags, InstanceCreateInfo},
-    memory::allocator::{
+    }, format::Format, image::{Image, ImageType, ImageUsage, sampler::Sampler, view::ImageView}, instance::{Instance, InstanceCreateFlags, InstanceCreateInfo}, memory::allocator::{
         MemoryTypeFilter,
         StandardMemoryAllocator,
-    },
-    pipeline::{
-        ComputePipeline,
-    },
-    swapchain::{
+    }, pipeline::ComputePipeline, swapchain::{
         self, Surface, SurfaceApi, Swapchain, SwapchainAcquireFuture, SwapchainCreateInfo,
-    },
-    sync::{GpuFuture, semaphore::Semaphore},
+    }, sync::{GpuFuture, semaphore::Semaphore},
 };
 
 use crate::{
@@ -111,6 +98,7 @@ pub enum RENDERMODE {
 pub(crate) enum DescriptorResource {
     ImageView(Arc<ImageView>),
     RayBuffer(Subbuffer<RayHit>),
+    SampleTex(Arc<ImageView>, Arc<Sampler>)
 }
 
 impl DescriptorResource {
@@ -118,6 +106,7 @@ impl DescriptorResource {
         match self {
             DescriptorResource::ImageView(view) => WriteDescriptorSet::image_view(binding, view),
             DescriptorResource::RayBuffer(buffer) => WriteDescriptorSet::buffer(binding, buffer),
+            DescriptorResource::SampleTex(texture, sampler) => WriteDescriptorSet::image_view_sampler(binding, texture, sampler),
         }
     }
 }

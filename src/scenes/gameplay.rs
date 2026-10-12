@@ -3,8 +3,9 @@ use crate::{
 };
 
 use glam::{vec3};
+use png::{BitDepth, Decoder};
 
-use std::sync::Arc;
+use std::{io::Cursor, sync::Arc};
 
 use sdl3::{event::Event, keyboard::Keycode};
 use vulkano::{
@@ -12,7 +13,7 @@ use vulkano::{
         AutoCommandBufferBuilder, ClearColorImageInfo, CommandBufferUsage,
         CopyBufferToImageInfo, CopyImageInfo,
         PrimaryCommandBufferAbstract,
-    }, descriptor_set::DescriptorSet, format::{ClearColorValue, Format}, image::{ImageType, ImageUsage}, memory::allocator::{
+    }, descriptor_set::DescriptorSet, format::{ClearColorValue, Format}, image::{ImageType, ImageUsage, sampler::{Filter, Sampler, SamplerCreateInfo, SamplerMipmapMode, SamplerAddressMode}, view::ImageView}, memory::allocator::{
         AllocationCreateInfo, MemoryTypeFilter,
     }, pipeline::{
         ComputePipeline, Pipeline, PipelineBindPoint,
@@ -39,12 +40,22 @@ pub struct GameplayScene {
     #[imgui(skip)]
     voxel_set: Option<Arc<DescriptorSet>>,
     #[imgui(skip)]
+    texture_set: Option<Arc<DescriptorSet>>,
+    #[imgui(skip)]
     render_set: Arc<DescriptorSet>,
 
     #[imgui(skip)]
     render_pipeline: Arc<ComputePipeline>,
     #[imgui(skip)]
     resample_pipeline: Arc<ComputePipeline>,
+
+    #[imgui(skip)]
+    sampler: Arc<Sampler>,
+
+    #[imgui(skip)]
+    texture_data: Vec<u8>,
+    #[imgui(skip)]
+    texture_dimensions: [u32; 2]
 }
 
 impl GameplayScene {
@@ -62,6 +73,46 @@ impl GameplayScene {
             Engine::get_layout(render_pipeline.clone(), 0), 
             &set_entries
         );
+
+        let sampler = Sampler::new(
+            engine.get_device(),
+            SamplerCreateInfo {
+                mag_filter: Filter::Nearest,
+                min_filter: Filter::Nearest,
+                mipmap_mode: SamplerMipmapMode::Nearest,
+                address_mode: [SamplerAddressMode::Repeat; 3],
+                mip_lod_bias: 0.0,
+                ..Default::default()
+            }
+        ).unwrap();
+
+        let (texture_data,             texture_dimensions) = {
+            let png_bytes = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/textures/test.png")).to_vec();
+
+            let cursor = Cursor::new(png_bytes);
+            let decoder = Decoder::new(cursor);
+
+            let mut reader = decoder.read_info().unwrap();
+
+            let info = reader.info();
+
+            let image_dimensions = [info.width, info.height];
+
+            let mut image_data = Vec::new();
+            let depth: u32 = match info.bit_depth {
+                BitDepth::One => 1,
+                BitDepth::Two => 2, 
+                BitDepth::Four => 4,
+                BitDepth::Eight => 8,
+                BitDepth::Sixteen => 16,
+            };
+
+            image_data.resize((info.width * info.height * depth) as usize, 0);
+            reader.next_frame(&mut image_data).unwrap();
+
+
+            (image_data, image_dimensions)
+        };
 
         let world = World::new(12999003378434, vec3(2000.0, 1000.0, 2000.0), 32);
         let mut physics = Physics::new(&world, vec3(0.0, -9.81, 0.0), 32);
@@ -93,10 +144,16 @@ impl GameplayScene {
             ray_length: 400.0, 
             max_fog_height: 0.0, 
             voxel_set: None,
+            texture_set: None,
             render_set,
 
             render_pipeline,
-            resample_pipeline
+            resample_pipeline,
+
+            sampler,
+
+            texture_data,
+            texture_dimensions
         }
     }
 }
@@ -230,6 +287,7 @@ impl Record for GameplayScene {
                     vec![
                         self.render_set.clone(),
                         self.voxel_set.as_ref().unwrap().clone(),
+                        self.texture_set.as_ref().unwrap().clone(),
                     ],
                 )
                 .unwrap()
@@ -312,6 +370,29 @@ impl Record for GameplayScene {
         )
         .unwrap();
 
+
+        let (texture, texture_view) = Engine::create_image(
+            ImageType::Dim2d,
+            [self.texture_dimensions[0], self.texture_dimensions[1], 1],
+            Format::R8G8B8A8_UNORM,
+            ImageUsage::SAMPLED | ImageUsage::TRANSFER_DST,
+            MemoryTypeFilter::PREFER_DEVICE,
+            engine.get_memory_allocator()
+        );
+
+        let texture_staging_buffer = Buffer::from_iter(
+            engine.get_memory_allocator(),
+            BufferCreateInfo {
+                usage: BufferUsage::TRANSFER_SRC,
+                ..Default::default()
+            },
+            AllocationCreateInfo {
+                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+                ..Default::default()
+            },
+            self.texture_data.clone()
+        ).unwrap();
+
         let mut builder = AutoCommandBufferBuilder::primary(
             engine.get_command_buffer_allocator(),
             engine.get_queue().queue_family_index(),
@@ -333,6 +414,13 @@ impl Record for GameplayScene {
                 biomes_staging_buffer,
                 biomes.clone(),
             ))
+            .unwrap()
+            .clear_color_image(ClearColorImageInfo::image(texture.clone()))
+            .unwrap()
+            .copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(
+                texture_staging_buffer, 
+                texture.clone())
+            )
             .unwrap();
 
         let _ = builder
@@ -352,7 +440,14 @@ impl Record for GameplayScene {
             &voxel_set_entries,
         );
 
+        let texture_set_entries = vec![
+            (0, DescriptorResource::SampleTex(texture_view, self.sampler.clone()))
+        ];
+
+        let texture_set = Engine::create_descriptor_set(engine.get_descriptor_set_allocator(), Engine::get_layout(self.render_pipeline.clone(), 2), &texture_set_entries);
+
         self.voxel_set = Some(voxel_set);
+        self.texture_set = Some(texture_set);
         self.max_fog_height = max_height * 0.33;
 
     }

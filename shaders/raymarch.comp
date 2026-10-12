@@ -32,6 +32,8 @@ layout(set = 0, binding = 0, rgba8) writeonly uniform image2D targetImage;
 layout(set = 1, binding = 0, rgba32ui) readonly uniform uimage3D voxelImage;
 layout(set = 1, binding = 1, rgba8) readonly uniform image2D biomeImage;
 
+layout(set = 2, binding = 0) uniform sampler2D tex;
+
 vec3 getBiomeColor(float height, float temperature, float moisture) {
     // --- High elevation overrides ---
     if (height > 0.90) {
@@ -226,6 +228,15 @@ bool traversal(vec3 origin, vec3 dir, out vec3 color, inout uint steps) {
             vec4 biome = imageLoad(biomeImage, ivec2(icoord.x, icoord.z));
 
             color = getBiomeColor(biome.g, biome.r, biome.b);
+
+            vec3 hit = origin + dir * t_inside;
+            vec3 local_hit = hit - vec3(icoord);
+            vec2 uv;
+            if      (stepped_axis == 0) uv = local_hit.yz;
+            else if (stepped_axis == 1) uv = local_hit.xz;
+            else                        uv = local_hit.xy;
+
+            color = texture(tex, uv).rgb;
 
             float depth = (tmin + t_inside) * length(dir);
 
