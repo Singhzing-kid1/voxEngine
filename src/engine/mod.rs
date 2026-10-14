@@ -1,10 +1,8 @@
 use std::{
-    net::Shutdown::Write,
     sync::Arc,
     time::{self},
 };
 
-use glam::Mat4;
 use sdl3::{EventPump, VideoSubsystem, event::Event, video::Window};
 
 use vulkano::{
@@ -14,9 +12,7 @@ use vulkano::{
         AutoCommandBufferBuilder, PrimaryAutoCommandBuffer,
         allocator::StandardCommandBufferAllocator,
     },
-    descriptor_set::{
-        DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator,
-    },
+    descriptor_set::{WriteDescriptorSet, allocator::StandardDescriptorSetAllocator},
     device::{
         Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags,
         physical::PhysicalDeviceType,

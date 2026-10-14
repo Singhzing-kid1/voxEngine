@@ -1,7 +1,6 @@
-use std::fs::File;
+use getset::{CopyGetters, Getters};
 use png::Decoder;
-use getset::{CloneGetters, CopyGetters, Getters, MutGetters};
-
+use std::fs::File;
 
 #[derive(CopyGetters, Getters, Clone)]
 pub struct Texture {
@@ -33,7 +32,7 @@ impl Texture {
 
         Self {
             image_data,
-            image_dimensions: [info.width, info.height]
+            image_dimensions: [info.width, info.height],
         }
     }
 }

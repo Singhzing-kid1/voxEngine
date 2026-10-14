@@ -1,33 +1,31 @@
 use crate::{
-    common::{self, Buildable, Builder, HasEntity, Updateable}, debug::Debug, engine::{DescriptorResource, Engine, Frame, Record}, physics::Physics, player::Player, scene::{Scene, Transition}, scenes::MainMenuScene, texture::Atlas, world::World
+    common::{self, Buildable, Builder, HasEntity, Updateable},
+    debug::Debug,
+    engine::{DescriptorResource, Engine, Frame, Record},
+    physics::Physics,
+    player::Player,
+    scene::{Scene, Transition},
+    scenes::MainMenuScene,
+    texture::Atlas,
+    world::World,
 };
 
 use glam::vec3;
-use png::{BitDepth, Decoder};
 
-use std::{io::Cursor, sync::Arc};
+use std::sync::Arc;
 
-use sdl3::{
-    event::Event,
-    keyboard::{Keycode, Scancode::K},
-};
+use sdl3::{event::Event, keyboard::Keycode};
 use vulkano::{
-    DeviceSize,
-    buffer::{Buffer, BufferCreateInfo, BufferUsage, Subbuffer},
+    buffer::{Buffer, BufferCreateInfo, BufferUsage},
     command_buffer::{
         AutoCommandBufferBuilder, ClearColorImageInfo, CommandBufferUsage, CopyBufferToImageInfo,
         CopyImageInfo, PrimaryCommandBufferAbstract,
     },
     descriptor_set::DescriptorSet,
     format::{ClearColorValue, Format},
-    image::{
-        ImageType, ImageUsage,
-        sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo, SamplerMipmapMode},
-        view::ImageView,
-    },
+    image::{ImageType, ImageUsage},
     memory::allocator::{AllocationCreateInfo, MemoryTypeFilter},
     pipeline::{ComputePipeline, Pipeline, PipelineBindPoint},
-    sync::GpuFuture
 };
 
 use crate::{shader::render_compute_shader, shader::resample_compute_shader};
@@ -80,7 +78,13 @@ impl GameplayScene {
             &set_entries,
         );
 
-        let atlas = Atlas::builder().add_image("/textures/test.png").add_image("/textures/dirt.png").set_atlas_resolution([16, 16]).set_format(Format::R8G8B8A8_UNORM).build(engine).unwrap();
+        let atlas = Atlas::builder()
+            .add_image("/textures/test.png")
+            .add_image("/textures/dirt.png")
+            .set_atlas_resolution([16, 16])
+            .set_format(Format::R8G8B8A8_UNORM)
+            .build(engine)
+            .unwrap();
 
         let world = World::new(12999003378434, vec3(2000.0, 1000.0, 2000.0), 32);
         let mut physics = Physics::new(&world, vec3(0.0, -9.81, 0.0), 32);
@@ -392,7 +396,10 @@ impl Record for GameplayScene {
         );
 
         let texture_set_entries = vec![
-            (0, DescriptorResource::Sample(self.atlas.get_atlas_sampler())),
+            (
+                0,
+                DescriptorResource::Sample(self.atlas.get_atlas_sampler()),
+            ),
             (1, DescriptorResource::ImageView(self.atlas.get_atlas())),
         ];
 

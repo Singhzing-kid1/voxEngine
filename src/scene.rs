@@ -3,8 +3,6 @@ use crate::{
     engine::{Engine, Frame},
 };
 
-use dear_imgui_reflect::ImGuiReflect;
-
 pub enum Transition {
     None,
     Switch(Box<dyn Scene>),

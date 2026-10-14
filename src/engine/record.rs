@@ -12,7 +12,7 @@ use vulkano::{
     pipeline::{Pipeline, PipelineBindPoint},
 };
 
-use crate::{shader::pause_blur_shader, shader::render_compute_shader, world::World};
+use crate::{shader::pause_blur_shader};
 
 use super::{DescriptorResource, Engine, Frame};
 

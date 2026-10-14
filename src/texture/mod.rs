@@ -1,14 +1,8 @@
-use vulkano::{format::Format, image::{sampler::Sampler, view::ImageView}};
-use std::sync::Arc;
-
+mod atlas;
 mod builder;
 mod texture;
-mod atlas;
 
-pub use builder::AtlasBuilder;
 pub use atlas::Atlas;
+pub use builder::AtlasBuilder;
 
 use texture::Texture;
-
-
-

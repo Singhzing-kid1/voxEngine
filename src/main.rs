@@ -9,8 +9,8 @@ pub mod player;
 pub mod scene;
 pub mod scenes;
 pub mod shader;
-pub mod world;
 pub mod texture;
+pub mod world;
 
 use debug::Debug;
 use engine::Engine;

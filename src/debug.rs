@@ -27,8 +27,7 @@ use vulkano::{
 use dear_imgui_reflect::ImGuiReflectExt;
 
 use crate::scene::Scene;
-use crate::scenes::GameplayScene;
-use crate::{engine::Engine, player::Player};
+use crate::{engine::Engine};
 
 #[allow(unused)]
 pub struct Debug {
@@ -90,12 +89,26 @@ impl Debug {
         };
 
         let command_buffers = unsafe {
-            ash_device.allocate_command_buffers(&CommandBufferAllocateInfo::default().command_pool(command_pool).level(CommandBufferLevel::PRIMARY).command_buffer_count(images.len() as u32)).unwrap()
+            ash_device
+                .allocate_command_buffers(
+                    &CommandBufferAllocateInfo::default()
+                        .command_pool(command_pool)
+                        .level(CommandBufferLevel::PRIMARY)
+                        .command_buffer_count(images.len() as u32),
+                )
+                .unwrap()
         };
 
-        let fences: Vec<Fence> = (0..images.len()).map(|_| unsafe {
-            ash_device.create_fence(&FenceCreateInfo::default().flags(FenceCreateFlags::SIGNALED), None).unwrap()
-        }).collect();
+        let fences: Vec<Fence> = (0..images.len())
+            .map(|_| unsafe {
+                ash_device
+                    .create_fence(
+                        &FenceCreateInfo::default().flags(FenceCreateFlags::SIGNALED),
+                        None,
+                    )
+                    .unwrap()
+            })
+            .collect();
 
         let attachment = AttachmentDescription::default()
             .format(swapchain.image_format().into())
@@ -247,7 +260,9 @@ impl Debug {
         let fence = self.fences[image_index as usize];
 
         unsafe {
-            self.ash_device.wait_for_fences(&[fence], true, u64::MAX).unwrap();
+            self.ash_device
+                .wait_for_fences(&[fence], true, u64::MAX)
+                .unwrap();
             self.ash_device.reset_fences(&[fence]).unwrap();
             self.ash_device
                 .reset_command_buffer(command_buffer, CommandBufferResetFlags::empty())
@@ -340,11 +355,18 @@ impl Drop for Debug {
     fn drop(&mut self) {
         unsafe {
             self.ash_device.device_wait_idle().unwrap();
-            for f in &self.fences { self.ash_device.destroy_fence(*f, None); }
-            for fb in &self.framebuffer { self.ash_device.destroy_framebuffer(*fb, None); }
-            for v in &self.image_views { self.ash_device.destroy_image_view(*v, None); }
+            for f in &self.fences {
+                self.ash_device.destroy_fence(*f, None);
+            }
+            for fb in &self.framebuffer {
+                self.ash_device.destroy_framebuffer(*fb, None);
+            }
+            for v in &self.image_views {
+                self.ash_device.destroy_image_view(*v, None);
+            }
             self.ash_device.destroy_render_pass(self.render_pass, None);
-            self.ash_device.destroy_command_pool(self.command_pool, None); // frees the command buffers too
+            self.ash_device
+                .destroy_command_pool(self.command_pool, None); // frees the command buffers too
         }
         shutdown(&mut self.context);
     }

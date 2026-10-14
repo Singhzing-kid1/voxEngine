@@ -2,7 +2,7 @@ use glam::Vec3;
 use std::fmt::Debug;
 use vulkano::buffer::BufferContents;
 
-use crate::{entity::Entity, physics::Physics, engine::Engine};
+use crate::{engine::Engine, entity::Entity, physics::Physics};
 
 pub(crate) const TICK_RATE: f32 = 1.0 / 60.0; // 1 / fps -> matches rapier internals
 pub(crate) const MAX_FRAME_TIME: f32 = 0.25;

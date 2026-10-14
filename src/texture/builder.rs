@@ -1,19 +1,26 @@
-use rapier3d::parry::query::gjk::GJKResult::NoIntersection;
-use vulkano::{format::Format, image::{ImageType, ImageUsage, sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo, SamplerMipmapMode}, view::ImageView}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}, sync::GpuFuture};
+use vulkano::{
+    format::Format,
+    image::{
+        ImageType, ImageUsage,
+        sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo, SamplerMipmapMode},
+    },
+    memory::allocator::{AllocationCreateInfo, MemoryTypeFilter},
+    sync::GpuFuture,
+};
 
 use vulkano::{
-        buffer::{Buffer, BufferCreateInfo, BufferUsage, Subbuffer},
+    buffer::{Buffer, BufferCreateInfo, BufferUsage},
     command_buffer::{
-        AutoCommandBufferBuilder, ClearColorImageInfo, CommandBufferUsage, CopyBufferToImageInfo,
-        CopyImageInfo, PrimaryCommandBufferAbstract,
+        AutoCommandBufferBuilder, CommandBufferUsage, CopyBufferToImageInfo,
+        PrimaryCommandBufferAbstract,
     },
 };
 
-use std::{ops::Add, ptr::from_mut, sync::Arc};
+use std::ops::Add;
 
 use crate::{common::Builder, engine::Engine};
 
-use super::{Texture, Atlas};
+use super::{Atlas, Texture};
 
 #[derive(Default)]
 pub struct AtlasBuilder {
@@ -28,7 +35,9 @@ pub struct AtlasBuilder {
 
 impl AtlasBuilder {
     pub fn add_image(mut self, path: impl Into<String>) -> Self {
-        self.raw_textures.get_or_insert_with(Vec::new).push(Texture::new(path.into()));
+        self.raw_textures
+            .get_or_insert_with(Vec::new)
+            .push(Texture::new(path.into()));
         self.layers = Some(self.layers.get_or_insert(0).add(1));
         self
     }
@@ -64,12 +73,16 @@ impl Builder for AtlasBuilder {
 
         let (atlas_image, atlas) = Engine::create_image_array(
             ImageType::Dim2d,
-            [self.atlas_extent.unwrap()[0], self.atlas_extent.unwrap()[1], 1],
+            [
+                self.atlas_extent.unwrap()[0],
+                self.atlas_extent.unwrap()[1],
+                1,
+            ],
             self.atlas_format.unwrap(),
             ImageUsage::TRANSFER_DST | ImageUsage::SAMPLED,
             MemoryTypeFilter::PREFER_DEVICE,
             self.layers.unwrap(),
-            engine.get_memory_allocator()
+            engine.get_memory_allocator(),
         );
 
         let atlas_sampler = Sampler::new(
@@ -81,8 +94,9 @@ impl Builder for AtlasBuilder {
                 address_mode: [SamplerAddressMode::Repeat; 3],
                 mip_lod_bias: 0.0,
                 ..Default::default()
-            }
-        ).unwrap();
+            },
+        )
+        .unwrap();
 
         let mut atlas_uploads = AutoCommandBufferBuilder::primary(
             engine.get_command_buffer_allocator(),
@@ -98,33 +112,37 @@ impl Builder for AtlasBuilder {
                 ..Default::default()
             },
             AllocationCreateInfo {
-                memory_type_filter: MemoryTypeFilter::PREFER_HOST | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+                memory_type_filter: MemoryTypeFilter::PREFER_HOST
+                    | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
                 ..Default::default()
             },
-            atlas_data
+            atlas_data,
         )
         .unwrap();
 
         atlas_uploads
-        .copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(atlas_staging_buffer, atlas_image)).unwrap();
+            .copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(
+                atlas_staging_buffer,
+                atlas_image,
+            ))
+            .unwrap();
 
         let _ = atlas_uploads
-        .build()
-        .unwrap()
-        .execute(engine.get_queue())
-        .unwrap()
-        .then_signal_fence_and_flush()
-        .unwrap()
-        .wait(None)
-        .unwrap();
+            .build()
+            .unwrap()
+            .execute(engine.get_queue())
+            .unwrap()
+            .then_signal_fence_and_flush()
+            .unwrap()
+            .wait(None)
+            .unwrap();
 
-        Ok (Atlas {
+        Ok(Atlas {
             atlas,
             atlas_sampler,
             atlas_format: self.atlas_format.unwrap(),
             layers: self.layers.unwrap(),
-            raw_textures: textures
+            raw_textures: textures,
         })
-        
     }
 }
