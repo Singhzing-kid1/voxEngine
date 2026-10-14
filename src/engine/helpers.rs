@@ -5,23 +5,20 @@ use vulkano::{
         DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator,
         layout::DescriptorSetLayout,
     },
-    device::{
-        Device
-    },
-    format::{Format},
+    device::Device,
+    format::Format,
     image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView},
     memory::allocator::{
         AllocationCreateInfo, FreeListAllocator, GenericMemoryAllocator, MemoryTypeFilter,
     },
     pipeline::{
-        ComputePipeline, Pipeline, PipelineLayout,
-        PipelineShaderStageCreateInfo, compute::ComputePipelineCreateInfo,
-        layout::PipelineDescriptorSetLayoutCreateInfo,
+        ComputePipeline, Pipeline, PipelineLayout, PipelineShaderStageCreateInfo,
+        compute::ComputePipelineCreateInfo, layout::PipelineDescriptorSetLayoutCreateInfo,
     },
     shader::ShaderModule,
 };
 
-use super::{Engine, DescriptorResource};
+use super::{DescriptorResource, Engine};
 
 impl Engine {
     pub fn get_dimensions(&self) -> (u16, u16) {
@@ -93,6 +90,37 @@ impl Engine {
                 format,
                 extent,
                 usage,
+                ..Default::default()
+            },
+            AllocationCreateInfo {
+                memory_type_filter: mem_filter,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let view = ImageView::new_default(image.clone()).unwrap();
+
+        (image, view)
+    }
+
+    pub fn create_image_array(
+        image_type: ImageType,
+        extent: [u32; 3],
+        format: Format,
+        usage: ImageUsage,
+        mem_filter: MemoryTypeFilter,
+        array_layers: u32,
+        allocator: Arc<GenericMemoryAllocator<FreeListAllocator>>,
+    ) -> (Arc<Image>, Arc<ImageView>) {
+        let image = Image::new(
+            allocator.clone(),
+            ImageCreateInfo {
+                image_type,
+                format,
+                extent,
+                usage,
+                array_layers,
                 ..Default::default()
             },
             AllocationCreateInfo {

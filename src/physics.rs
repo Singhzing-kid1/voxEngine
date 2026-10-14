@@ -10,7 +10,6 @@ use std::collections::HashMap;
 
 use dear_imgui_reflect::ImGuiReflect;
 
-
 const CHUNK_LOAD_RADIUS: i32 = 4;
 
 #[derive(CopyGetters, Setters, ImGuiReflect)]

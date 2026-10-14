@@ -1,6 +1,10 @@
-use crate::{engine::{Engine, Frame}, scene::{Scene, Transition}, scenes::GameplayScene};
-use sdl3::{event::Event, keyboard::Keycode};
+use crate::{
+    engine::{Engine, Frame},
+    scene::{Scene, Transition},
+    scenes::GameplayScene,
+};
 use glam::vec4;
+use sdl3::{event::Event, keyboard::Keycode};
 
 use dear_imgui_reflect::{ImGuiReflect, ImGuiReflectExt};
 
@@ -8,7 +12,9 @@ use dear_imgui_reflect::{ImGuiReflect, ImGuiReflectExt};
 pub struct MainMenuScene;
 
 impl MainMenuScene {
-    pub fn new() -> Self { MainMenuScene }
+    pub fn new() -> Self {
+        MainMenuScene
+    }
 }
 
 impl Scene for MainMenuScene {
@@ -27,12 +33,11 @@ impl Scene for MainMenuScene {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => return Transition::Quit,
-                Event::KeyDown { keycode: Some(Keycode::Return), .. } => {
-                    return Transition::Switch(
-                        Box::new(
-                            GameplayScene::new(engine)
-                        )
-                    );
+                Event::KeyDown {
+                    keycode: Some(Keycode::Return),
+                    ..
+                } => {
+                    return Transition::Switch(Box::new(GameplayScene::new(engine)));
                 }
                 _ => {}
             }
@@ -57,4 +62,3 @@ impl Scene for MainMenuScene {
         ui.input_reflect("Main Menu Scene", self)
     }
 }
-

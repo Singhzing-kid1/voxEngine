@@ -32,7 +32,8 @@ layout(set = 0, binding = 0, rgba8) writeonly uniform image2D targetImage;
 layout(set = 1, binding = 0, rgba32ui) readonly uniform uimage3D voxelImage;
 layout(set = 1, binding = 1, rgba8) readonly uniform image2D biomeImage;
 
-layout(set = 2, binding = 0) uniform sampler2D tex;
+layout(set = 2, binding = 0) uniform sampler s;
+layout(set = 2, binding = 1) uniform texture2DArray textures;
 
 vec3 getBiomeColor(float height, float temperature, float moisture) {
     // --- High elevation overrides ---
@@ -66,6 +67,40 @@ vec3 getBiomeColor(float height, float temperature, float moisture) {
         return COLOR_FOREST;
     }
     return COLOR_GRASSLAND;
+}
+
+float getBiomeTexture(float height, float temperature, float moisture) {
+    // --- High elevation overrides ---
+    if (height > 0.90) {
+        return 0.0;
+    }
+    if (height > 0.75) {
+        // Cold + moist high ground becomes taiga instead of bare rock
+        if (temperature < 0.40 && moisture > 0.40) {
+            return 1.0;
+        }
+        return 0.0;
+    }
+
+    // --- Low-mid elevation: main biome logic ---
+    if (temperature < 0.25) {
+        return 1.0;
+    }
+    if (temperature > 0.65) {
+        if (moisture < 0.25) {
+            return 0.0;
+        } else if (moisture < 0.55) {
+            return 1.0;
+        } else {
+            return 0.0; // hot + very wet
+        }
+    }
+
+    // Moderate temperature
+    if (moisture > 0.55) {
+        return 1.0;
+    }
+    return 0.0;
 }
 
 // https://www.shadertoy.com/view/WlfXRN
@@ -227,7 +262,7 @@ bool traversal(vec3 origin, vec3 dir, out vec3 color, inout uint steps) {
 
             vec4 biome = imageLoad(biomeImage, ivec2(icoord.x, icoord.z));
 
-            color = getBiomeColor(biome.g, biome.r, biome.b);
+            float texture_index = getBiomeTexture(biome.g, biome.r, biome.b);
 
             vec3 hit = origin + dir * t_inside;
             vec3 local_hit = hit - vec3(icoord);
@@ -236,7 +271,7 @@ bool traversal(vec3 origin, vec3 dir, out vec3 color, inout uint steps) {
             else if (stepped_axis == 1) uv = local_hit.xz;
             else                        uv = local_hit.xy;
 
-            color = texture(tex, uv).rgb;
+            color = texture(sampler2DArray(textures, s), vec3(uv, texture_index)).rgb;
 
             float depth = (tmin + t_inside) * length(dir);
 

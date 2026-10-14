@@ -1,45 +1,46 @@
 use std::{
-    net::Shutdown::Write, sync::Arc, time::{self},
+    net::Shutdown::Write,
+    sync::Arc,
+    time::{self},
 };
 
 use glam::Mat4;
-use sdl3::{
-    EventPump, VideoSubsystem,
-    event::Event,
-    video::Window,
-};
+use sdl3::{EventPump, VideoSubsystem, event::Event, video::Window};
 
 use vulkano::{
-    VulkanLibrary, VulkanObject, buffer::Subbuffer, command_buffer::{
-        AutoCommandBufferBuilder,
-        PrimaryAutoCommandBuffer,
+    VulkanLibrary, VulkanObject,
+    buffer::Subbuffer,
+    command_buffer::{
+        AutoCommandBufferBuilder, PrimaryAutoCommandBuffer,
         allocator::StandardCommandBufferAllocator,
-    }, descriptor_set::{
+    },
+    descriptor_set::{
         DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator,
-    }, device::{
+    },
+    device::{
         Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags,
         physical::PhysicalDeviceType,
-    }, format::Format, image::{Image, ImageType, ImageUsage, sampler::Sampler, view::ImageView}, instance::{Instance, InstanceCreateFlags, InstanceCreateInfo}, memory::allocator::{
-        MemoryTypeFilter,
-        StandardMemoryAllocator,
-    }, pipeline::ComputePipeline, swapchain::{
+    },
+    format::Format,
+    image::{Image, ImageType, ImageUsage, sampler::Sampler, view::ImageView},
+    instance::{Instance, InstanceCreateFlags, InstanceCreateInfo},
+    memory::allocator::{MemoryTypeFilter, StandardMemoryAllocator},
+    pipeline::ComputePipeline,
+    swapchain::{
         self, Surface, SurfaceApi, Swapchain, SwapchainAcquireFuture, SwapchainCreateInfo,
-    }, sync::{GpuFuture, semaphore::Semaphore},
+    },
+    sync::{GpuFuture, semaphore::Semaphore},
 };
 
-use crate::{
-    common::RayHit,
-    shader::*,
-};
+use crate::{common::RayHit, shader::*};
 
 use dear_imgui_reflect::ImGuiReflect;
 use getset::{CloneGetters, CopyGetters, Getters, MutGetters};
 
-
-mod helpers;
-mod render;
 mod event;
+mod helpers;
 mod record;
+mod render;
 
 #[derive(ImGuiReflect, Copy, Clone)]
 pub struct Flags {
@@ -95,10 +96,11 @@ pub enum RENDERMODE {
 }
 
 #[derive(Clone)]
-pub(crate) enum DescriptorResource {
+pub enum DescriptorResource {
     ImageView(Arc<ImageView>),
     RayBuffer(Subbuffer<RayHit>),
-    SampleTex(Arc<ImageView>, Arc<Sampler>)
+    SampleTex(Arc<ImageView>, Arc<Sampler>),
+    Sample(Arc<Sampler>),
 }
 
 impl DescriptorResource {
@@ -106,7 +108,10 @@ impl DescriptorResource {
         match self {
             DescriptorResource::ImageView(view) => WriteDescriptorSet::image_view(binding, view),
             DescriptorResource::RayBuffer(buffer) => WriteDescriptorSet::buffer(binding, buffer),
-            DescriptorResource::SampleTex(texture, sampler) => WriteDescriptorSet::image_view_sampler(binding, texture, sampler),
+            DescriptorResource::SampleTex(texture, sampler) => {
+                WriteDescriptorSet::image_view_sampler(binding, texture, sampler)
+            }
+            DescriptorResource::Sample(sampler) => WriteDescriptorSet::sampler(binding, sampler),
         }
     }
 }
@@ -121,13 +126,10 @@ pub struct Frame {
     acquire_future: SwapchainAcquireFuture,
 }
 
-
 pub trait Record {
     fn record(&mut self, frame: &mut Frame, engine: &mut Engine);
     fn init(&mut self, engine: &mut Engine);
 }
-
-
 
 #[derive(CopyGetters, Getters, MutGetters, CloneGetters)]
 #[allow(unused)]
@@ -350,7 +352,9 @@ impl Engine {
                 min_image_count: caps.min_image_count.max(3),
                 image_format,
                 image_extent: [width as u32, height as u32],
-                image_usage: ImageUsage::COLOR_ATTACHMENT | ImageUsage::TRANSFER_DST | ImageUsage::STORAGE,
+                image_usage: ImageUsage::COLOR_ATTACHMENT
+                    | ImageUsage::TRANSFER_DST
+                    | ImageUsage::STORAGE,
                 composite_alpha,
                 present_mode: swapchain::PresentMode::Immediate,
                 ..Default::default()
@@ -377,7 +381,8 @@ impl Engine {
 
         let raycast_shader = raycast_shader::load(device.clone()).expect("cannot load shader");
 
-        let pause_blue_shader = pause_blur_shader::load(device.clone()).expect("cannot load shader");
+        let pause_blue_shader =
+            pause_blur_shader::load(device.clone()).expect("cannot load shader");
 
         let render_compute_pipeline =
             Engine::create_pipeline(render_shader, "main", device.clone());
@@ -388,7 +393,8 @@ impl Engine {
         let raycast_compute_pipeline =
             Engine::create_pipeline(raycast_shader, "main", device.clone());
 
-        let pause_blur_compute_pipeline = Engine::create_pipeline(pause_blue_shader, "main", device.clone());
+        let pause_blur_compute_pipeline =
+            Engine::create_pipeline(pause_blue_shader, "main", device.clone());
 
         let (image, view) = Engine::create_image(
             ImageType::Dim2d,
@@ -480,4 +486,3 @@ impl Engine {
         }
     }
 }
-

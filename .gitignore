@@ -3,7 +3,10 @@ build/
 .vs/
 .cargo/
 
-
+*.zst
+*.svg
+perf.data
+perf.data.old
 # Added by cargo
 
 /target

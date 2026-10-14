@@ -10,6 +10,7 @@ use ash::vk::{
     RenderPassCreateInfo, SUBPASS_EXTERNAL, SampleCountFlags, SubmitInfo, SubpassContents,
     SubpassDependency, SubpassDescription,
 };
+use ash::vk::{CommandBuffer, CommandBufferResetFlags, FenceCreateFlags, FenceCreateInfo};
 
 use dear_imgui_ash::AshRenderer;
 use dear_imgui_rs::Context;
@@ -25,9 +26,9 @@ use vulkano::{
 
 use dear_imgui_reflect::ImGuiReflectExt;
 
-use crate::{engine::Engine, player::Player};
 use crate::scene::Scene;
 use crate::scenes::GameplayScene;
+use crate::{engine::Engine, player::Player};
 
 #[allow(unused)]
 pub struct Debug {
@@ -36,6 +37,8 @@ pub struct Debug {
     instance: Arc<Instance>,
     swapchain: Arc<Swapchain>,
     images: Vec<Arc<Image>>,
+    command_buffers: Vec<CommandBuffer>,
+    fences: Vec<Fence>,
 
     ash_device: Arc<ash::Device>,
     ash_instance: Arc<ash::Instance>,
@@ -85,6 +88,14 @@ impl Debug {
                 )
                 .unwrap()
         };
+
+        let command_buffers = unsafe {
+            ash_device.allocate_command_buffers(&CommandBufferAllocateInfo::default().command_pool(command_pool).level(CommandBufferLevel::PRIMARY).command_buffer_count(images.len() as u32)).unwrap()
+        };
+
+        let fences: Vec<Fence> = (0..images.len()).map(|_| unsafe {
+            ash_device.create_fence(&FenceCreateInfo::default().flags(FenceCreateFlags::SIGNALED), None).unwrap()
+        }).collect();
 
         let attachment = AttachmentDescription::default()
             .format(swapchain.image_format().into())
@@ -186,6 +197,8 @@ impl Debug {
             instance,
             swapchain,
             images,
+            command_buffers,
+            fences,
 
             ash_device: ash_device.clone(),
             ash_instance: ash_instance.clone(),
@@ -230,16 +243,16 @@ impl Debug {
 
         let draw_data = self.context.render();
 
-        let command_buffer = unsafe {
-            let alloc_info = CommandBufferAllocateInfo::default()
-                .command_pool(self.command_pool)
-                .level(CommandBufferLevel::PRIMARY)
-                .command_buffer_count(1);
+        let command_buffer = self.command_buffers[image_index as usize];
+        let fence = self.fences[image_index as usize];
 
+        unsafe {
+            self.ash_device.wait_for_fences(&[fence], true, u64::MAX).unwrap();
+            self.ash_device.reset_fences(&[fence]).unwrap();
             self.ash_device
-                .allocate_command_buffers(&alloc_info)
-                .unwrap()[0]
-        };
+                .reset_command_buffer(command_buffer, CommandBufferResetFlags::empty())
+                .unwrap();
+        }
 
         unsafe {
             self.ash_device
@@ -316,7 +329,7 @@ impl Debug {
                 .queue_submit(
                     self.queue.handle(),
                     std::slice::from_ref(&submit_info),
-                    Fence::null(),
+                    fence,
                 )
                 .unwrap();
         }
@@ -325,6 +338,14 @@ impl Debug {
 
 impl Drop for Debug {
     fn drop(&mut self) {
+        unsafe {
+            self.ash_device.device_wait_idle().unwrap();
+            for f in &self.fences { self.ash_device.destroy_fence(*f, None); }
+            for fb in &self.framebuffer { self.ash_device.destroy_framebuffer(*fb, None); }
+            for v in &self.image_views { self.ash_device.destroy_image_view(*v, None); }
+            self.ash_device.destroy_render_pass(self.render_pass, None);
+            self.ash_device.destroy_command_pool(self.command_pool, None); // frees the command buffers too
+        }
         shutdown(&mut self.context);
     }
 }

@@ -1,30 +1,38 @@
 use crate::{
-    common::{self, HasEntity, Updateable}, debug::Debug, engine::{Engine, Frame, DescriptorResource, Record}, physics::Physics, player::Player, scene::{Scene, Transition}, scenes::MainMenuScene, world::World,
+    common::{self, Buildable, Builder, HasEntity, Updateable}, debug::Debug, engine::{DescriptorResource, Engine, Frame, Record}, physics::Physics, player::Player, scene::{Scene, Transition}, scenes::MainMenuScene, texture::Atlas, world::World
 };
 
-use glam::{vec3};
+use glam::vec3;
 use png::{BitDepth, Decoder};
 
 use std::{io::Cursor, sync::Arc};
 
-use sdl3::{event::Event, keyboard::Keycode};
+use sdl3::{
+    event::Event,
+    keyboard::{Keycode, Scancode::K},
+};
 use vulkano::{
-    buffer::{Buffer, BufferCreateInfo, BufferUsage}, command_buffer::{
-        AutoCommandBufferBuilder, ClearColorImageInfo, CommandBufferUsage,
-        CopyBufferToImageInfo, CopyImageInfo,
-        PrimaryCommandBufferAbstract,
-    }, descriptor_set::DescriptorSet, format::{ClearColorValue, Format}, image::{ImageType, ImageUsage, sampler::{Filter, Sampler, SamplerCreateInfo, SamplerMipmapMode, SamplerAddressMode}, view::ImageView}, memory::allocator::{
-        AllocationCreateInfo, MemoryTypeFilter,
-    }, pipeline::{
-        ComputePipeline, Pipeline, PipelineBindPoint,
+    DeviceSize,
+    buffer::{Buffer, BufferCreateInfo, BufferUsage, Subbuffer},
+    command_buffer::{
+        AutoCommandBufferBuilder, ClearColorImageInfo, CommandBufferUsage, CopyBufferToImageInfo,
+        CopyImageInfo, PrimaryCommandBufferAbstract,
     },
+    descriptor_set::DescriptorSet,
+    format::{ClearColorValue, Format},
+    image::{
+        ImageType, ImageUsage,
+        sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo, SamplerMipmapMode},
+        view::ImageView,
+    },
+    memory::allocator::{AllocationCreateInfo, MemoryTypeFilter},
+    pipeline::{ComputePipeline, Pipeline, PipelineBindPoint},
+    sync::GpuFuture
 };
 
 use crate::{shader::render_compute_shader, shader::resample_compute_shader};
 
 use dear_imgui_reflect::{ImGuiReflect, ImGuiReflectExt};
-
-
 
 #[derive(ImGuiReflect)]
 pub struct GameplayScene {
@@ -50,69 +58,29 @@ pub struct GameplayScene {
     resample_pipeline: Arc<ComputePipeline>,
 
     #[imgui(skip)]
-    sampler: Arc<Sampler>,
-
-    #[imgui(skip)]
-    texture_data: Vec<u8>,
-    #[imgui(skip)]
-    texture_dimensions: [u32; 2]
+    atlas: Atlas,
 }
 
 impl GameplayScene {
     pub fn new(engine: &mut Engine) -> Self {
-        let render_shader= render_compute_shader::load(engine.get_device()).expect("cannot load shader");
-        let resample_shader= resample_compute_shader::load(engine.get_device()).expect("cannot load shader");
+        let render_shader =
+            render_compute_shader::load(engine.get_device()).expect("cannot load shader");
+        let resample_shader =
+            resample_compute_shader::load(engine.get_device()).expect("cannot load shader");
 
         let render_pipeline = Engine::create_pipeline(render_shader, "main", engine.get_device());
-        let resample_pipeline = Engine::create_pipeline(resample_shader, "main", engine.get_device());
+        let resample_pipeline =
+            Engine::create_pipeline(resample_shader, "main", engine.get_device());
 
         let set_entries = vec![(0, DescriptorResource::ImageView(engine.get_view()))];
 
         let render_set = Engine::create_descriptor_set(
             engine.get_descriptor_set_allocator(),
-            Engine::get_layout(render_pipeline.clone(), 0), 
-            &set_entries
+            Engine::get_layout(render_pipeline.clone(), 0),
+            &set_entries,
         );
 
-        let sampler = Sampler::new(
-            engine.get_device(),
-            SamplerCreateInfo {
-                mag_filter: Filter::Nearest,
-                min_filter: Filter::Nearest,
-                mipmap_mode: SamplerMipmapMode::Nearest,
-                address_mode: [SamplerAddressMode::Repeat; 3],
-                mip_lod_bias: 0.0,
-                ..Default::default()
-            }
-        ).unwrap();
-
-        let (texture_data,             texture_dimensions) = {
-            let png_bytes = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/textures/test.png")).to_vec();
-
-            let cursor = Cursor::new(png_bytes);
-            let decoder = Decoder::new(cursor);
-
-            let mut reader = decoder.read_info().unwrap();
-
-            let info = reader.info();
-
-            let image_dimensions = [info.width, info.height];
-
-            let mut image_data = Vec::new();
-            let depth: u32 = match info.bit_depth {
-                BitDepth::One => 1,
-                BitDepth::Two => 2, 
-                BitDepth::Four => 4,
-                BitDepth::Eight => 8,
-                BitDepth::Sixteen => 16,
-            };
-
-            image_data.resize((info.width * info.height * depth) as usize, 0);
-            reader.next_frame(&mut image_data).unwrap();
-
-
-            (image_data, image_dimensions)
-        };
+        let atlas = Atlas::builder().add_image("/textures/test.png").add_image("/textures/dirt.png").set_atlas_resolution([16, 16]).set_format(Format::R8G8B8A8_UNORM).build(engine).unwrap();
 
         let world = World::new(12999003378434, vec3(2000.0, 1000.0, 2000.0), 32);
         let mut physics = Physics::new(&world, vec3(0.0, -9.81, 0.0), 32);
@@ -135,14 +103,14 @@ impl GameplayScene {
         );
 
         GameplayScene {
-            world, 
+            world,
             physics,
-            player, 
-            accumulator: 0.0, 
-            paused: false, 
-            
-            ray_length: 400.0, 
-            max_fog_height: 0.0, 
+            player,
+            accumulator: 0.0,
+            paused: false,
+
+            ray_length: 400.0,
+            max_fog_height: 0.0,
             voxel_set: None,
             texture_set: None,
             render_set,
@@ -150,10 +118,7 @@ impl GameplayScene {
             render_pipeline,
             resample_pipeline,
 
-            sampler,
-
-            texture_data,
-            texture_dimensions
+            atlas,
         }
     }
 }
@@ -177,37 +142,46 @@ impl Scene for GameplayScene {
 
     fn handle_input(&mut self, engine: &mut Engine) {
         if !self.paused {
-            self.player.collect_inputs(engine.get_event(), engine.get_x_offset(), engine.get_y_offset());
+            self.player.collect_inputs(
+                engine.get_event(),
+                engine.get_x_offset(),
+                engine.get_y_offset(),
+            );
         }
     }
 
     fn update(&mut self, dt: f32, engine: &mut Engine) -> Transition {
         for event in engine.get_collected_events() {
-            if matches!(event, Event::KeyDown {keycode: Some(Keycode::Escape), .. }) {
+            if matches!(
+                event,
+                Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                }
+            ) {
                 if self.paused {
                     self.paused = !self.paused;
                     return Transition::Unpause;
                 } else {
                     self.paused = !self.paused;
-                    return Transition::Pause(
-                        Box::new(
-                            MainMenuScene::new()
-                        )
-                    );
+                    return Transition::Pause(Box::new(MainMenuScene::new()));
                 }
             }
 
-            if matches!(event, Event::KeyDown {keycode: Some(Keycode::Q), .. }) {
-                return Transition::Switch(
-                    Box::new(
-                        MainMenuScene::new()
-                    )
-                );
+            if matches!(
+                event,
+                Event::KeyDown {
+                    keycode: Some(Keycode::Q),
+                    ..
+                }
+            ) {
+                return Transition::Switch(Box::new(MainMenuScene::new()));
             }
         }
 
         if !self.paused {
-            self.physics.update_loaded_chunks(&self.world, self.player.entity().get_position());
+            self.physics
+                .update_loaded_chunks(&self.world, self.player.entity().get_position());
 
             self.accumulator += dt;
             while self.accumulator > common::TICK_RATE {
@@ -219,7 +193,7 @@ impl Scene for GameplayScene {
             let alpha = self.accumulator / common::TICK_RATE;
             self.player.update(alpha, &mut self.physics);
         }
-        
+
         Transition::None
     }
 
@@ -244,10 +218,9 @@ impl Record for GameplayScene {
             *engine.get_image_format(),
             ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC | ImageUsage::TRANSFER_DST,
             MemoryTypeFilter::PREFER_DEVICE,
-            engine.get_memory_allocator()
+            engine.get_memory_allocator(),
         );
 
-        
         let resample_set_entries = vec![
             (0, DescriptorResource::ImageView(engine.get_view())),
             (1, DescriptorResource::ImageView(resample_view)),
@@ -260,7 +233,11 @@ impl Record for GameplayScene {
         );
 
         let push_data = render_compute_shader::PushConstants {
-            pixelToRay: self.player.get_camera().get_pixel_to_ray_matrix(*engine.get_render_scale()).to_cols_array_2d(),
+            pixelToRay: self
+                .player
+                .get_camera()
+                .get_pixel_to_ray_matrix(*engine.get_render_scale())
+                .to_cols_array_2d(),
             voxel_resolution: self.world.get_dimensions_as_arr(),
             render_mode: *engine.get_current_render_mode_mut() as u32,
             max_ray_length: self.ray_length,
@@ -308,7 +285,11 @@ impl Record for GameplayScene {
                     vec![resample_set.clone()],
                 )
                 .unwrap()
-                .dispatch([*engine.get_width() as u32 / 8, *engine.get_height() as u32 / 8, 1])
+                .dispatch([
+                    *engine.get_width() as u32 / 8,
+                    *engine.get_height() as u32 / 8,
+                    1,
+                ])
                 .unwrap()
                 .copy_image(CopyImageInfo::images(
                     resample_image.clone(),
@@ -328,7 +309,7 @@ impl Record for GameplayScene {
             Format::R32G32B32A32_UINT,
             ImageUsage::STORAGE | ImageUsage::TRANSFER_DST,
             MemoryTypeFilter::PREFER_DEVICE,
-            engine.get_memory_allocator()
+            engine.get_memory_allocator(),
         );
 
         let (biomes, biomes_view) = Engine::create_image(
@@ -337,7 +318,7 @@ impl Record for GameplayScene {
             Format::R8G8B8A8_UNORM,
             ImageUsage::STORAGE | ImageUsage::TRANSFER_DST,
             MemoryTypeFilter::PREFER_DEVICE,
-            engine.get_memory_allocator()
+            engine.get_memory_allocator(),
         );
 
         let voxel_staging_buffer = Buffer::from_iter(
@@ -370,29 +351,6 @@ impl Record for GameplayScene {
         )
         .unwrap();
 
-
-        let (texture, texture_view) = Engine::create_image(
-            ImageType::Dim2d,
-            [self.texture_dimensions[0], self.texture_dimensions[1], 1],
-            Format::R8G8B8A8_UNORM,
-            ImageUsage::SAMPLED | ImageUsage::TRANSFER_DST,
-            MemoryTypeFilter::PREFER_DEVICE,
-            engine.get_memory_allocator()
-        );
-
-        let texture_staging_buffer = Buffer::from_iter(
-            engine.get_memory_allocator(),
-            BufferCreateInfo {
-                usage: BufferUsage::TRANSFER_SRC,
-                ..Default::default()
-            },
-            AllocationCreateInfo {
-                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
-                ..Default::default()
-            },
-            self.texture_data.clone()
-        ).unwrap();
-
         let mut builder = AutoCommandBufferBuilder::primary(
             engine.get_command_buffer_allocator(),
             engine.get_queue().queue_family_index(),
@@ -414,13 +372,6 @@ impl Record for GameplayScene {
                 biomes_staging_buffer,
                 biomes.clone(),
             ))
-            .unwrap()
-            .clear_color_image(ClearColorImageInfo::image(texture.clone()))
-            .unwrap()
-            .copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(
-                texture_staging_buffer, 
-                texture.clone())
-            )
             .unwrap();
 
         let _ = builder
@@ -441,14 +392,18 @@ impl Record for GameplayScene {
         );
 
         let texture_set_entries = vec![
-            (0, DescriptorResource::SampleTex(texture_view, self.sampler.clone()))
+            (0, DescriptorResource::Sample(self.atlas.get_atlas_sampler())),
+            (1, DescriptorResource::ImageView(self.atlas.get_atlas())),
         ];
 
-        let texture_set = Engine::create_descriptor_set(engine.get_descriptor_set_allocator(), Engine::get_layout(self.render_pipeline.clone(), 2), &texture_set_entries);
+        let texture_set = Engine::create_descriptor_set(
+            engine.get_descriptor_set_allocator(),
+            Engine::get_layout(self.render_pipeline.clone(), 2),
+            &texture_set_entries,
+        );
 
         self.voxel_set = Some(voxel_set);
         self.texture_set = Some(texture_set);
         self.max_fog_height = max_height * 0.33;
-
     }
 }

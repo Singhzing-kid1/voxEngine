@@ -1,6 +1,4 @@
-use std::{
-    time::{self, Duration},
-};
+use std::time::{self, Duration};
 
 use sdl3::{
     event::Event,

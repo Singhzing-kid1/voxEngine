@@ -2,7 +2,7 @@ use glam::Vec3;
 use std::fmt::Debug;
 use vulkano::buffer::BufferContents;
 
-use crate::{entity::Entity, physics::Physics};
+use crate::{entity::Entity, physics::Physics, engine::Engine};
 
 pub(crate) const TICK_RATE: f32 = 1.0 / 60.0; // 1 / fps -> matches rapier internals
 pub(crate) const MAX_FRAME_TIME: f32 = 0.25;
@@ -23,6 +23,20 @@ pub trait Updateable {
 pub trait HasEntity: Debug {
     fn entity(&self) -> &Entity;
     fn entity_mut(&mut self) -> &mut Entity;
+}
+
+pub trait Builder {
+    type Output;
+    type Error;
+    fn build(self, _engine: &mut Engine) -> Result<Self::Output, Self::Error>;
+}
+
+pub trait Buildable: Sized {
+    type Builder: Builder<Output = Self> + Default;
+
+    fn builder() -> Self::Builder {
+        Self::Builder::default()
+    }
 }
 
 pub trait AABB {

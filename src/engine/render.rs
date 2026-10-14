@@ -1,11 +1,7 @@
 use vulkano::{
-    command_buffer::{
-        AutoCommandBufferBuilder, CommandBufferUsage,
-    },
-    swapchain::{
-        self, SwapchainPresentInfo,
-    },
-    sync::{GpuFuture},
+    command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage},
+    swapchain::{self, SwapchainPresentInfo},
+    sync::GpuFuture,
 };
 
 use super::{Engine, Frame};

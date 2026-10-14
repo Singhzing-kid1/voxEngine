@@ -7,7 +7,6 @@ use std::collections::HashMap;
 
 use rayon::prelude::*;
 
-
 #[allow(unused)]
 #[derive(CloneGetters)]
 pub struct World {

@@ -6,17 +6,18 @@ pub mod entity;
 pub mod perlin;
 pub mod physics;
 pub mod player;
-pub mod shader;
-pub mod world;
 pub mod scene;
 pub mod scenes;
+pub mod shader;
+pub mod world;
+pub mod texture;
 
 use debug::Debug;
 use engine::Engine;
 use engine::Flags;
-use std::time;
 use scene::SceneManager;
-use scenes::{MainMenuScene};
+use scenes::MainMenuScene;
+use std::time;
 
 fn main() {
     let mut flags = Flags::new();
@@ -27,7 +28,7 @@ fn main() {
 
     let mut debug = Debug::new(&engine);
 
-    let mut manager = SceneManager::new(Box::new(MainMenuScene::new()), &mut engine);    
+    let mut manager = SceneManager::new(Box::new(MainMenuScene::new()), &mut engine);
 
     while !engine.get_flags().get_quit_state() {
         engine.frame_start();
