@@ -57,8 +57,4 @@ impl Scene for MainMenuScene {
     fn render_debug(&mut self, engine: &mut Engine, debug: &mut crate::debug::Debug) {
         debug.render(engine, self);
     }
-
-    fn imgui_reflect_dyn(&mut self, ui: &dear_imgui_rs::Ui) -> bool {
-        ui.input_reflect("Main Menu Scene", self)
-    }
 }

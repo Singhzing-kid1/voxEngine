@@ -28,7 +28,7 @@ pub trait Scene {
 
     fn render_debug(&mut self, _engine: &mut Engine, _debug: &mut Debug) {}
 
-    fn imgui_reflect_dyn(&mut self, _ui: &dear_imgui_rs::Ui) -> bool {
+    fn imgui_reflect_dyn(&mut self, _ui: &mut dear_imgui_reflect::Inspector<'_, '_>) -> bool {
         false
     }
 }

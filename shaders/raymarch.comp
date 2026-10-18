@@ -6,6 +6,7 @@ const uint STEPS = 2;
 const uint NORMAL = 3;
 const uint UV = 4;
 const uint DEPTH = 5;
+const uint LOD_BIAS = 6;
 
 const vec3 COLOR_DESERT     = vec3(0.88, 0.75, 0.40);
 const vec3 COLOR_GRASSLAND  = vec3(0.55, 0.70, 0.30);
@@ -25,6 +26,7 @@ layout(push_constant) uniform PushConstants {
     uint render_mode;
     float max_ray_length;
     float max_height;
+    float lod_bias;
 } pc;
 
 layout(set = 0, binding = 0, rgba8) writeonly uniform image2D targetImage;
@@ -34,6 +36,19 @@ layout(set = 1, binding = 1, rgba8) readonly uniform image2D biomeImage;
 
 layout(set = 2, binding = 0) uniform sampler s;
 layout(set = 2, binding = 1) uniform texture2DArray textures;
+
+
+vec3 rayDiff(vec3 u, vec3 a, uint axis, float t) {
+    float denom = u[axis] + a[axis];
+    denom = (denom >= 0.0) ? max(denom, 1e-6) : min(denom, -1e-6);
+    return (t / denom) * (a * u[axis] - u * a[axis]);
+}
+
+vec2 faceUV(vec3 v, uint axis) {
+    if (axis == 0) return v.yz;
+    if (axis == 1) return v.xz;
+    return v.xy;
+}
 
 vec3 getBiomeColor(float height, float temperature, float moisture) {
     // --- High elevation overrides ---
@@ -121,9 +136,9 @@ vec3 stepsToInferno(uint steps, uint start, uint end) {
 }
 
 vec3 applyFog(vec3 baseColor, float depth) {
-    float fog_start = pc.max_ray_length * 0.60;
+    float fog_start = pc.max_ray_length * 0.40;
     float fog_amount = smoothstep(fog_start, pc.max_ray_length, depth);
-    vec3 fog_color = vec3(0.75, 0.7, 0.7);
+    vec3 fog_color = vec3(0.07, 0.09, 0.13);
     return mix(baseColor, fog_color, fog_amount);
 }
 
@@ -271,11 +286,20 @@ bool traversal(vec3 origin, vec3 dir, out vec3 color, inout uint steps) {
             else if (stepped_axis == 1) uv = local_hit.xz;
             else                        uv = local_hit.xy;
 
-            color = texture(sampler2DArray(textures, s), vec3(uv, texture_index)).rgb;
-
             float depth = (tmin + t_inside) * length(dir);
+            
+            vec3 u  = mat3(pc.pixelToRay) * vec3(vec2(gl_GlobalInvocationID.xy) + 0.5, 1.0);
+            float t_ray = depth / length(u);
 
-            color = applyFog(color, depth);
+            vec2 ddx_uv = faceUV(rayDiff(u, pc.pixelToRay[0].xyz, stepped_axis, t_ray), stepped_axis);
+            vec2 ddy_uv = faceUV(rayDiff(u, pc.pixelToRay[1].xyz, stepped_axis, t_ray), stepped_axis);
+
+            float bias = exp2(pc.lod_bias);
+            ddx_uv = clamp(ddx_uv * bias, vec2(-2.0), vec2(2.0));
+            ddy_uv = clamp(ddy_uv * bias, vec2(-2.0), vec2(2.0));
+
+            color = textureGrad(sampler2DArray(textures, s), vec3(uv, texture_index), ddx_uv, ddy_uv).rgb;
+            color = applyFogHeightLimited(color, depth, icoord.y);
 
             break;
         }
@@ -309,6 +333,31 @@ bool traversal(vec3 origin, vec3 dir, out vec3 color, inout uint steps) {
             float depth = (tmin + t_inside) * length(dir);
             color = vec3(1.0 / (1.0 + depth / max_diagonal))
                 + vec3(0.3, 0.0, 0.7) / 256.0;
+            break;
+        }
+
+        case LOD_BIAS: {
+            vec3 hit = origin + dir * t_inside;
+            vec3 local_hit = hit - vec3(icoord);
+            vec2 uv;
+            if      (stepped_axis == 0) uv = local_hit.yz;
+            else if (stepped_axis == 1) uv = local_hit.xz;
+            else                        uv = local_hit.xy;
+
+            float depth = (tmin + t_inside) * length(dir);
+            
+            vec3 u  = mat3(pc.pixelToRay) * vec3(vec2(gl_GlobalInvocationID.xy) + 0.5, 1.0);
+            float t_ray = depth / length(u);
+
+            vec2 ddx_uv = faceUV(rayDiff(u, pc.pixelToRay[0].xyz, stepped_axis, t_ray), stepped_axis);
+            vec2 ddy_uv = faceUV(rayDiff(u, pc.pixelToRay[1].xyz, stepped_axis, t_ray), stepped_axis);
+
+            float bias = exp2(pc.lod_bias);
+            ddx_uv = clamp(ddx_uv * bias, vec2(-2.0), vec2(2.0));
+            ddy_uv = clamp(ddy_uv * bias, vec2(-2.0), vec2(2.0));
+
+            color = vec3(length(ddx_uv) * 64.0);
+
             break;
         }
     }

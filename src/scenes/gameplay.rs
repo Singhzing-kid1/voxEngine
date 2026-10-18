@@ -42,7 +42,7 @@ pub struct GameplayScene {
     paused: bool,
 
     ray_length: f32,
-    max_fog_height: f32, // consider moving to the world and grabbing using a getter
+    max_fog_height: f32,
     #[imgui(skip)]
     voxel_set: Option<Arc<DescriptorSet>>,
     #[imgui(skip)]
@@ -55,7 +55,6 @@ pub struct GameplayScene {
     #[imgui(skip)]
     resample_pipeline: Arc<ComputePipeline>,
 
-    #[imgui(skip)]
     atlas: Atlas,
 }
 
@@ -83,6 +82,7 @@ impl GameplayScene {
             .add_image("/textures/dirt.png")
             .set_atlas_resolution([16, 16])
             .set_format(Format::R8G8B8A8_UNORM)
+            .set_lod_bias(0.0)
             .build(engine)
             .unwrap();
 
@@ -209,8 +209,8 @@ impl Scene for GameplayScene {
         debug.render(engine, self);
     }
 
-    fn imgui_reflect_dyn(&mut self, ui: &dear_imgui_rs::Ui) -> bool {
-        ui.input_reflect("Gameplay Scene", self)
+    fn imgui_reflect_dyn(&mut self, ui: &mut dear_imgui_reflect::Inspector<'_, '_>) -> bool {
+        ui.input("Gameplay Scene", self)
     }
 }
 
@@ -246,6 +246,7 @@ impl Record for GameplayScene {
             render_mode: *engine.get_current_render_mode_mut() as u32,
             max_ray_length: self.ray_length,
             max_height: self.max_fog_height,
+            lod_bias: self.atlas.get_atlas_lod_bias(),
         };
 
         let swapchain_image = frame.get_swapchain_image().clone();
@@ -411,6 +412,6 @@ impl Record for GameplayScene {
 
         self.voxel_set = Some(voxel_set);
         self.texture_set = Some(texture_set);
-        self.max_fog_height = max_height * 0.33;
+        self.max_fog_height = max_height * 0.50;
     }
 }

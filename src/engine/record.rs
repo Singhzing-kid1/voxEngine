@@ -1,14 +1,13 @@
-use glam::{Mat4, Vec4, vec2};
+use glam::{Vec4, vec2};
 
 use vulkano::{
-    buffer::{Buffer, BufferCreateInfo, BufferUsage},
     command_buffer::{
-        AutoCommandBufferBuilder, ClearColorImageInfo, CommandBufferUsage, CopyBufferToImageInfo,
-        CopyImageInfo, PrimaryCommandBufferAbstract,
+        ClearColorImageInfo,
+        CopyImageInfo,
     },
-    format::{ClearColorValue, Format},
+    format::ClearColorValue,
     image::{ImageType, ImageUsage, view::ImageView},
-    memory::allocator::{AllocationCreateInfo, MemoryTypeFilter},
+    memory::allocator::MemoryTypeFilter,
     pipeline::{Pipeline, PipelineBindPoint},
 };
 

@@ -2,19 +2,19 @@ use std::sync::Arc;
 
 use ash::vk::{
     AccessFlags, AttachmentDescription, AttachmentLoadOp, AttachmentReference, AttachmentStoreOp,
-    ClearColorValue, ClearValue, CommandBufferAllocateInfo, CommandBufferBeginInfo,
-    CommandBufferLevel, CommandBufferUsageFlags, CommandPool, CommandPoolCreateFlags,
-    CommandPoolCreateInfo, DependencyFlags, Extent2D, Fence, Framebuffer, FramebufferCreateInfo,
-    ImageAspectFlags, ImageLayout, ImageMemoryBarrier, ImageSubresourceRange, ImageView, Offset2D,
-    PipelineBindPoint, PipelineStageFlags, Rect2D, RenderPass, RenderPassBeginInfo,
-    RenderPassCreateInfo, SUBPASS_EXTERNAL, SampleCountFlags, SubmitInfo, SubpassContents,
-    SubpassDependency, SubpassDescription,
+    ClearColorValue, ClearValue, CommandBuffer, CommandBufferAllocateInfo, CommandBufferBeginInfo,
+    CommandBufferLevel, CommandBufferResetFlags, CommandBufferUsageFlags, CommandPool,
+    CommandPoolCreateFlags, CommandPoolCreateInfo, ComponentMapping, DependencyFlags, Extent2D,
+    Fence, FenceCreateFlags, FenceCreateInfo, Framebuffer, FramebufferCreateInfo, ImageAspectFlags,
+    ImageLayout, ImageMemoryBarrier, ImageSubresourceRange, ImageView, ImageViewCreateInfo,
+    ImageViewType, Offset2D, PipelineBindPoint, PipelineStageFlags, QUEUE_FAMILY_IGNORED, Rect2D,
+    RenderPass, RenderPassBeginInfo, RenderPassCreateInfo, SUBPASS_EXTERNAL, SampleCountFlags,
+    SubmitInfo, SubpassContents, SubpassDependency, SubpassDescription,
 };
-use ash::vk::{CommandBuffer, CommandBufferResetFlags, FenceCreateFlags, FenceCreateInfo};
 
-use dear_imgui_ash::AshRenderer;
+use dear_imgui_ash::{AshRenderer, AshRendererConfig};
 use dear_imgui_rs::Context;
-use dear_imgui_sdl3::{process_sys_event, shutdown};
+use dear_imgui_sdl3::Sdl3PlatformBackend;
 
 use vulkano::{
     VulkanObject,
@@ -24,10 +24,10 @@ use vulkano::{
     swapchain::Swapchain,
 };
 
-use dear_imgui_reflect::ImGuiReflectExt;
+use dear_imgui_reflect::{ImGuiReflectExt, ReflectSession};
 
+use crate::engine::Engine;
 use crate::scene::Scene;
-use crate::{engine::Engine};
 
 #[allow(unused)]
 pub struct Debug {
@@ -42,8 +42,11 @@ pub struct Debug {
     ash_device: Arc<ash::Device>,
     ash_instance: Arc<ash::Instance>,
 
-    context: Context,
+    platform: Sdl3PlatformBackend,
     renderer: AshRenderer,
+    context: Context,
+    reflect: ReflectSession,
+
     render_pass: RenderPass,
     framebuffer: Vec<Framebuffer>,
     image_views: Vec<ImageView>,
@@ -60,22 +63,24 @@ impl Debug {
         let swapchain = engine.get_swapchain();
         let images = engine.get_images();
 
-        let ash_device =
-            Arc::new(unsafe { ash::Device::load(&instance.fns().v1_0, device.handle()) });
-
         let ash_instance = Arc::new(unsafe {
-            ash::Instance::load_with(
-                |name| {
-                    std::mem::transmute(
-                        library.get_instance_proc_addr(instance.handle(), name.as_ptr()),
-                    )
-                },
-                instance.handle(),
-            )
+            let static_fn = ash::StaticFn::load(|name| {
+                std::mem::transmute(
+                    library.get_instance_proc_addr(instance.handle(), name.as_ptr()),
+                )
+            });
+            ash::Instance::load(&static_fn, instance.handle())
+        });
+
+        let ash_device = Arc::new(unsafe {
+            ash::Device::load(ash_instance.fp_v1_0(), device.handle())
         });
 
         let mut context = Context::create();
-        dear_imgui_sdl3::init_for_vulkan(&mut context, engine.get_window()).unwrap();
+
+        let platform = unsafe {
+            Sdl3PlatformBackend::init_for_vulkan(&mut context, engine.get_window()).unwrap()
+        };
 
         let command_pool = unsafe {
             ash_device
@@ -110,8 +115,10 @@ impl Debug {
             })
             .collect();
 
+        let format: ash::vk::Format = swapchain.image_format().into();
+
         let attachment = AttachmentDescription::default()
-            .format(swapchain.image_format().into())
+            .format(format)
             .samples(SampleCountFlags::TYPE_1)
             .load_op(AttachmentLoadOp::LOAD)
             .store_op(AttachmentStoreOp::STORE)
@@ -150,18 +157,18 @@ impl Debug {
 
         let extent = swapchain.image_extent();
 
-        let image_views: Vec<ash::vk::ImageView> = images
+        let image_views: Vec<ImageView> = images
             .iter()
             .map(|image| unsafe {
                 ash_device
                     .create_image_view(
-                        &ash::vk::ImageViewCreateInfo::default()
+                        &ImageViewCreateInfo::default()
                             .image(image.handle())
-                            .view_type(ash::vk::ImageViewType::TYPE_2D)
-                            .format(ash::vk::Format::from_raw(swapchain.image_format() as i32))
-                            .components(ash::vk::ComponentMapping::default())
-                            .subresource_range(ash::vk::ImageSubresourceRange {
-                                aspect_mask: ash::vk::ImageAspectFlags::COLOR,
+                            .view_type(ImageViewType::TYPE_2D)
+                            .format(format)
+                            .components(ComponentMapping::default())
+                            .subresource_range(ImageSubresourceRange {
+                                aspect_mask: ImageAspectFlags::COLOR,
                                 base_mip_level: 0,
                                 level_count: 1,
                                 base_array_layer: 0,
@@ -180,7 +187,7 @@ impl Debug {
                     .create_framebuffer(
                         &FramebufferCreateInfo::default()
                             .render_pass(render_pass)
-                            .attachments(std::slice::from_ref(&view))
+                            .attachments(std::slice::from_ref(view))
                             .width(extent[0])
                             .height(extent[1])
                             .layers(1),
@@ -190,19 +197,22 @@ impl Debug {
             })
             .collect::<Vec<_>>();
 
-        let renderer = AshRenderer::with_default_allocator(
-            &ash_instance,
-            device.physical_device().handle(),
+        let config = AshRendererConfig::with_render_pass(
             (*ash_device).clone(),
             queue.handle(),
             command_pool,
             render_pass,
-            &mut context,
-            None,
-        )
-        .unwrap();
+        );
 
-        renderer.configure_imgui_context(&mut context);
+        let renderer = unsafe {
+            AshRenderer::with_default_allocator(
+                &ash_instance,
+                device.physical_device().handle(),
+                config,
+                &mut context,
+            )
+            .unwrap()
+        };
 
         Debug {
             device,
@@ -213,11 +223,14 @@ impl Debug {
             command_buffers,
             fences,
 
-            ash_device: ash_device.clone(),
-            ash_instance: ash_instance.clone(),
+            ash_device,
+            ash_instance,
 
-            context,
+            platform,
             renderer,
+            context,
+            reflect: ReflectSession::new(),
+
             render_pass,
             framebuffer,
             image_views,
@@ -227,37 +240,52 @@ impl Debug {
     }
 
     pub fn render(&mut self, engine: &mut Engine, scene: &mut dyn Scene) {
-        let image_index = engine.get_current_image_index();
+        let image_index = engine.get_current_image_index() as usize;
 
         for event in engine.get_collected_events() {
-            process_sys_event(&event.to_ll().unwrap_or_default());
+            self.platform
+                .process_event(&mut self.context, &event)
+                .unwrap();
         }
 
-        dear_imgui_sdl3::sdl3_new_frame(&mut self.context);
-
-        if self.context.io().want_text_input() && !self.getting_input {
+        let wants_text = self.context.io().want_text_input();
+        if wants_text && !self.getting_input {
             engine.start_text_input();
             self.getting_input = true;
-        } else if !self.context.io().want_text_input() && self.getting_input {
+        } else if !wants_text && self.getting_input {
             engine.stop_text_input();
+            self.getting_input = false;
         }
 
-        let ui = self.context.frame();
+        self.platform.new_frame(&mut self.context).unwrap();
 
-        ui.window("Debug - Gameplay")
-            .size([500.0, 500.0], dear_imgui_rs::Condition::FirstUseEver)
-            .build(|| {
-                ui.text(engine.get_hardware_info());
-                ui.text(engine.get_frame_rate().to_string());
-                ui.input_reflect("Flags", engine.get_flags_mut());
-                ui.input_reflect("Render Mode", engine.get_current_render_mode_mut());
-                scene.imgui_reflect_dyn(ui);
-            });
+        let frame = self.context.begin_frame();
+        {
+            let ui = frame.ui();
+            let reflect = &self.reflect;
+            ui.window("Debug - Gameplay")
+                .size([500.0, 500.0], dear_imgui_rs::Condition::FirstUseEver)
+                .build(|| {
+                    ui.text(engine.get_hardware_info());
+                    ui.text(engine.get_frame_rate().to_string());
 
-        let draw_data = self.context.render();
+                    let mut inspector= ui.inspector(reflect);
+                    inspector.input("Flags", engine.get_flags_mut());
+                    inspector.input("Render Mode", engine.get_current_render_mode_mut());
 
-        let command_buffer = self.command_buffers[image_index as usize];
-        let fence = self.fences[image_index as usize];
+                    scene.imgui_reflect_dyn(&mut inspector);
+                });
+        }
+
+        let pending = frame.render(self.renderer.renderer_consumer().unwrap());
+        let (reconciled, retirement) = self.renderer.prepare_frame(pending).unwrap();
+
+        if let Some(batch) = retirement {
+            self.renderer.wait_for_texture_retirements(batch).unwrap();
+        }
+
+        let command_buffer = self.command_buffers[image_index];
+        let fence = self.fences[image_index];
 
         unsafe {
             self.ash_device
@@ -284,14 +312,15 @@ impl Debug {
                 },
             };
 
+            let extent = self.swapchain.image_extent();
             let render_pass_begin = RenderPassBeginInfo::default()
                 .render_pass(self.render_pass)
-                .framebuffer(self.framebuffer[image_index as usize])
+                .framebuffer(self.framebuffer[image_index])
                 .render_area(Rect2D {
                     offset: Offset2D { x: 0, y: 0 },
                     extent: Extent2D {
-                        width: self.swapchain.image_extent()[0],
-                        height: self.swapchain.image_extent()[1],
+                        width: extent[0],
+                        height: extent[1],
                     },
                 })
                 .clear_values(std::slice::from_ref(&clear_value));
@@ -303,9 +332,9 @@ impl Debug {
                 )
                 .old_layout(ImageLayout::PRESENT_SRC_KHR)
                 .new_layout(ImageLayout::TRANSFER_DST_OPTIMAL)
-                .src_queue_family_index(ash::vk::QUEUE_FAMILY_IGNORED)
-                .dst_queue_family_index(ash::vk::QUEUE_FAMILY_IGNORED)
-                .image(self.images[image_index as usize].handle())
+                .src_queue_family_index(QUEUE_FAMILY_IGNORED)
+                .dst_queue_family_index(QUEUE_FAMILY_IGNORED)
+                .image(self.images[image_index].handle())
                 .subresource_range(ImageSubresourceRange {
                     aspect_mask: ImageAspectFlags::COLOR,
                     base_mip_level: 0,
@@ -330,7 +359,7 @@ impl Debug {
                 SubpassContents::INLINE,
             );
 
-            self.renderer.cmd_draw(command_buffer, &draw_data).unwrap();
+            self.renderer.cmd_draw(command_buffer, reconciled).unwrap();
 
             self.ash_device.cmd_end_render_pass(command_buffer);
             self.ash_device.end_command_buffer(command_buffer).unwrap();
@@ -355,6 +384,16 @@ impl Drop for Debug {
     fn drop(&mut self) {
         unsafe {
             self.ash_device.device_wait_idle().unwrap();
+        }
+
+        if let Err(e) = self.renderer.shutdown(&mut self.context) {
+            eprintln!("imgui renderer shutdown failed: {e}");
+        }
+        if let Err(e) = self.platform.shutdown(&mut self.context) {
+            eprintln!("imgui platform shutdown failed: {e}");
+        }
+
+        unsafe {
             for f in &self.fences {
                 self.ash_device.destroy_fence(*f, None);
             }
@@ -366,8 +405,7 @@ impl Drop for Debug {
             }
             self.ash_device.destroy_render_pass(self.render_pass, None);
             self.ash_device
-                .destroy_command_pool(self.command_pool, None); // frees the command buffers too
+                .destroy_command_pool(self.command_pool, None);
         }
-        shutdown(&mut self.context);
     }
 }

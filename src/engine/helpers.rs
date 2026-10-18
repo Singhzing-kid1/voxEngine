@@ -135,6 +135,40 @@ impl Engine {
         (image, view)
     }
 
+    pub fn create_image_array_with_mipmap(
+        image_type: ImageType,
+        extent: [u32; 3],
+        format: Format,
+        usage: ImageUsage,
+        mem_filter: MemoryTypeFilter,
+        array_layers: u32,
+        allocator: Arc<GenericMemoryAllocator<FreeListAllocator>>,
+    ) -> (Arc<Image>, Arc<ImageView>) {
+        let mip_levels = (extent[0] as f32).log2().floor() as u32 + 1;
+
+        let image = Image::new(
+            allocator.clone(),
+            ImageCreateInfo {
+                image_type,
+                format,
+                extent,
+                usage,
+                array_layers,
+                mip_levels,
+                ..Default::default()
+            },
+            AllocationCreateInfo {
+                memory_type_filter: mem_filter,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let view = ImageView::new_default(image.clone()).unwrap();
+
+        (image, view)
+    }
+
     pub fn get_layout(pipeline: Arc<ComputePipeline>, index: usize) -> Arc<DescriptorSetLayout> {
         pipeline.layout().set_layouts().get(index).unwrap().clone()
     }

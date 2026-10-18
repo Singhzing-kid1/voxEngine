@@ -6,26 +6,15 @@ use std::{
 use sdl3::{EventPump, VideoSubsystem, event::Event, video::Window};
 
 use vulkano::{
-    VulkanLibrary, VulkanObject,
-    buffer::Subbuffer,
-    command_buffer::{
+    Requires::DeviceFeature, VulkanLibrary, VulkanObject, buffer::Subbuffer, command_buffer::{
         AutoCommandBufferBuilder, PrimaryAutoCommandBuffer,
         allocator::StandardCommandBufferAllocator,
-    },
-    descriptor_set::{WriteDescriptorSet, allocator::StandardDescriptorSetAllocator},
-    device::{
-        Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags,
+    }, descriptor_set::{WriteDescriptorSet, allocator::StandardDescriptorSetAllocator}, device::{
+        Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue, QueueCreateInfo, QueueFlags,
         physical::PhysicalDeviceType,
-    },
-    format::Format,
-    image::{Image, ImageType, ImageUsage, sampler::Sampler, view::ImageView},
-    instance::{Instance, InstanceCreateFlags, InstanceCreateInfo},
-    memory::allocator::{MemoryTypeFilter, StandardMemoryAllocator},
-    pipeline::ComputePipeline,
-    swapchain::{
+    }, format::Format, image::{Image, ImageType, ImageUsage, sampler::Sampler, view::ImageView}, instance::{Instance, InstanceCreateFlags, InstanceCreateInfo}, memory::allocator::{MemoryTypeFilter, StandardMemoryAllocator}, pipeline::ComputePipeline, swapchain::{
         self, Surface, SurfaceApi, Swapchain, SwapchainAcquireFuture, SwapchainCreateInfo,
-    },
-    sync::{GpuFuture, semaphore::Semaphore},
+    }, sync::{GpuFuture, semaphore::Semaphore},
 };
 
 use crate::{common::RayHit, shader::*};
@@ -89,6 +78,7 @@ pub enum RENDERMODE {
     NORMAL,
     UV,
     DEPTH,
+    LOD_BIAS,
 }
 
 #[derive(Clone)]
@@ -284,10 +274,16 @@ impl Engine {
             ..Default::default()
         };
 
+        let device_features = DeviceFeatures {
+            sampler_anisotropy: true,
+            ..Default::default()
+        };
+
         let (physical_device, queue_family_index) = instance
             .enumerate_physical_devices()
             .expect("could not find physical devices")
             .filter(|p| p.supported_extensions().contains(&device_extensions))
+            .filter(|p| p.supported_features().contains(&device_features))
             .filter_map(|p| {
                 p.queue_family_properties()
                     .iter()
@@ -315,6 +311,7 @@ impl Engine {
                     ..Default::default()
                 }],
                 enabled_extensions: device_extensions,
+                enabled_features: device_features,
                 ..Default::default()
             },
         )
@@ -383,7 +380,7 @@ impl Engine {
         let render_compute_pipeline =
             Engine::create_pipeline(render_shader, "main", device.clone());
 
-        let resample_compute_pipeline =
+        let _resample_compute_pipeline =
             Engine::create_pipeline(resample_shader, "main", device.clone());
 
         let raycast_compute_pipeline =
@@ -407,7 +404,7 @@ impl Engine {
 
         let set_entries = vec![(0, DescriptorResource::ImageView(view.clone()))];
 
-        let render_set = Engine::create_descriptor_set(
+        let _render_set = Engine::create_descriptor_set(
             descriptor_set_allocator.clone(),
             Engine::get_layout(render_compute_pipeline.clone(), 0),
             &set_entries,
