@@ -1,17 +1,14 @@
 use glam::{Vec4, vec2};
 
 use vulkano::{
-    command_buffer::{
-        ClearColorImageInfo,
-        CopyImageInfo,
-    },
+    command_buffer::{ClearColorImageInfo, CopyImageInfo},
     format::ClearColorValue,
     image::{ImageType, ImageUsage, view::ImageView},
     memory::allocator::MemoryTypeFilter,
     pipeline::{Pipeline, PipelineBindPoint},
 };
 
-use crate::{shader::pause_blur_shader};
+use crate::shader::pause_blur_shader;
 
 use super::{DescriptorResource, Engine, Frame};
 

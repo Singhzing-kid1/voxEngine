@@ -72,9 +72,8 @@ impl Debug {
             ash::Instance::load(&static_fn, instance.handle())
         });
 
-        let ash_device = Arc::new(unsafe {
-            ash::Device::load(ash_instance.fp_v1_0(), device.handle())
-        });
+        let ash_device =
+            Arc::new(unsafe { ash::Device::load(ash_instance.fp_v1_0(), device.handle()) });
 
         let mut context = Context::create();
 
@@ -269,7 +268,7 @@ impl Debug {
                     ui.text(engine.get_hardware_info());
                     ui.text(engine.get_frame_rate().to_string());
 
-                    let mut inspector= ui.inspector(reflect);
+                    let mut inspector = ui.inspector(reflect);
                     inspector.input("Flags", engine.get_flags_mut());
                     inspector.input("Render Mode", engine.get_current_render_mode_mut());
 

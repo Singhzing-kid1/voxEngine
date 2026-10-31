@@ -1,7 +1,14 @@
 use vulkano::{
-    format::Format, image::{
-        ImageType, ImageUsage, sampler::{Filter, LOD_CLAMP_NONE, Sampler, SamplerAddressMode, SamplerCreateInfo, SamplerMipmapMode},
-    }, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}, sync::GpuFuture,
+    format::Format,
+    image::{
+        ImageType, ImageUsage,
+        sampler::{
+            Filter, LOD_CLAMP_NONE, Sampler, SamplerAddressMode, SamplerCreateInfo,
+            SamplerMipmapMode,
+        },
+    },
+    memory::allocator::{AllocationCreateInfo, MemoryTypeFilter},
+    sync::GpuFuture,
 };
 
 use vulkano::{
@@ -13,12 +20,8 @@ use vulkano::{
 };
 
 use vulkano::{
-    command_buffer::{
-  BufferImageCopy,
-    },
-    image::{
-        ImageAspects, ImageSubresourceLayers,
-    },
+    command_buffer::BufferImageCopy,
+    image::{ImageAspects, ImageSubresourceLayers},
 };
 
 use std::ops::Add;
@@ -49,6 +52,30 @@ impl AtlasBuilder {
         self
     }
 
+    pub fn add_image_from_sprite_sheet(
+        mut self,
+        path: impl Into<String>,
+        sprite_size: [u32; 2],
+        texture_size: [u32; 2],
+    ) -> Self {
+        let (texture_width, texture_height) = (texture_size[0], texture_size[1]);
+
+        let str_path: &str = &path.into();
+
+        for column in 0..texture_width {
+            for row in 0..texture_height {
+                let idx: [u32; 2] = [column, row];
+
+                self.raw_textures
+                    .get_or_insert_with(Vec::new)
+                    .push(Texture::from_sprite_sheet(str_path, idx, sprite_size));
+                self.layers = Some(self.layers.get_or_insert(0).add(1));
+            }
+        }
+
+        self
+    }
+
     pub fn set_format(mut self, format: Format) -> Self {
         self.atlas_format = Some(format);
         self
@@ -75,6 +102,14 @@ impl Builder for AtlasBuilder {
         let textures = self.raw_textures.unwrap();
         let extent = self.atlas_extent.unwrap();
 
+        println!(
+            "layers={:?} extent={:?} format={:?} textures={}",
+            self.layers,
+            self.atlas_extent,
+            self.atlas_format,
+            textures.len()
+        );
+
         let (atlas_image, atlas) = Engine::create_image_array_with_mipmap(
             ImageType::Dim2d,
             [
@@ -88,14 +123,16 @@ impl Builder for AtlasBuilder {
             self.layers.unwrap(),
             engine.get_memory_allocator(),
         );
-        
 
         let layer_count = self.layers.unwrap();
-        let mip_levels = atlas_image.mip_levels();          // grab before atlas_image is moved
+        let mip_levels = atlas_image.mip_levels(); // grab before atlas_image is moved
         let (mut w, mut h) = (extent[0] as usize, extent[1] as usize);
 
         // current level, one Vec per layer
-        let mut cur: Vec<Vec<u8>> = textures.iter().map(|t| t.get_image_data().to_vec()).collect();
+        let mut cur: Vec<Vec<u8>> = textures
+            .iter()
+            .map(|t| t.get_image_data().to_vec())
+            .collect();
 
         let mut regions: Vec<BufferImageCopy> = Vec::new();
 
@@ -111,31 +148,31 @@ impl Builder for AtlasBuilder {
                 ..Default::default()
             });
             for layer in &cur {
-                atlas_data.extend_from_slice(layer);               
+                atlas_data.extend_from_slice(layer);
             }
             if level + 1 < mip_levels {
                 let mut next = Vec::with_capacity(cur.len());
                 let (mut nw, mut nh) = (w, h);
                 for layer in &cur {
                     let (d, a, b) = {
-                            let (nw, nh) = ((w / 2).max(1), (h / 2).max(1));
-                            let mut out = vec![0u8; nw * nh * 4];
-                            for y in 0..nh {
-                                for x in 0..nw {
-                                    for c in 0..4 {
-                                        let mut sum = 0u32;
-                                        for dy in 0..2 {
-                                            for dx in 0..2 {
-                                                let sx = (x * 2 + dx).min(w - 1);
-                                                let sy = (y * 2 + dy).min(h - 1);
-                                                sum += layer[(sy * w + sx) * 4 + c] as u32;
-                                            }
+                        let (nw, nh) = ((w / 2).max(1), (h / 2).max(1));
+                        let mut out = vec![0u8; nw * nh * 4];
+                        for y in 0..nh {
+                            for x in 0..nw {
+                                for c in 0..4 {
+                                    let mut sum = 0u32;
+                                    for dy in 0..2 {
+                                        for dx in 0..2 {
+                                            let sx = (x * 2 + dx).min(w - 1);
+                                            let sy = (y * 2 + dy).min(h - 1);
+                                            sum += layer[(sy * w + sx) * 4 + c] as u32;
                                         }
-                                        out[(y * nw + x) * 4 + c] = ((sum + 2) / 4) as u8;
                                     }
+                                    out[(y * nw + x) * 4 + c] = ((sum + 2) / 4) as u8;
                                 }
                             }
-                            (out, nw, nh)
+                        }
+                        (out, nw, nh)
                     };
                     next.push(d);
                     nw = a;
@@ -183,11 +220,12 @@ impl Builder for AtlasBuilder {
         )
         .unwrap();
 
-
-        atlas_uploads.copy_buffer_to_image(CopyBufferToImageInfo {
-            regions: regions.into(),
-            ..CopyBufferToImageInfo::buffer_image(atlas_staging_buffer, atlas_image)
-        }).unwrap();
+        atlas_uploads
+            .copy_buffer_to_image(CopyBufferToImageInfo {
+                regions: regions.into(),
+                ..CopyBufferToImageInfo::buffer_image(atlas_staging_buffer, atlas_image)
+            })
+            .unwrap();
 
         let _ = atlas_uploads
             .build()

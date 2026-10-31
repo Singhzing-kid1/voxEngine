@@ -26,8 +26,8 @@ pub struct World {
 impl World {
     pub fn new(seed: u64, dimensions: Vec3, collider_chunk_size: i32) -> Self {
         let height_map = FractalNoise::new(seed, 5, 2.0, 0.5);
-        let temperature_map = FractalNoise::new((seed as i64 - 10000).abs() as u64, 4, 1.0, 0.3);
-        let moisture_map = FractalNoise::new((seed as i64 + 10000).abs() as u64, 4, 1.0, 0.3);
+        let temperature_map = FractalNoise::new((seed as i64 - 10000).abs() as u64, 5, 2.0, 0.5);
+        let moisture_map = FractalNoise::new((seed as i64 + 10000).abs() as u64, 5, 2.0, 0.5);
 
         let texel_x = dimensions.x as usize / 4;
         let texel_y = dimensions.y as usize / 4;
@@ -74,6 +74,7 @@ impl World {
 
                 let temperature = ((temperature_raw * 0.5 + 0.5) * 255.0) as u8;
                 let moisture = ((moisture_raw * 0.5 + 0.5) * 255.0) as u8;
+                let height_factor = height_factor * 0.5 + 0.5;
 
                 set_biome(x, z, dimensions.x as usize, 4, 0, temperature as u8);
                 set_biome(
@@ -87,7 +88,7 @@ impl World {
                 set_biome(x, z, dimensions.x as usize, 4, 2, moisture as u8);
                 set_biome(x, z, dimensions.x as usize, 4, 3, 255);
 
-                let height = (dimensions.y as f64 * (height_factor * 0.5 + 0.5)) as usize;
+                let height = (dimensions.y as f64 * height_factor) as usize;
                 let height = height.clamp(1, dimensions.y as usize);
                 for y in 0..height {
                     set_voxel(x, y, z);

@@ -6,18 +6,33 @@ use std::{
 use sdl3::{EventPump, VideoSubsystem, event::Event, video::Window};
 
 use vulkano::{
-    Requires::DeviceFeature, VulkanLibrary, VulkanObject, buffer::Subbuffer, command_buffer::{
+    Requires::DeviceFeature,
+    VulkanLibrary, VulkanObject,
+    buffer::Subbuffer,
+    command_buffer::{
         AutoCommandBufferBuilder, PrimaryAutoCommandBuffer,
         allocator::StandardCommandBufferAllocator,
-    }, descriptor_set::{WriteDescriptorSet, allocator::StandardDescriptorSetAllocator}, device::{
-        Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue, QueueCreateInfo, QueueFlags,
-        physical::PhysicalDeviceType,
-    }, format::Format, image::{Image, ImageType, ImageUsage, sampler::Sampler, view::ImageView}, instance::{Instance, InstanceCreateFlags, InstanceCreateInfo}, memory::allocator::{MemoryTypeFilter, StandardMemoryAllocator}, pipeline::ComputePipeline, swapchain::{
+    },
+    descriptor_set::{WriteDescriptorSet, allocator::StandardDescriptorSetAllocator},
+    device::{
+        Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue, QueueCreateInfo,
+        QueueFlags, physical::PhysicalDeviceType,
+    },
+    format::Format,
+    image::{Image, ImageType, ImageUsage, sampler::Sampler, view::ImageView},
+    instance::{Instance, InstanceCreateFlags, InstanceCreateInfo},
+    memory::allocator::{MemoryTypeFilter, StandardMemoryAllocator},
+    pipeline::ComputePipeline,
+    swapchain::{
         self, Surface, SurfaceApi, Swapchain, SwapchainAcquireFuture, SwapchainCreateInfo,
-    }, sync::{GpuFuture, semaphore::Semaphore},
+    },
+    sync::{GpuFuture, semaphore::Semaphore},
 };
 
-use crate::{common::RayHit, shader::*};
+use crate::{
+    common::{LocalLight, RayHit},
+    shader::*,
+};
 
 use dear_imgui_reflect::ImGuiReflect;
 use getset::{CloneGetters, CopyGetters, Getters, MutGetters};
@@ -87,6 +102,7 @@ pub enum DescriptorResource {
     RayBuffer(Subbuffer<RayHit>),
     SampleTex(Arc<ImageView>, Arc<Sampler>),
     Sample(Arc<Sampler>),
+    LightBuffer(Subbuffer<[LocalLight]>),
 }
 
 impl DescriptorResource {
@@ -98,6 +114,7 @@ impl DescriptorResource {
                 WriteDescriptorSet::image_view_sampler(binding, texture, sampler)
             }
             DescriptorResource::Sample(sampler) => WriteDescriptorSet::sampler(binding, sampler),
+            DescriptorResource::LightBuffer(buffer) => WriteDescriptorSet::buffer(binding, buffer),
         }
     }
 }

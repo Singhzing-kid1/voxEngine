@@ -3,6 +3,7 @@ pub mod common;
 pub mod debug;
 pub mod engine;
 pub mod entity;
+pub mod lights;
 pub mod perlin;
 pub mod physics;
 pub mod player;
