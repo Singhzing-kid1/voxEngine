@@ -5,6 +5,8 @@ use std::io::BufReader;
 
 use dear_imgui_reflect::ImGuiReflect;
 
+use crate::common::asset_path;
+
 #[derive(CopyGetters, Getters, Clone)]
 pub struct Texture {
     #[getset(get = "pub with_prefix")]
@@ -15,8 +17,7 @@ pub struct Texture {
 
 impl Texture {
     pub fn new(path: impl AsRef<str>) -> Self {
-        let full_path = format!("{}{}", env!("CARGO_MANIFEST_DIR"), path.as_ref());
-        let file = File::open(full_path).unwrap();
+        let file = File::open(asset_path(path.as_ref())).unwrap();
 
         let mut decoder = Decoder::new(BufReader::new(file));
         decoder.set_transformations(Transformations::EXPAND | Transformations::STRIP_16);
@@ -39,8 +40,7 @@ impl Texture {
         sprite_index: [u32; 2],
         sprite_size: [u32; 2],
     ) -> Self {
-        let full_path = format!("{}{}", env!("CARGO_MANIFEST_DIR"), path.as_ref());
-        let file = File::open(full_path).unwrap();
+        let file = File::open(asset_path(path.as_ref())).unwrap();
 
         let mut decoder = Decoder::new(BufReader::new(file));
         decoder.set_transformations(Transformations::EXPAND | Transformations::STRIP_16);
