@@ -57,7 +57,7 @@ jobs:
             
       - name: Linux compiler workaround
         if: runner.os == 'Linux'
-        run: echo "CXXFLAGS=-include cstdint" >> "$GITHUB_ENB"
+        run: echo "CXXFLAGS=-include cstdint" >> "$GITHUB_ENV"
 
       - name: Windows CMake setup
         if: runner.os == 'Windows'
