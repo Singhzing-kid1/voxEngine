@@ -1,3 +1,4 @@
+use dear_imgui_reflect::ImGuiReflect;
 use glam::Vec3;
 use std::fmt::Debug;
 use vulkano::{buffer::BufferContents, padded::Padded};
@@ -54,10 +55,24 @@ pub trait Updateable {
     fn update(&mut self, _alpha: f32, _physics: &mut Physics) {}
 }
 
-pub trait HasEntity: Debug {
+pub trait HasEntity: Debug + ImGuiReflect {
     fn entity(&self) -> &Entity;
     fn entity_mut(&mut self) -> &mut Entity;
+    fn clone_box(&self) -> Box<dyn HasEntity>;
 }
+
+impl Clone for Box<dyn HasEntity> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
+}
+
+impl ImGuiReflect for Box<dyn HasEntity> {
+    fn imgui_reflect(&mut self, inspector: &mut dear_imgui_reflect::Inspector<'_, '_>, label: &str) -> bool {
+        self.entity_mut().imgui_reflect(inspector, label)
+    }
+}
+
 
 pub trait Builder {
     type Output;

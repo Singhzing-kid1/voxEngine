@@ -8,7 +8,7 @@ use crate::{
 
 use glam::{Vec4Swizzles, vec4, vec3};
 
-use std::sync::Arc;
+use std::{sync::Arc, cell::RefCell, rc::Rc};
 
 use sdl3::{event::Event, keyboard::Keycode::{self, W}};
 use vulkano::{
@@ -40,7 +40,8 @@ pub struct GameplayScene {
     #[imgui(skip)]
     world: World,
     physics: Physics,
-    player: Player,
+    #[imgui(skip)]
+    player: Rc<RefCell<Player>>,
     accumulator: f32,
     paused: bool,
 
@@ -67,7 +68,6 @@ pub struct GameplayScene {
     #[imgui(skip)]
     light_map_sampler_set: Arc<DescriptorSet>,
 
-    #[imgui(skip)]
     lights: LightManager,
     #[imgui(skip)]
     lights_buffer: Subbuffer<[LocalLight]>,
@@ -84,6 +84,8 @@ pub struct GameplayScene {
     hit_pos: Arc<Image>,
     #[imgui(skip)]
     post_lighting: Arc<Image>,
+    #[imgui(skip)]
+    intial_light_map: Arc<Image>,
 
     #[imgui(skip)]
     render_pipeline: Arc<ComputePipeline>,
@@ -254,11 +256,11 @@ impl GameplayScene {
             .build(engine)
             .unwrap();
 
-        let (_lightmap_1, lightmap_1_view) = Engine::create_image(
+        let (lightmap_1, lightmap_1_view) = Engine::create_image(
             ImageType::Dim3d,
             [128; 3],
             Format::R16G16B16A16_SFLOAT,
-            ImageUsage::STORAGE,
+            ImageUsage::STORAGE | ImageUsage::TRANSFER_DST,
             MemoryTypeFilter::PREFER_DEVICE,
             engine.get_memory_allocator(),
         );
@@ -329,24 +331,13 @@ impl GameplayScene {
             &lights_set_entries,
         );
 
-        lights.add_light(
-            vec3(100.0, 450.0, 100.0),
-            vec4(1.0, 0.0, 0.0, 5.0), 
-            None, 
-            Some(AnimationType::Follow),
-            None, 
-            [2000, 1000, 2000]
-        );
-
-        let count = lights.get_amount_of_active_lights() as usize;
-        lights_buffer.write().unwrap()[..count].copy_from_slice(&lights.get_lights_as_array()[..count]);
 
         let world = World::new(12999003378434, vec3(2000.0, 1000.0, 2000.0), 32);
         let mut physics = Physics::new(&world, vec3(0.0, -9.81, 0.0), 32);
 
         let (w, h) = engine.get_dimensions();
 
-        let player = Player::new(
+        let player = Rc::new(RefCell::new(Player::new(
             90.0,
             0.1,
             1000.0,
@@ -359,7 +350,19 @@ impl GameplayScene {
             vec3(1.0, 2.0, 1.0),
             0.2,
             &mut physics,
+        )));
+
+        lights.add_light(
+            vec3(100.0, 450.0, 100.0),
+            vec4(1.0, 0.0, 0.0, 5.0), 
+            None, 
+            Some(AnimationType::Follow(player.clone())),
+            None, 
+            [2000, 1000, 2000]
         );
+
+        let count = lights.get_amount_of_active_lights() as usize;
+        lights_buffer.write().unwrap()[..count].copy_from_slice(&lights.get_lights_as_array()[..count]);
 
         GameplayScene {
             world,
@@ -390,6 +393,7 @@ impl GameplayScene {
             shadows,
             hit_pos,
             post_lighting,
+            intial_light_map: lightmap_1,
 
             render_pipeline,
             resample_pipeline,
@@ -428,6 +432,11 @@ impl GameplayScene {
             .clear_color_image(ClearColorImageInfo {
                 clear_value: ClearColorValue::Float([0.0, 0.0, 0.0, 1.0]),
                 ..ClearColorImageInfo::image(self.post_lighting.clone())
+            })
+            .unwrap()
+            .clear_color_image(ClearColorImageInfo {
+                clear_value: ClearColorValue::Uint([0, 0, 0, 1]),
+                ..ClearColorImageInfo::image(self.intial_light_map.clone())
             })
             .unwrap();
     }
@@ -597,7 +606,7 @@ impl Scene for GameplayScene {
 
     fn handle_input(&mut self, engine: &mut Engine) {
         if !self.paused {
-            self.player.collect_inputs(
+            self.player.borrow_mut().collect_inputs(
                 engine.get_event(),
                 engine.get_x_offset(),
                 engine.get_y_offset(),
@@ -641,7 +650,7 @@ impl Scene for GameplayScene {
                 }
             ) {
                 self.lights.add_light(
-                    self.player.entity().get_position(),
+                    self.player.borrow().entity().get_position(),
                     vec4(1.0, 1.0, 1.0, 5.0),
                     Some(1000.0),
                     None,
@@ -656,18 +665,18 @@ impl Scene for GameplayScene {
 
         if !self.paused {
             self.physics
-                .update_loaded_chunks(&self.world, self.player.entity().get_position());
+                .update_loaded_chunks(&self.world, self.player.borrow().entity().get_position());
 
             self.accumulator += dt;
             while self.accumulator > common::TICK_RATE {
                 self.physics.step();
-                self.player.fixed_update(&mut self.physics);
-                self.lights.update_lights(self.player.entity().get_position());
+                self.player.borrow_mut().fixed_update(&mut self.physics);
+                self.lights.update_lights(self.player.borrow().entity().get_position());
                 self.accumulator -= common::TICK_RATE;
             }
 
             let alpha = self.accumulator / common::TICK_RATE;
-            self.player.update(alpha, &mut self.physics);
+            self.player.borrow_mut().update(alpha, &mut self.physics);
         }
 
         Transition::None
@@ -682,7 +691,16 @@ impl Scene for GameplayScene {
     }
 
     fn imgui_reflect_dyn(&mut self, ui: &mut dear_imgui_reflect::Inspector<'_, '_>) -> bool {
-        ui.input("Gameplay Scene", self)
+        let mut changed = ui.input("Gameplay Scene", self);
+
+        ui.ui().with_indent(||
+            {
+                let mut player = self.player.borrow_mut();
+                changed |= ui.input("Player", &mut *player);
+            }
+        );
+
+        changed
     }
 }
 
@@ -691,7 +709,7 @@ impl Record for GameplayScene {
         let sun = GlobalLight {
             position: vec3(500.0, 5000.0, 500.0),
             color: vec3(1.0, 1.0, 1.0),
-            intensity: 0.0,
+            intensity: 0.1,
         };
 
         let count = self.lights.get_amount_of_active_lights() as usize;
@@ -700,6 +718,7 @@ impl Record for GameplayScene {
         let render_push_data = render_compute_shader::PushConstants {
             pixelToRay: self
                 .player
+                .borrow()
                 .get_camera()
                 .get_pixel_to_ray_matrix(*engine.get_render_scale())
                 .to_cols_array_2d(),
@@ -713,6 +732,7 @@ impl Record for GameplayScene {
 
         let player_coord = self
             .player
+            .borrow()
             .get_camera()
             .get_pixel_to_ray_matrix(*engine.get_render_scale())
             .w_axis
@@ -746,6 +766,13 @@ impl Record for GameplayScene {
         self.lighting_flood_fill_pass(builder, lighting_push_data);
         self.lighting_flood_fill_pass(builder, lighting_push_data);
         self.lighting_flood_fill_pass(builder, lighting_push_data);
+
+        self.lighting_flood_fill_pass(builder, lighting_push_data);
+        self.lighting_flood_fill_pass(builder, lighting_push_data);
+        self.lighting_flood_fill_pass(builder, lighting_push_data);
+        self.lighting_flood_fill_pass(builder, lighting_push_data);
+
+
 
         self.apply_light_pass(engine, builder, apply_lighting_push_data);
 

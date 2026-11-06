@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use dear_imgui_reflect::ImGuiReflect;
 use getset::{Getters};
 
 use glam::{IVec3, Vec3, Vec4, vec4};
@@ -7,16 +8,17 @@ use crate::{
     common::{LocalLight, Updateable}, lights::light::{AnimationType, Light}, physics::Physics,
 };
 
+#[derive(ImGuiReflect)]
 #[derive(Getters)]
 pub struct LightManager {
-    lights: HashMap<u32, Light>,
+    lights: HashMap<String, Light>,
     #[getset(get = "pub with_prefix")]
     size: usize,
 }
 
 impl LightManager {
     pub fn new(size: usize) -> Self {
-        let lights: HashMap<u32, Light> = HashMap::with_capacity(size);
+        let lights: HashMap<String, Light> = HashMap::with_capacity(size);
 
         Self { lights, size }
     }
@@ -44,7 +46,7 @@ impl LightManager {
             color_animation,
         );
 
-        self.lights.entry(light_id).or_insert(light);
+        self.lights.entry(format!("{light_id}")).or_insert(light);
     }
 
     pub fn get_lights_as_array(&self) -> Vec<LocalLight> {
@@ -84,7 +86,7 @@ impl LightManager {
             let lifetime = light.get_lifetime();
             match lifetime {
                 None => {
-                    light.apply_position_animation(player_position);
+                    light.apply_position_animation();
                     light.apply_color_animation();
 
                     return true;
@@ -92,7 +94,7 @@ impl LightManager {
                 Some(lifetime) => {
                     if lifetime <= 0.0 { return false; };
 
-                    light.apply_position_animation(player_position);
+                    light.apply_position_animation();
                     light.apply_color_animation();
                     light.decay();
 
@@ -102,4 +104,3 @@ impl LightManager {
         });
     }
 }
-

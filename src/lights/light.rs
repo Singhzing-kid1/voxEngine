@@ -1,14 +1,47 @@
+use std::{cell::RefCell, rc::Rc};
+
 use getset::{CopyGetters, Getters, Setters};
 use glam::{Vec3, Vec4, vec4};
 
-use crate::lights::light::AnimationType::Follow;
+use crate::{common::HasEntity, lights::light::AnimationType::Follow};
 
-#[derive(Copy, Clone)]
+use dear_imgui_reflect::ImGuiReflect;
+
+#[derive(Clone)]
 pub enum AnimationType {
-    Follow,
+    Follow(Rc<RefCell<dyn HasEntity>>),
+    Flicker
 }
 
-#[derive(Copy, Clone, CopyGetters, Setters, Getters)]
+impl ImGuiReflect for AnimationType {
+    fn imgui_reflect(&mut self, inspector: &mut dear_imgui_reflect::Inspector<'_, '_>, label: &str) -> bool {
+        let ui = inspector.ui();
+        let mut changed = false;
+
+        match self {
+            AnimationType::Follow(entity) => {
+                ui.text(format!("{label}: Follow"));
+                ui.with_indent(|| {
+                    changed |= entity.borrow_mut().entity_mut().imgui_reflect(inspector, "Entity");
+                });
+            }
+            AnimationType::Flicker => {
+                ui.text(format!("{label}: Flicker"));
+            }
+        }
+
+        changed
+    }
+}
+
+impl Default for AnimationType {
+    fn default() -> Self {
+        AnimationType::Flicker
+    }
+}
+
+#[derive(Clone, Default, CopyGetters, Setters, Getters)]
+#[derive(ImGuiReflect)]
 pub struct Light {
     #[getset(get_copy = "pub with_prefix")]
     position: Vec3,
@@ -43,23 +76,20 @@ impl Light {
 }
 
 impl Light {
-    pub fn apply_position_animation(&mut self, new_position: Vec3) {
-        match self.position_animation {
+    pub fn apply_position_animation(&mut self) {
+        match &mut self.position_animation {
             None => {}
-            Some(position_animation) => {
-                match position_animation {
-                    AnimationType::Follow => {
-                        self.position = new_position;
-                    }
-                }
+            Some(AnimationType::Follow(entity)) => {
+                self.position = entity.borrow().entity().get_position();
             }
+            _ => {}
         }
     }
 
     pub fn apply_color_animation(&mut self) {
-        match self.color_animation {
+        match &mut self.color_animation {
             None => {}
-            Some(color_animation) => {}
+            Some(_color_animation) => {}
         }
     }
 
