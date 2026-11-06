@@ -35,8 +35,22 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
+      - name: Install linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build pkg-config python3 \
+            libasound2-dev libpulse-dev libudev-dev libdbus-1-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
+            libxfixes-dev libxss-dev libxtst-dev libxkbcommon-dev \
+            libwayland-dev wayland-protocols libdecor-0-dev \
+            libdrm-dev libgbm-dev libgl1-mesa-dev libegl1-mesa-dev \
+            libvulkan-dev
+
+
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }} --features sdl3/build-from-source-static
 
       - name: Collect Binaries
         shell: bash
