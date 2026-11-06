@@ -123,7 +123,4 @@ impl HasEntity for Player {
         &mut self.entity
     }
 
-    fn clone_box(&self) -> Box<dyn HasEntity> {
-        Box::new(self.clone())
-    }
 }

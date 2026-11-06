@@ -56,23 +56,11 @@ pub trait Updateable {
     fn update(&mut self, _alpha: f32, _physics: &mut Physics) {}
 }
 
-pub trait HasEntity: Debug + ImGuiReflect {
+pub trait HasEntity: Debug  {
     fn entity(&self) -> &Entity;
     fn entity_mut(&mut self) -> &mut Entity;
-    fn clone_box(&self) -> Box<dyn HasEntity>;
 }
 
-impl Clone for Box<dyn HasEntity> {
-    fn clone(&self) -> Self {
-        self.clone_box()
-    }
-}
-
-impl ImGuiReflect for Box<dyn HasEntity> {
-    fn imgui_reflect(&mut self, inspector: &mut dear_imgui_reflect::Inspector<'_, '_>, label: &str) -> bool {
-        self.entity_mut().imgui_reflect(inspector, label)
-    }
-}
 
 pub fn asset_path(path: &str) -> PathBuf {
     let rel = path.trim_start_matches(['/', '\\']);
