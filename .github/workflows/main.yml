@@ -54,7 +54,17 @@ jobs:
             libwayland-dev wayland-protocols libdecor-0-dev \
             libdrm-dev libgbm-dev libgl1-mesa-dev libegl1-mesa-dev \
             libvulkan-dev
+            
+      - name: Linux compiler workaround
+        if: runner.os == 'Linux'
+        run: echo "CXXFLAGS=-include cstdint" >> "$GITHUB_ENB"
 
+      - name: Windows CMake setup
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          choco install ninja -y --no-progress
+          echo "CMAKE_GENERATOR=Ninja" >> "$GITHUB_ENV"
 
       - name: Build
         run: cargo build --release --target ${{ matrix.target }} --features sdl3/build-from-source-static
