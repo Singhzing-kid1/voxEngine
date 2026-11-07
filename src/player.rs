@@ -12,6 +12,7 @@ use crate::{
 use getset::Getters;
 
 #[allow(unused)]
+#[derive(Clone)]
 #[derive(ImGuiReflect, Getters, Debug)]
 pub struct Player {
     movement_force: f32,
@@ -121,4 +122,5 @@ impl HasEntity for Player {
     fn entity_mut(&mut self) -> &mut Entity {
         &mut self.entity
     }
+
 }

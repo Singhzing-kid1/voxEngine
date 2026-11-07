@@ -8,6 +8,7 @@ use rapier3d::{
 
 use crate::{common::Updateable, physics::Physics};
 
+#[derive(Copy, Clone)]
 #[derive(ImGuiReflect, CopyGetters, Setters, Debug)]
 pub struct Entity {
     #[imgui(input)]

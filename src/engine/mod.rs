@@ -1,39 +1,27 @@
 use std::{
-    sync::Arc, time::{self},
+    sync::Arc,
+    time::{self},
 };
 
-use glam::Mat4;
-use sdl3::{
-    EventPump, VideoSubsystem,
-    event::Event,
-    video::Window,
-};
+use sdl3::{EventPump, VideoSubsystem, event::Event, video::Window};
 
 use vulkano::{
     VulkanLibrary, VulkanObject,
     buffer::Subbuffer,
     command_buffer::{
-        AutoCommandBufferBuilder,
-        PrimaryAutoCommandBuffer,
+        AutoCommandBufferBuilder, PrimaryAutoCommandBuffer,
         allocator::StandardCommandBufferAllocator,
     },
-    descriptor_set::{
-        DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator,
-    },
+    descriptor_set::{WriteDescriptorSet, allocator::StandardDescriptorSetAllocator},
     device::{
-        Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags,
-        physical::PhysicalDeviceType,
+        Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue, QueueCreateInfo,
+        QueueFlags, physical::PhysicalDeviceType,
     },
-    format::{Format},
-    image::{Image, ImageType, ImageUsage, view::ImageView},
+    format::Format,
+    image::{Image, ImageType, ImageUsage, sampler::Sampler, view::ImageView},
     instance::{Instance, InstanceCreateFlags, InstanceCreateInfo},
-    memory::allocator::{
-        MemoryTypeFilter,
-        StandardMemoryAllocator,
-    },
-    pipeline::{
-        ComputePipeline,
-    },
+    memory::allocator::{MemoryTypeFilter, StandardMemoryAllocator},
+    pipeline::ComputePipeline,
     swapchain::{
         self, Surface, SurfaceApi, Swapchain, SwapchainAcquireFuture, SwapchainCreateInfo,
     },
@@ -41,18 +29,17 @@ use vulkano::{
 };
 
 use crate::{
-    common::RayHit,
+    common::{LocalLight, RayHit},
     shader::*,
 };
 
 use dear_imgui_reflect::ImGuiReflect;
 use getset::{CloneGetters, CopyGetters, Getters, MutGetters};
 
-
-mod helpers;
-mod render;
 mod event;
+mod helpers;
 mod record;
+mod render;
 
 #[derive(ImGuiReflect, Copy, Clone)]
 pub struct Flags {
@@ -95,9 +82,10 @@ impl Flags {
     }
 }
 
+// deprecated need to remove
 #[derive(Debug, Clone, Copy, ImGuiReflect)]
 #[imgui(enum_style = "dropdown")]
-#[allow(unused)]
+#[allow(unused, non_camel_case_types)]
 pub enum RENDERMODE {
     DEFAULT,
     COORD,
@@ -105,12 +93,16 @@ pub enum RENDERMODE {
     NORMAL,
     UV,
     DEPTH,
+    LOD_BIAS,
 }
 
 #[derive(Clone)]
-pub(crate) enum DescriptorResource {
+pub enum DescriptorResource {
     ImageView(Arc<ImageView>),
     RayBuffer(Subbuffer<RayHit>),
+    SampleTex(Arc<ImageView>, Arc<Sampler>),
+    Sample(Arc<Sampler>),
+    LightBuffer(Subbuffer<[LocalLight]>),
 }
 
 impl DescriptorResource {
@@ -118,6 +110,11 @@ impl DescriptorResource {
         match self {
             DescriptorResource::ImageView(view) => WriteDescriptorSet::image_view(binding, view),
             DescriptorResource::RayBuffer(buffer) => WriteDescriptorSet::buffer(binding, buffer),
+            DescriptorResource::SampleTex(texture, sampler) => {
+                WriteDescriptorSet::image_view_sampler(binding, texture, sampler)
+            }
+            DescriptorResource::Sample(sampler) => WriteDescriptorSet::sampler(binding, sampler),
+            DescriptorResource::LightBuffer(buffer) => WriteDescriptorSet::buffer(binding, buffer),
         }
     }
 }
@@ -132,13 +129,10 @@ pub struct Frame {
     acquire_future: SwapchainAcquireFuture,
 }
 
-
 pub trait Record {
     fn record(&mut self, frame: &mut Frame, engine: &mut Engine);
     fn init(&mut self, engine: &mut Engine);
 }
-
-
 
 #[derive(CopyGetters, Getters, MutGetters, CloneGetters)]
 #[allow(unused)]
@@ -297,10 +291,16 @@ impl Engine {
             ..Default::default()
         };
 
+        let device_features = DeviceFeatures {
+            sampler_anisotropy: true,
+            ..Default::default()
+        };
+
         let (physical_device, queue_family_index) = instance
             .enumerate_physical_devices()
             .expect("could not find physical devices")
             .filter(|p| p.supported_extensions().contains(&device_extensions))
+            .filter(|p| p.supported_features().contains(&device_features))
             .filter_map(|p| {
                 p.queue_family_properties()
                     .iter()
@@ -328,6 +328,7 @@ impl Engine {
                     ..Default::default()
                 }],
                 enabled_extensions: device_extensions,
+                enabled_features: device_features,
                 ..Default::default()
             },
         )
@@ -361,7 +362,9 @@ impl Engine {
                 min_image_count: caps.min_image_count.max(3),
                 image_format,
                 image_extent: [width as u32, height as u32],
-                image_usage: ImageUsage::COLOR_ATTACHMENT | ImageUsage::TRANSFER_DST | ImageUsage::STORAGE,
+                image_usage: ImageUsage::COLOR_ATTACHMENT
+                    | ImageUsage::TRANSFER_DST
+                    | ImageUsage::STORAGE,
                 composite_alpha,
                 present_mode: swapchain::PresentMode::Immediate,
                 ..Default::default()
@@ -388,18 +391,20 @@ impl Engine {
 
         let raycast_shader = raycast_shader::load(device.clone()).expect("cannot load shader");
 
-        let pause_blue_shader = pause_blur_shader::load(device.clone()).expect("cannot load shader");
+        let pause_blue_shader =
+            pause_blur_shader::load(device.clone()).expect("cannot load shader");
 
         let render_compute_pipeline =
             Engine::create_pipeline(render_shader, "main", device.clone());
 
-        let resample_compute_pipeline =
+        let _resample_compute_pipeline =
             Engine::create_pipeline(resample_shader, "main", device.clone());
 
         let raycast_compute_pipeline =
             Engine::create_pipeline(raycast_shader, "main", device.clone());
 
-        let pause_blur_compute_pipeline = Engine::create_pipeline(pause_blue_shader, "main", device.clone());
+        let pause_blur_compute_pipeline =
+            Engine::create_pipeline(pause_blue_shader, "main", device.clone());
 
         let (image, view) = Engine::create_image(
             ImageType::Dim2d,
@@ -416,7 +421,7 @@ impl Engine {
 
         let set_entries = vec![(0, DescriptorResource::ImageView(view.clone()))];
 
-        let render_set = Engine::create_descriptor_set(
+        let _render_set = Engine::create_descriptor_set(
             descriptor_set_allocator.clone(),
             Engine::get_layout(render_compute_pipeline.clone(), 0),
             &set_entries,
@@ -491,4 +496,3 @@ impl Engine {
         }
     }
 }
-

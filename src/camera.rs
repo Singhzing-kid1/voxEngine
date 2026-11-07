@@ -2,6 +2,7 @@ use crate::{common::Updateable, physics::Physics};
 use dear_imgui_reflect::ImGuiReflect;
 use getset::{CopyGetters, Setters};
 
+#[derive(Clone)]
 #[derive(ImGuiReflect, CopyGetters, Setters, Debug)]
 pub struct Camera {
     #[imgui(slider, min = 0.0, max = 200.0)]

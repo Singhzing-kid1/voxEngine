@@ -1,6 +1,4 @@
-use std::{
-    time::{self, Duration},
-};
+use std::time::{self, Duration};
 
 use sdl3::{
     event::Event,
@@ -46,7 +44,7 @@ impl Engine {
                     ..
                 } => {
                     let render_mode = self.current_render_mode as u32;
-                    let new_render_mode = (render_mode + 1) % 6;
+                    let new_render_mode = (render_mode + 1) % 7;
                     self.current_render_mode = match new_render_mode {
                         0 => RENDERMODE::DEFAULT,
                         1 => RENDERMODE::COORD,
@@ -54,6 +52,7 @@ impl Engine {
                         3 => RENDERMODE::NORMAL,
                         4 => RENDERMODE::UV,
                         5 => RENDERMODE::DEPTH,
+                        6 => RENDERMODE::LOD_BIAS,
                         _ => RENDERMODE::DEFAULT,
                     }
                 }

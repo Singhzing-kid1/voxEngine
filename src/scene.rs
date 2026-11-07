@@ -1,17 +1,15 @@
 use crate::{
-    debug::Debug, engine::{Engine, Frame}
+    debug::Debug,
+    engine::{Engine, Frame},
 };
 
-use dear_imgui_reflect::ImGuiReflect;
-
-pub enum Transition  {
+pub enum Transition {
     None,
     Switch(Box<dyn Scene>),
     Pause(Box<dyn Scene>),
     Unpause,
-    Quit
+    Quit,
 }
-
 
 pub trait Scene {
     fn on_enter(&mut self, _engine: &mut Engine) {}
@@ -21,7 +19,7 @@ pub trait Scene {
     fn on_unpause(&mut self, _engine: &mut Engine) {}
 
     fn handle_input(&mut self, engine: &mut Engine);
-    
+
     fn update(&mut self, dt: f32, engine: &mut Engine) -> Transition;
 
     fn render(&mut self, engine: &mut Engine, frame: &mut Frame);
@@ -30,22 +28,24 @@ pub trait Scene {
 
     fn render_debug(&mut self, _engine: &mut Engine, _debug: &mut Debug) {}
 
-    fn imgui_reflect_dyn(&mut self, _ui: &dear_imgui_rs::Ui) -> bool {
+    fn imgui_reflect_dyn(&mut self, _ui: &mut dear_imgui_reflect::Inspector<'_, '_>) -> bool {
         false
     }
 }
 
-
 pub struct SceneManager {
     current: Box<dyn Scene>,
-    overlay: Option<Box<dyn Scene>>
+    overlay: Option<Box<dyn Scene>>,
 }
 
 impl SceneManager {
     pub fn new(mut initial: Box<dyn Scene>, engine: &mut Engine) -> Self {
         initial.on_enter(engine);
 
-        SceneManager { current: initial, overlay: None}
+        SceneManager {
+            current: initial,
+            overlay: None,
+        }
     }
 
     pub fn handle_input(&mut self, engine: &mut Engine) {
@@ -72,20 +72,20 @@ impl SceneManager {
                 self.current.on_unpause(engine);
                 true
             }
-            Transition::Quit => false
+            Transition::Quit => false,
         }
     }
 
     pub fn render(&mut self, engine: &mut Engine) {
         let mut frame = engine.start_frame();
-        
+
         self.current.render(engine, &mut frame);
 
         match self.overlay.as_mut() {
             None => {}
-            Some(scene) => scene.render_as_overlay(engine, &mut frame)
+            Some(scene) => scene.render_as_overlay(engine, &mut frame),
         }
-        
+
         engine.finish_frame(frame);
     }
 

@@ -1,7 +1,24 @@
 pub mod render_compute_shader {
     vulkano_shaders::shader! {
         ty: "compute",
-        path: "shaders/raymarch.comp"
+        path: "shaders/raymarch.comp",
+        include: ["shaders/include/"]
+    }
+}
+
+pub mod light_flood_shader {
+    vulkano_shaders::shader! {
+        ty: "compute",
+        path: "shaders/light_flood.comp",
+        include: ["shaders/include/"]
+    }
+}
+
+pub mod apply_light_shader {
+    vulkano_shaders::shader! {
+        ty: "compute",
+        path: "shaders/apply_light.comp",
+        include: ["shaders/include/"]
     }
 }
 
