@@ -1,18 +1,31 @@
 use crate::{
-    common::{self, Buildable, Builder, GlobalLight, HasEntity, LocalLight, Updateable}, debug::Debug, engine::{DescriptorResource, Engine, Frame, Record}, lights::{light::AnimationType, light_manager::LightManager}, physics::Physics, player::Player, scene::{Scene, Transition}, scenes::MainMenuScene, shader::{
+    common::{self, Buildable, Builder, GlobalLight, HasEntity, LocalLight, Updateable},
+    debug::Debug,
+    engine::{DescriptorResource, Engine, Frame, Record},
+    lights::{light::AnimationType, light_manager::LightManager},
+    physics::Physics,
+    player::Player,
+    scene::{Scene, Transition},
+    scenes::MainMenuScene,
+    shader::{
         apply_light_shader::{self, Parameters},
         light_flood_shader::Params,
         render_compute_shader::PushConstants,
-    }, texture::Atlas, world::World
+    },
+    texture::Atlas,
+    world::World,
 };
 
-use glam::{Vec4Swizzles, vec4, vec3};
+use glam::{Vec4Swizzles, vec3, vec4};
 
-use std::{sync::Arc, cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
-use sdl3::{event::Event, keyboard::Keycode::{self, W}};
+use sdl3::{
+    event::Event,
+    keyboard::Keycode::{self},
+};
 use vulkano::{
-    buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage, Subbuffer},
+    buffer::{Buffer, BufferCreateInfo, BufferUsage, Subbuffer},
     command_buffer::{
         AutoCommandBufferBuilder, ClearColorImageInfo, CommandBufferUsage, CopyBufferToImageInfo,
         CopyImageInfo, PrimaryAutoCommandBuffer, PrimaryCommandBufferAbstract,
@@ -22,7 +35,6 @@ use vulkano::{
     image::{
         Image, ImageType, ImageUsage,
         sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo, SamplerMipmapMode},
-        view::ImageView,
     },
     memory::allocator::{AllocationCreateInfo, MemoryTypeFilter},
     padded::Padded,
@@ -33,7 +45,7 @@ use crate::{
     shader::light_flood_shader, shader::render_compute_shader, shader::resample_compute_shader,
 };
 
-use dear_imgui_reflect::{ImGuiReflect, ImGuiReflectExt};
+use dear_imgui_reflect::ImGuiReflect;
 
 #[derive(ImGuiReflect)]
 pub struct GameplayScene {
@@ -306,7 +318,7 @@ impl GameplayScene {
             &light_map_sampler_set_entries,
         );
 
-        let mut lights = LightManager::new(256); 
+        let mut lights = LightManager::new(256);
 
         let lights_buffer = Buffer::new_slice::<LocalLight>(
             engine.get_memory_allocator(),
@@ -331,7 +343,6 @@ impl GameplayScene {
             &lights_set_entries,
         );
 
-
         let world = World::new(12999003378434, vec3(2000.0, 1000.0, 2000.0), 32);
         let mut physics = Physics::new(&world, vec3(0.0, -9.81, 0.0), 32);
 
@@ -354,15 +365,16 @@ impl GameplayScene {
 
         lights.add_light(
             vec3(100.0, 450.0, 100.0),
-            vec4(1.0, 0.0, 0.0, 5.0), 
-            None, 
+            vec4(1.0, 0.0, 0.0, 5.0),
+            None,
             Some(AnimationType::Follow(player.clone())),
-            None, 
-            [2000, 1000, 2000]
+            None,
+            [2000, 1000, 2000],
         );
 
         let count = lights.get_amount_of_active_lights() as usize;
-        lights_buffer.write().unwrap()[..count].copy_from_slice(&lights.get_lights_as_array()[..count]);
+        lights_buffer.write().unwrap()[..count]
+            .copy_from_slice(&lights.get_lights_as_array()[..count]);
 
         GameplayScene {
             world,
@@ -659,7 +671,6 @@ impl Scene for GameplayScene {
                 );
 
                 return Transition::None;
-
             }
         }
 
@@ -671,7 +682,7 @@ impl Scene for GameplayScene {
             while self.accumulator > common::TICK_RATE {
                 self.physics.step();
                 self.player.borrow_mut().fixed_update(&mut self.physics);
-                self.lights.update_lights(self.player.borrow().entity().get_position());
+                self.lights.update_lights();
                 self.accumulator -= common::TICK_RATE;
             }
 
@@ -693,12 +704,10 @@ impl Scene for GameplayScene {
     fn imgui_reflect_dyn(&mut self, ui: &mut dear_imgui_reflect::Inspector<'_, '_>) -> bool {
         let mut changed = ui.input("Gameplay Scene", self);
 
-        ui.ui().with_indent(||
-            {
-                let mut player = self.player.borrow_mut();
-                changed |= ui.input("Player", &mut *player);
-            }
-        );
+        ui.ui().with_indent(|| {
+            let mut player = self.player.borrow_mut();
+            changed |= ui.input("Player", &mut *player);
+        });
 
         changed
     }
@@ -713,7 +722,8 @@ impl Record for GameplayScene {
         };
 
         let count = self.lights.get_amount_of_active_lights() as usize;
-        self.lights_buffer.write().unwrap()[..count].copy_from_slice(&self.lights.get_lights_as_array()[..count]);
+        self.lights_buffer.write().unwrap()[..count]
+            .copy_from_slice(&self.lights.get_lights_as_array()[..count]);
 
         let render_push_data = render_compute_shader::PushConstants {
             pixelToRay: self
@@ -771,8 +781,6 @@ impl Record for GameplayScene {
         self.lighting_flood_fill_pass(builder, lighting_push_data);
         self.lighting_flood_fill_pass(builder, lighting_push_data);
         self.lighting_flood_fill_pass(builder, lighting_push_data);
-
-
 
         self.apply_light_pass(engine, builder, apply_lighting_push_data);
 

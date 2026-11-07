@@ -6,7 +6,6 @@ use std::{
 use sdl3::{EventPump, VideoSubsystem, event::Event, video::Window};
 
 use vulkano::{
-    Requires::DeviceFeature,
     VulkanLibrary, VulkanObject,
     buffer::Subbuffer,
     command_buffer::{
@@ -83,9 +82,10 @@ impl Flags {
     }
 }
 
+// deprecated need to remove
 #[derive(Debug, Clone, Copy, ImGuiReflect)]
 #[imgui(enum_style = "dropdown")]
-#[allow(unused)]
+#[allow(unused, non_camel_case_types)]
 pub enum RENDERMODE {
     DEFAULT,
     COORD,

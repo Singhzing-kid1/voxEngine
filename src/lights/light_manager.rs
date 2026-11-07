@@ -1,15 +1,15 @@
-use std::collections::HashMap;
 use dear_imgui_reflect::ImGuiReflect;
-use getset::{Getters};
+use getset::Getters;
+use std::collections::HashMap;
 
-use glam::{IVec3, Vec3, Vec4, vec4};
+use glam::{Vec3, Vec4};
 
 use crate::{
-    common::{LocalLight, Updateable}, lights::light::{AnimationType, Light}, physics::Physics,
+    common::LocalLight,
+    lights::light::{AnimationType, Light},
 };
 
-#[derive(ImGuiReflect)]
-#[derive(Getters)]
+#[derive(ImGuiReflect, Getters)]
 pub struct LightManager {
     lights: HashMap<String, Light>,
     #[getset(get = "pub with_prefix")]
@@ -50,12 +50,16 @@ impl LightManager {
     }
 
     pub fn get_lights_as_array(&self) -> Vec<LocalLight> {
-        self.lights.clone().into_values().collect::<Vec<Light>>().into_iter().map(|light| {
-            LocalLight {
+        self.lights
+            .clone()
+            .into_values()
+            .collect::<Vec<Light>>()
+            .into_iter()
+            .map(|light| LocalLight {
                 pos_radius: light.get_position().extend(0.0).to_array(),
-                color_intensity: light.get_color_intensity().to_array() 
-            }
-        }).collect()
+                color_intensity: light.get_color_intensity().to_array(),
+            })
+            .collect()
     }
 
     pub fn get_amount_of_active_lights(&self) -> u32 {
@@ -81,7 +85,7 @@ impl LightManager {
             .count() as u32
     }
 
-    pub fn update_lights(&mut self, player_position: Vec3) {
+    pub fn update_lights(&mut self) {
         self.lights.retain(|_, light| {
             let lifetime = light.get_lifetime();
             match lifetime {
@@ -92,7 +96,9 @@ impl LightManager {
                     return true;
                 }
                 Some(lifetime) => {
-                    if lifetime <= 0.0 { return false; };
+                    if lifetime <= 0.0 {
+                        return false;
+                    };
 
                     light.apply_position_animation();
                     light.apply_color_animation();

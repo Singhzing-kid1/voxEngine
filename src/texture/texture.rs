@@ -3,10 +3,9 @@ use png::{Decoder, Transformations};
 use std::fs::File;
 use std::io::BufReader;
 
-use dear_imgui_reflect::ImGuiReflect;
-
 use crate::common::asset_path;
 
+#[allow(unused)]
 #[derive(CopyGetters, Getters, Clone)]
 pub struct Texture {
     #[getset(get = "pub with_prefix")]

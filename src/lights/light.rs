@@ -3,18 +3,22 @@ use std::{cell::RefCell, rc::Rc};
 use getset::{CopyGetters, Getters, Setters};
 use glam::{Vec3, Vec4, vec4};
 
-use crate::{common::HasEntity, lights::light::AnimationType::Follow};
+use crate::common::HasEntity;
 
 use dear_imgui_reflect::ImGuiReflect;
 
 #[derive(Clone)]
 pub enum AnimationType {
     Follow(Rc<RefCell<dyn HasEntity>>),
-    Flicker
+    Flicker,
 }
 
 impl ImGuiReflect for AnimationType {
-    fn imgui_reflect(&mut self, inspector: &mut dear_imgui_reflect::Inspector<'_, '_>, label: &str) -> bool {
+    fn imgui_reflect(
+        &mut self,
+        inspector: &mut dear_imgui_reflect::Inspector<'_, '_>,
+        label: &str,
+    ) -> bool {
         let ui = inspector.ui();
         let mut changed = false;
 
@@ -22,7 +26,10 @@ impl ImGuiReflect for AnimationType {
             AnimationType::Follow(entity) => {
                 ui.text(format!("{label}: Follow"));
                 ui.with_indent(|| {
-                    changed |= entity.borrow_mut().entity_mut().imgui_reflect(inspector, "Entity");
+                    changed |= entity
+                        .borrow_mut()
+                        .entity_mut()
+                        .imgui_reflect(inspector, "Entity");
                 });
             }
             AnimationType::Flicker => {
@@ -40,8 +47,7 @@ impl Default for AnimationType {
     }
 }
 
-#[derive(Clone, Default, CopyGetters, Setters, Getters)]
-#[derive(ImGuiReflect)]
+#[derive(Clone, Default, CopyGetters, Setters, Getters, ImGuiReflect)]
 pub struct Light {
     #[getset(get_copy = "pub with_prefix")]
     position: Vec3,
@@ -96,12 +102,11 @@ impl Light {
     pub fn decay(&mut self) {
         let current_lifetime = self.lifetime.as_ref().unwrap();
         let intensity = self.color_intensity.w;
-        
+
         let percentage_decrease = intensity / *current_lifetime as f32;
 
-
         self.lifetime = Some(*current_lifetime - 1.0);
-        self.color_intensity = self.color_intensity - vec4(0.0, 0.0, 0.0, percentage_decrease as f32);
-
+        self.color_intensity =
+            self.color_intensity - vec4(0.0, 0.0, 0.0, percentage_decrease as f32);
     }
 }

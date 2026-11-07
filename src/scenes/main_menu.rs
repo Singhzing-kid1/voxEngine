@@ -6,7 +6,7 @@ use crate::{
 use glam::vec4;
 use sdl3::{event::Event, keyboard::Keycode};
 
-use dear_imgui_reflect::{ImGuiReflect, ImGuiReflectExt};
+use dear_imgui_reflect::ImGuiReflect;
 
 #[derive(ImGuiReflect)]
 pub struct MainMenuScene;

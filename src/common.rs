@@ -1,8 +1,7 @@
-use dear_imgui_reflect::ImGuiReflect;
 use glam::Vec3;
 use std::fmt::Debug;
-use vulkano::{buffer::BufferContents, padded::Padded};
 use std::path::PathBuf;
+use vulkano::{buffer::BufferContents, padded::Padded};
 
 use crate::{engine::Engine, entity::Entity, physics::Physics, shader::*};
 
@@ -56,11 +55,10 @@ pub trait Updateable {
     fn update(&mut self, _alpha: f32, _physics: &mut Physics) {}
 }
 
-pub trait HasEntity: Debug  {
+pub trait HasEntity: Debug {
     fn entity(&self) -> &Entity;
     fn entity_mut(&mut self) -> &mut Entity;
 }
-
 
 pub fn asset_path(path: &str) -> PathBuf {
     let rel = path.trim_start_matches(['/', '\\']);

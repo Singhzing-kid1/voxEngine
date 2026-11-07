@@ -11,6 +11,7 @@ use super::AtlasBuilder;
 use super::Texture;
 use crate::common::Buildable;
 
+#[allow(unused)]
 #[derive(ImGuiReflect, CloneGetters, CopyGetters)]
 pub struct Atlas {
     #[imgui(skip)]
