@@ -8,24 +8,39 @@ use rapier3d::{
 };
 use std::collections::HashMap;
 
+use dear_imgui_reflect::ImGuiReflect;
+
 const CHUNK_LOAD_RADIUS: i32 = 4;
 
-#[derive(CopyGetters, Setters)]
+#[derive(CopyGetters, Setters, ImGuiReflect)]
 pub struct Physics {
+    #[imgui(skip)]
     rigid_body_set: RigidBodySet,
+    #[imgui(skip)]
+    soft_body_set: SoftBodySet,
+    #[imgui(skip)]
     collider_set: ColliderSet,
+    #[imgui(skip)]
     physics_pipeline: PhysicsPipeline,
+    #[imgui(skip)]
     island_manager: IslandManager,
+    #[imgui(skip)]
     broad_phase: BroadPhaseBvh,
+    #[imgui(skip)]
     narrow_phase: NarrowPhase,
+    #[imgui(skip)]
     impulse_joint_set: ImpulseJointSet,
+    #[imgui(skip)]
     multibody_joint_set: MultibodyJointSet,
+    #[imgui(skip)]
     ccd_solver: CCDSolver,
+    #[imgui(skip)]
     integration_parameters: IntegrationParameters,
 
     #[getset(get_copy = "pub with_prefix")]
     gravity: glam::Vec3,
 
+    #[imgui(skip)]
     loaded_chunks: HashMap<glam::IVec3, ColliderHandle>,
     chunk_size: i32,
 }
@@ -34,6 +49,7 @@ impl Physics {
     pub fn new(_world: &World, gravity: glam::Vec3, chunk_size: i32) -> Self {
         let physics = Physics {
             rigid_body_set: RigidBodySet::new(),
+            soft_body_set: SoftBodySet::new(),
             collider_set: ColliderSet::new(),
             physics_pipeline: PhysicsPipeline::new(),
             island_manager: IslandManager::new(),
@@ -60,11 +76,12 @@ impl Physics {
         let collider_set = &mut self.collider_set;
         let island_manager = &mut self.island_manager;
         let rigid_body_set = &mut self.rigid_body_set;
+        let soft_body_set = &mut self.soft_body_set;
 
         self.loaded_chunks.retain(|&chunk_key, &mut handle| {
             let in_range = chebyshev_distance(chunk_key, player_chunk) <= CHUNK_LOAD_RADIUS;
             if !in_range {
-                collider_set.remove(handle, island_manager, rigid_body_set, false);
+                collider_set.remove(handle, island_manager, rigid_body_set, soft_body_set, false);
             }
             in_range
         });
@@ -92,6 +109,7 @@ impl Physics {
             &mut self.collider_set,
             &mut self.impulse_joint_set,
             &mut self.multibody_joint_set,
+            &mut self.soft_body_set,
             &mut self.ccd_solver,
             &(),
             &(),
