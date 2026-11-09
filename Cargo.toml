@@ -1,7 +1,7 @@
 [package]
 name = "vox_engine"
 description = "voxel game engine"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2024"
 readme = "README.md"
 repository = "https://github.com/Singhzing-kid1/voxEngine"
@@ -12,7 +12,6 @@ categories = ["game-engines"]
 [dependencies]
 sdl3 = { version = "0.20.0", features = ["ash"] }
 vulkano = "0.35.2"
-vulkano-shaders = "0.35.0"
 ash = "0.38.0"
 dear-imgui-rs = "0.22.0"
 dear-imgui-ash = "0.22.0"
