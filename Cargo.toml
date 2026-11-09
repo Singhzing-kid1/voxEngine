@@ -1,5 +1,5 @@
 [package]
-name = "voxEngine"
+name = "vox_engine"
 version = "0.3.0"
 edition = "2024"
 
@@ -26,3 +26,4 @@ dear-imgui-reflect = { path = "vendor/dear-imgui-reflect"}
 
 [profile.release]
 debug = true
+codegen-units = 1
