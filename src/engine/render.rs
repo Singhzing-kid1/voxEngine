@@ -1,15 +1,15 @@
+use super::{Engine, Frame};
+
 use vulkano::{
     command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage},
-    swapchain::{self, SwapchainPresentInfo},
-    sync::GpuFuture,
+    swapchain::{SwapchainPresentInfo, acquire_next_image},
+    sync::{GpuFuture, now},
 };
-
-use super::{Engine, Frame};
 
 impl Engine {
     pub fn start_frame(&mut self) -> Frame {
         let (image_index, _, acquire_future) =
-            swapchain::acquire_next_image(self.swapchain.clone(), None).unwrap();
+            acquire_next_image(self.swapchain.clone(), None).unwrap();
 
         self.current_image_index = image_index;
         let swapchain_image = self.images[image_index as usize].clone();
@@ -21,11 +21,7 @@ impl Engine {
         )
         .unwrap();
 
-        Frame {
-            builder,
-            swapchain_image,
-            acquire_future,
-        }
+        Frame::new(builder, swapchain_image, acquire_future)
     }
 
     pub fn finish_frame(&mut self, frame: Frame) {
@@ -34,7 +30,7 @@ impl Engine {
         let previous_future = self
             .previous_future
             .take()
-            .unwrap_or_else(|| Box::new(vulkano::sync::now(self.device.clone())));
+            .unwrap_or_else(|| Box::new(now(self.device.clone())));
 
         let future = previous_future
             .join(frame.acquire_future)
@@ -43,6 +39,7 @@ impl Engine {
             .boxed_send_sync();
 
         self.previous_future = Some(Box::new(future));
+
         if let Some(f) = &mut self.previous_future {
             f.flush().unwrap();
         }

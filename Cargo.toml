@@ -1,10 +1,9 @@
 [package]
 name = "voxEngine"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2024"
 
 [dependencies]
-glam = "0.34.1"
 sdl3 = { version = "0.20.0", features = ["ash"] }
 vulkano = "0.35.2"
 vulkano-shaders = "0.35.0"
@@ -21,6 +20,9 @@ png = "0.18.1"
 rapier3d = "0.36.1"
 rayon = "1.12.0"
 
+# this is a temp fix(will be reverted once glamx rexports glam@0.34), it does NOT effect any actual game mechanics ONLY debug windows.
+[patch.crates-io]
+dear-imgui-reflect = { path = "vendor/dear-imgui-reflect"}
+
 [profile.release]
 debug = true
-

@@ -1,11 +1,6 @@
-use std::time::{self, Duration};
-
-use sdl3::{
-    event::Event,
-    keyboard::Keycode::{self},
-};
-
-use super::{Engine, RENDERMODE};
+use super::Engine;
+use sdl3::{event::Event, keyboard::Keycode};
+use std::time::{Duration, Instant};
 
 impl Engine {
     pub fn event_handling(&mut self) {
@@ -20,46 +15,28 @@ impl Engine {
         for event in &self.collected_events {
             match event {
                 Event::Quit { .. } => {
-                    self.flags.set_quit_state(true);
+                    self.flags.set_quit(true);
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::G),
                     ..
                 } => {
-                    self.flags.set_gravity_state(true);
+                    self.flags.set_gravity(true);
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::M),
                     ..
                 } => {
                     self.flags
-                        .set_capture_mouse_state(!self.flags.get_capture_mouse_state());
-                    self.sdl_context.mouse().set_relative_mouse_mode(
-                        &self.window,
-                        self.flags.get_capture_mouse_state(),
-                    );
-                }
-                Event::KeyDown {
-                    keycode: Some(Keycode::R),
-                    ..
-                } => {
-                    let render_mode = self.current_render_mode as u32;
-                    let new_render_mode = (render_mode + 1) % 7;
-                    self.current_render_mode = match new_render_mode {
-                        0 => RENDERMODE::DEFAULT,
-                        1 => RENDERMODE::COORD,
-                        2 => RENDERMODE::STEPS,
-                        3 => RENDERMODE::NORMAL,
-                        4 => RENDERMODE::UV,
-                        5 => RENDERMODE::DEPTH,
-                        6 => RENDERMODE::LOD_BIAS,
-                        _ => RENDERMODE::DEFAULT,
-                    }
+                        .set_capture_mouse(!self.flags.get_capture_mouse());
+                    self.context
+                        .mouse()
+                        .set_relative_mouse_mode(&self.window, self.flags.get_capture_mouse());
                 }
                 Event::MouseMotion {
                     xrel, yrel, x, y, ..
                 } => {
-                    if self.flags.get_capture_mouse_state() {
+                    if self.flags.get_capture_mouse() {
                         self.accum_x -= xrel;
                         self.accum_y += yrel;
 
@@ -74,7 +51,7 @@ impl Engine {
                             || new_mouse_y < self.height as f32 / 2.0
                             || new_mouse_y > self.height as f32 / 2.0
                         {
-                            self.sdl_context.mouse().warp_mouse_in_window(
+                            self.context.mouse().warp_mouse_in_window(
                                 &self.window,
                                 self.width as f32 / 2.0,
                                 self.height as f32 / 2.0,
@@ -88,8 +65,8 @@ impl Engine {
     }
 
     pub fn frame_start(&mut self) {
-        let current_frame = time::Instant::now();
-        self.delta_time = (current_frame - self.last_frame).as_millis();
+        let current_frame = Instant::now();
+        self.delta_time = (current_frame - self.last_frame).as_secs_f64() * 1000f64;
         self.last_frame = current_frame;
     }
 
@@ -106,8 +83,24 @@ impl Engine {
     }
 
     pub fn toggle_mouse(&self, toggle: bool) {
-        self.sdl_context
+        self.context
             .mouse()
             .set_relative_mouse_mode(&self.window, toggle);
+    }
+
+    pub fn start_text_input(&self) {
+        self.context
+            .video()
+            .unwrap()
+            .text_input()
+            .start(&self.window);
+    }
+
+    pub fn stop_text_input(&self) {
+        self.context
+            .video()
+            .unwrap()
+            .text_input()
+            .stop(&self.window);
     }
 }

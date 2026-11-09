@@ -26,9 +26,12 @@ use vulkano::{
 
 use std::ops::Add;
 
-use crate::{common::Builder, engine::Engine};
+use crate::{
+    common::Builder,
+    engine::{Engine, helpers},
+};
 
-use super::{Atlas, Texture};
+use super::{Atlas, texture::Texture};
 
 #[derive(Default)]
 pub struct AtlasBuilder {
@@ -110,7 +113,7 @@ impl Builder for AtlasBuilder {
             textures.len()
         );
 
-        let (atlas_image, atlas) = Engine::create_image_array_with_mipmap(
+        let (atlas_image, atlas) = helpers::create_image_array_with_mipmap(
             ImageType::Dim2d,
             [
                 self.atlas_extent.unwrap()[0],
