@@ -13,7 +13,7 @@ mod render;
 pub use camera::Camera;
 pub use debug::Debug;
 pub use engine::Engine;
-pub(crate) use flags::Flags;
+pub use flags::Flags;
 pub use frame::Frame;
 
 use crate::common::LocalLight;
