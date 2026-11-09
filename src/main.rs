@@ -1,29 +1,21 @@
-pub mod camera;
 pub mod common;
-pub mod debug;
 pub mod engine;
-pub mod entity;
 pub mod lights;
-pub mod perlin;
 pub mod physics;
 pub mod player;
-pub mod scene;
 pub mod scenes;
 pub mod shader;
 pub mod texture;
 pub mod world;
 
-use debug::Debug;
-use engine::Engine;
-use engine::Flags;
-use scene::SceneManager;
+use engine::{Debug, Engine, Flags, scene::SceneManager};
 use scenes::MainMenuScene;
 use std::time;
 
 fn main() {
-    let mut flags = Flags::new();
+    let mut flags = Flags::default();
 
-    flags.set_capture_mouse_state(false);
+    flags.set_capture_mouse(false);
 
     let mut engine = Engine::new("vox engine using rust", time::Instant::now(), 3, flags);
 
@@ -31,7 +23,7 @@ fn main() {
 
     let mut manager = SceneManager::new(Box::new(MainMenuScene::new()), &mut engine);
 
-    while !engine.get_flags().get_quit_state() {
+    while !engine.get_flags().get_quit() {
         engine.frame_start();
         engine.event_handling();
 
@@ -45,7 +37,7 @@ fn main() {
         manager.handle_input(&mut engine);
 
         if !manager.update(frame_time, &mut engine) {
-            engine.get_flags_mut().set_quit_state(true);
+            engine.get_flags_mut().set_quit(true);
         }
 
         manager.render(&mut engine);

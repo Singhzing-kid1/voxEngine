@@ -26,8 +26,7 @@ use vulkano::{
 
 use dear_imgui_reflect::{ImGuiReflectExt, ReflectSession};
 
-use crate::engine::Engine;
-use crate::scene::Scene;
+use super::{Engine, scene::Scene};
 
 #[allow(unused)]
 pub struct Debug {
@@ -270,7 +269,6 @@ impl Debug {
 
                     let mut inspector = ui.inspector(reflect);
                     inspector.input("Flags", engine.get_flags_mut());
-                    inspector.input("Render Mode", engine.get_current_render_mode_mut());
 
                     scene.imgui_reflect_dyn(&mut inspector);
                 });

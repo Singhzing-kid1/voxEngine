@@ -1,43 +1,10 @@
-use crate::{
-    debug::Debug,
-    engine::{Engine, Frame},
-};
-
-pub enum Transition {
-    None,
-    Switch(Box<dyn Scene>),
-    Pause(Box<dyn Scene>),
-    Unpause,
-    Quit,
-}
-
-pub trait Scene {
-    fn on_enter(&mut self, _engine: &mut Engine) {}
-
-    fn on_exit(&mut self, _engine: &mut Engine) {}
-
-    fn on_unpause(&mut self, _engine: &mut Engine) {}
-
-    fn handle_input(&mut self, engine: &mut Engine);
-
-    fn update(&mut self, dt: f32, engine: &mut Engine) -> Transition;
-
-    fn render(&mut self, engine: &mut Engine, frame: &mut Frame);
-
-    fn render_as_overlay(&mut self, _engine: &mut Engine, _frame: &mut Frame) {}
-
-    fn render_debug(&mut self, _engine: &mut Engine, _debug: &mut Debug) {}
-
-    fn imgui_reflect_dyn(&mut self, _ui: &mut dear_imgui_reflect::Inspector<'_, '_>) -> bool {
-        false
-    }
-}
+use super::{Scene, Transition};
+use crate::engine::{Debug, Engine};
 
 pub struct SceneManager {
     current: Box<dyn Scene>,
     overlay: Option<Box<dyn Scene>>,
 }
-
 impl SceneManager {
     pub fn new(mut initial: Box<dyn Scene>, engine: &mut Engine) -> Self {
         initial.on_enter(engine);

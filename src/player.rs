@@ -3,17 +3,17 @@ use sdl3::{EventPump, keyboard::Scancode};
 use dear_imgui_reflect::ImGuiReflect;
 
 use crate::{
-    camera::Camera,
     common::{HasEntity, Updateable},
-    entity::Entity,
-    physics::Physics,
+    engine::Camera,
+    physics::{Physics, entity::Entity},
 };
+
+use rapier3d::glamx::{Vec3, vec3};
 
 use getset::Getters;
 
 #[allow(unused)]
-#[derive(Clone)]
-#[derive(ImGuiReflect, Getters, Debug)]
+#[derive(Clone, ImGuiReflect, Getters, Debug)]
 pub struct Player {
     movement_force: f32,
     reach: i32,
@@ -37,8 +37,8 @@ impl Player {
         reach: i32,
         w: u16,
         h: u16,
-        position: glam::Vec3,
-        size: glam::Vec3,
+        position: Vec3,
+        size: Vec3,
         mouse_sensitivity: f32,
         physics: &mut Physics,
     ) -> Self {
@@ -63,13 +63,11 @@ impl Player {
             .set_r_pitch(self.camera.get_pitch().to_radians());
 
         let front_horizontal =
-            glam::vec3(self.camera.get_front().x, 0.0, self.camera.get_front().z)
-                .normalize_or_zero();
+            vec3(self.camera.get_front().x, 0.0, self.camera.get_front().z).normalize_or_zero();
         let right_horizontal =
-            glam::vec3(self.camera.get_right().x, 0.0, self.camera.get_right().z)
-                .normalize_or_zero();
+            vec3(self.camera.get_right().x, 0.0, self.camera.get_right().z).normalize_or_zero();
 
-        let mut wish_dir = glam::Vec3::ZERO;
+        let mut wish_dir = Vec3::ZERO;
 
         if event_pump.keyboard_state().is_scancode_pressed(Scancode::W) {
             wish_dir += front_horizontal;
@@ -122,5 +120,4 @@ impl HasEntity for Player {
     fn entity_mut(&mut self) -> &mut Entity {
         &mut self.entity
     }
-
 }

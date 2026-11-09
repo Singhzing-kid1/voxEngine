@@ -1,14 +1,6 @@
-use ::std::array;
+use super::helpers;
+use std::array;
 
-fn splitmix64(state: &mut u64) -> u64 {
-    *state = state.wrapping_add(0x9E3779B97F4A7C15);
-    let mut z = *state;
-    z = (z ^ (z >> 30)).wrapping_mul(0xBF58476D1CE4E5B9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94D049BB133111EB);
-    z ^ (z >> 31)
-}
-
-#[allow(unused)]
 pub struct Perlin {
     perm: [u8; 512],
     seed: u64,
@@ -20,7 +12,7 @@ impl Perlin {
         let mut state = seed;
 
         for i in (0..=255).rev() {
-            state = splitmix64(&mut state);
+            state = helpers::splitmix64(&mut state);
             let j = (state % (i + 1) as u64) as usize;
             perm_init.swap(i, j);
         }
@@ -58,9 +50,7 @@ impl Perlin {
 
         Self::lerp(x1, x2, v)
     }
-}
 
-impl Perlin {
     fn fade(t: f64) -> f64 {
         t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
     }
@@ -77,43 +67,5 @@ impl Perlin {
             3 => -x - y,
             _ => unreachable!(),
         }
-    }
-}
-
-pub struct FractalNoise {
-    perlin: Perlin,
-
-    octaves: u32,
-    lacunarity: f64,
-    persistance: f64,
-}
-
-impl FractalNoise {
-    pub fn new(seed: u64, octaves: u32, lacunarity: f64, persistance: f64) -> Self {
-        let perlin = Perlin::new(seed);
-
-        FractalNoise {
-            perlin,
-
-            octaves,
-            lacunarity,
-            persistance,
-        }
-    }
-
-    pub fn sample(&self, x: f64, y: f64) -> f64 {
-        let mut total = 0.0;
-        let mut amplitude = 1.0;
-        let mut frequency = 1.0;
-        let mut max_val = 0.0;
-
-        for _ in 0..self.octaves {
-            total += self.perlin.sample(x * frequency, y * frequency) * amplitude;
-            max_val += amplitude;
-            amplitude *= self.persistance;
-            frequency *= self.lacunarity;
-        }
-
-        total / max_val
     }
 }

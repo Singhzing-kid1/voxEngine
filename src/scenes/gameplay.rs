@@ -1,11 +1,12 @@
 use crate::{
     common::{self, Buildable, Builder, GlobalLight, HasEntity, LocalLight, Updateable},
-    debug::Debug,
-    engine::{DescriptorResource, Engine, Frame, Record},
-    lights::{light::AnimationType, light_manager::LightManager},
+    engine::{
+        Debug, DescriptorResource, Engine, Frame, Record, helpers,
+        scene::{Scene, Transition},
+    },
+    lights::{AnimationType, LightManager},
     physics::Physics,
     player::Player,
-    scene::{Scene, Transition},
     scenes::MainMenuScene,
     shader::{
         apply_light_shader::{self, Parameters},
@@ -16,7 +17,7 @@ use crate::{
     world::World,
 };
 
-use glam::{Vec4Swizzles, vec3, vec4};
+use rapier3d::glamx::{Vec4Swizzles, vec3, vec4};
 
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
@@ -123,16 +124,16 @@ impl GameplayScene {
         let apply_light_shader =
             apply_light_shader::load(engine.get_device()).expect("cannot load shader");
 
-        let render_pipeline = Engine::create_pipeline(render_shader, "main", engine.get_device());
+        let render_pipeline = helpers::create_pipeline(render_shader, "main", engine.get_device());
         let resample_pipeline =
-            Engine::create_pipeline(resample_shader, "main", engine.get_device());
+            helpers::create_pipeline(resample_shader, "main", engine.get_device());
         let light_flood_pipeline =
-            Engine::create_pipeline(light_flood_shader, "main", engine.get_device());
+            helpers::create_pipeline(light_flood_shader, "main", engine.get_device());
 
         let apply_light_pipeline =
-            Engine::create_pipeline(apply_light_shader.clone(), "main", engine.get_device());
+            helpers::create_pipeline(apply_light_shader.clone(), "main", engine.get_device());
 
-        let (albedo, albedo_view) = Engine::create_image(
+        let (albedo, albedo_view) = helpers::create_image(
             ImageType::Dim2d,
             [
                 (*engine.get_width() / *engine.get_render_scale()) as u32,
@@ -145,7 +146,7 @@ impl GameplayScene {
             engine.get_memory_allocator(),
         );
 
-        let (normals, normals_view) = Engine::create_image(
+        let (normals, normals_view) = helpers::create_image(
             ImageType::Dim2d,
             [
                 (*engine.get_width() / *engine.get_render_scale()) as u32,
@@ -158,7 +159,7 @@ impl GameplayScene {
             engine.get_memory_allocator(),
         );
 
-        let (shadows, shadows_view) = Engine::create_image(
+        let (shadows, shadows_view) = helpers::create_image(
             ImageType::Dim2d,
             [
                 (*engine.get_width() / *engine.get_render_scale()) as u32,
@@ -171,7 +172,7 @@ impl GameplayScene {
             engine.get_memory_allocator(),
         );
 
-        let (hit_pos, hit_pos_view) = Engine::create_image(
+        let (hit_pos, hit_pos_view) = helpers::create_image(
             ImageType::Dim2d,
             [
                 (*engine.get_width() / *engine.get_render_scale()) as u32,
@@ -191,13 +192,13 @@ impl GameplayScene {
             (3, DescriptorResource::ImageView(hit_pos_view.clone())),
         ];
 
-        let render_set = Engine::create_descriptor_set(
+        let render_set = helpers::create_descriptor_set(
             engine.get_descriptor_set_allocator(),
-            Engine::get_layout(render_pipeline.clone(), 0),
+            helpers::get_layout(render_pipeline.clone(), 0),
             &set_entries,
         );
 
-        let (post_lighting, post_lighting_view) = Engine::create_image(
+        let (post_lighting, post_lighting_view) = helpers::create_image(
             ImageType::Dim2d,
             [
                 (*engine.get_width() / *engine.get_render_scale()) as u32,
@@ -210,7 +211,7 @@ impl GameplayScene {
             engine.get_memory_allocator(),
         );
 
-        let (resample_image, resample_view) = Engine::create_image(
+        let (resample_image, resample_view) = helpers::create_image(
             ImageType::Dim2d,
             [*engine.get_width() as u32, *engine.get_height() as u32, 1],
             *engine.get_image_format(),
@@ -224,18 +225,18 @@ impl GameplayScene {
             (1, DescriptorResource::ImageView(resample_view)),
         ];
 
-        let resample_set = Engine::create_descriptor_set(
+        let resample_set = helpers::create_descriptor_set(
             engine.get_descriptor_set_allocator(),
-            Engine::get_layout(resample_pipeline.clone(), 0),
+            helpers::get_layout(resample_pipeline.clone(), 0),
             &resample_set_entries,
         );
 
         let apply_light_output_set_entries =
             vec![(0, DescriptorResource::ImageView(post_lighting_view.clone()))];
 
-        let apply_light_descriptor_set = Engine::create_descriptor_set(
+        let apply_light_descriptor_set = helpers::create_descriptor_set(
             engine.get_descriptor_set_allocator(),
-            Engine::get_layout(apply_light_pipeline.clone(), 3),
+            helpers::get_layout(apply_light_pipeline.clone(), 3),
             &apply_light_output_set_entries,
         );
 
@@ -268,7 +269,7 @@ impl GameplayScene {
             .build(engine)
             .unwrap();
 
-        let (lightmap_1, lightmap_1_view) = Engine::create_image(
+        let (lightmap_1, lightmap_1_view) = helpers::create_image(
             ImageType::Dim3d,
             [128; 3],
             Format::R16G16B16A16_SFLOAT,
@@ -277,7 +278,7 @@ impl GameplayScene {
             engine.get_memory_allocator(),
         );
 
-        let (_lightmap_2, lightmap_2_view) = Engine::create_image(
+        let (_lightmap_2, lightmap_2_view) = helpers::create_image(
             ImageType::Dim3d,
             [128; 3],
             Format::R16G16B16A16_SFLOAT,
@@ -301,20 +302,20 @@ impl GameplayScene {
             DescriptorResource::SampleTex(lightmap_2_view.clone(), light_map_sampler.clone()),
         )];
 
-        let even_lighting_set = Engine::create_descriptor_set(
+        let even_lighting_set = helpers::create_descriptor_set(
             engine.get_descriptor_set_allocator(),
-            Engine::get_layout(light_flood_pipeline.clone(), 1),
+            helpers::get_layout(light_flood_pipeline.clone(), 1),
             &even_lighting_set_entries,
         );
-        let odd_lighting_set = Engine::create_descriptor_set(
+        let odd_lighting_set = helpers::create_descriptor_set(
             engine.get_descriptor_set_allocator(),
-            Engine::get_layout(light_flood_pipeline.clone(), 1),
+            helpers::get_layout(light_flood_pipeline.clone(), 1),
             &odd_lighting_set_entries,
         );
 
-        let light_map_sampler_set = Engine::create_descriptor_set(
+        let light_map_sampler_set = helpers::create_descriptor_set(
             engine.get_descriptor_set_allocator(),
-            Engine::get_layout(apply_light_pipeline.clone(), 1),
+            helpers::get_layout(apply_light_pipeline.clone(), 1),
             &light_map_sampler_set_entries,
         );
 
@@ -337,14 +338,14 @@ impl GameplayScene {
 
         let lights_set_entries = vec![(0, DescriptorResource::LightBuffer(lights_buffer.clone()))];
 
-        let lights_set = Engine::create_descriptor_set(
+        let lights_set = helpers::create_descriptor_set(
             engine.get_descriptor_set_allocator(),
-            Engine::get_layout(light_flood_pipeline.clone(), 2),
+            helpers::get_layout(light_flood_pipeline.clone(), 2),
             &lights_set_entries,
         );
 
-        let world = World::new(12999003378434, vec3(2000.0, 1000.0, 2000.0), 32);
-        let mut physics = Physics::new(&world, vec3(0.0, -9.81, 0.0), 32);
+        let world = World::new(12999003378434, vec3(2000.0, 1000.0, 2000.0), 32, None);
+        let mut physics = Physics::new(vec3(0.0, -9.81, 0.0), 32);
 
         let (w, h) = engine.get_dimensions();
 
@@ -357,7 +358,7 @@ impl GameplayScene {
             10,
             w,
             h,
-            glam::vec3(100.0, 550.0, 100.0),
+            vec3(100.0, 550.0, 100.0),
             vec3(1.0, 2.0, 1.0),
             0.2,
             &mut physics,
@@ -603,17 +604,17 @@ impl Scene for GameplayScene {
     fn on_enter(&mut self, engine: &mut Engine) {
         self.init(engine);
         engine.toggle_mouse(true);
-        engine.get_flags_mut().set_capture_mouse_state(true);
+        engine.get_flags_mut().set_capture_mouse(true);
     }
 
     fn on_exit(&mut self, engine: &mut Engine) {
         engine.toggle_mouse(false);
-        engine.get_flags_mut().set_capture_mouse_state(false);
+        engine.get_flags_mut().set_capture_mouse(false);
     }
 
     fn on_unpause(&mut self, engine: &mut Engine) {
         engine.toggle_mouse(true);
-        engine.get_flags_mut().set_capture_mouse_state(true);
+        engine.get_flags_mut().set_capture_mouse(true);
     }
 
     fn handle_input(&mut self, engine: &mut Engine) {
@@ -637,10 +638,10 @@ impl Scene for GameplayScene {
             ) {
                 if self.paused {
                     self.paused = !self.paused;
-                    return Transition::Unpause;
+                    return Transition::None;
                 } else {
                     self.paused = !self.paused;
-                    return Transition::Pause(Box::new(MainMenuScene::new()));
+                    return Transition::None;
                 }
             }
 
@@ -733,7 +734,7 @@ impl Record for GameplayScene {
                 .get_pixel_to_ray_matrix(*engine.get_render_scale())
                 .to_cols_array_2d(),
             voxel_resolution: self.world.get_dimensions_as_arr(),
-            render_mode: *engine.get_current_render_mode_mut() as u32,
+            render_mode: 0u32,
             max_ray_length: self.ray_length,
             max_height: self.max_fog_height,
             lod_bias: Padded(self.albedo_atlas.get_atlas_lod_bias()),
@@ -793,7 +794,7 @@ impl Record for GameplayScene {
         let resolution = self.world.get_dimensions_as_arr();
         let max_height = self.world.get_dimensions().y;
 
-        let (voxels, voxels_view) = Engine::create_image(
+        let (voxels, voxels_view) = helpers::create_image(
             ImageType::Dim3d,
             [resolution[0] / 4, resolution[1] / 4, resolution[2] / 8],
             Format::R32G32B32A32_UINT,
@@ -802,7 +803,7 @@ impl Record for GameplayScene {
             engine.get_memory_allocator(),
         );
 
-        let (biomes, biomes_view) = Engine::create_image(
+        let (biomes, biomes_view) = helpers::create_image(
             ImageType::Dim2d,
             [resolution[0], resolution[2], 1],
             Format::R8G8B8A8_UNORM,
@@ -875,9 +876,9 @@ impl Record for GameplayScene {
             (1, DescriptorResource::ImageView(biomes_view)),
         ];
 
-        let render_voxel_set = Engine::create_descriptor_set(
+        let render_voxel_set = helpers::create_descriptor_set(
             engine.get_descriptor_set_allocator(),
-            Engine::get_layout(self.render_pipeline.clone(), 1),
+            helpers::get_layout(self.render_pipeline.clone(), 1),
             &voxel_set_entries,
         );
 
@@ -900,18 +901,18 @@ impl Record for GameplayScene {
             ),
         ];
 
-        let texture_set = Engine::create_descriptor_set(
+        let texture_set = helpers::create_descriptor_set(
             engine.get_descriptor_set_allocator(),
-            Engine::get_layout(self.render_pipeline.clone(), 2),
+            helpers::get_layout(self.render_pipeline.clone(), 2),
             &texture_set_entries,
         );
 
         let lighting_voxel_set_entries =
             vec![(0, DescriptorResource::ImageView(voxels_view.clone()))];
 
-        let lighting_voxel_set = Engine::create_descriptor_set(
+        let lighting_voxel_set = helpers::create_descriptor_set(
             engine.get_descriptor_set_allocator(),
-            Engine::get_layout(self.light_flood_pipeline.clone(), 0),
+            helpers::get_layout(self.light_flood_pipeline.clone(), 0),
             &lighting_voxel_set_entries,
         );
 

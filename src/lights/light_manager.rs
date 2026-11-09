@@ -2,12 +2,11 @@ use dear_imgui_reflect::ImGuiReflect;
 use getset::Getters;
 use std::collections::HashMap;
 
-use glam::{Vec3, Vec4};
+use rapier3d::glamx::{Vec3, Vec4};
 
-use crate::{
-    common::LocalLight,
-    lights::light::{AnimationType, Light},
-};
+use crate::common::LocalLight;
+
+use super::{AnimationType, light::Light};
 
 #[derive(ImGuiReflect, Getters)]
 pub struct LightManager {

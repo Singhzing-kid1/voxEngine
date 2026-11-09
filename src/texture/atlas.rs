@@ -7,8 +7,7 @@ use vulkano::{
 
 use dear_imgui_reflect::ImGuiReflect;
 
-use super::AtlasBuilder;
-use super::Texture;
+use super::{builder::AtlasBuilder, texture::Texture};
 use crate::common::Buildable;
 
 #[allow(unused)]

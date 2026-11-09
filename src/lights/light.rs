@@ -1,17 +1,9 @@
-use std::{cell::RefCell, rc::Rc};
-
 use getset::{CopyGetters, Getters, Setters};
-use glam::{Vec3, Vec4, vec4};
+use rapier3d::glamx::{Vec3, Vec4, vec4};
 
-use crate::common::HasEntity;
+use super::AnimationType;
 
 use dear_imgui_reflect::ImGuiReflect;
-
-#[derive(Clone)]
-pub enum AnimationType {
-    Follow(Rc<RefCell<dyn HasEntity>>),
-    Flicker,
-}
 
 impl ImGuiReflect for AnimationType {
     fn imgui_reflect(

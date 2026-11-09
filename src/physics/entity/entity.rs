@@ -1,66 +1,63 @@
 use dear_imgui_reflect::ImGuiReflect;
 use getset::{CopyGetters, Setters};
-use glam::Vec3;
 use rapier3d::{
     control::{CharacterAutostep, CharacterLength, KinematicCharacterController},
+    glamx::Vec3,
     prelude::ColliderHandle,
 };
 
 use crate::{common::Updateable, physics::Physics};
 
-#[derive(Copy, Clone)]
-#[derive(ImGuiReflect, CopyGetters, Setters, Debug)]
+#[derive(Copy, Clone, ImGuiReflect, CopyGetters, Setters, Debug)]
 pub struct Entity {
     #[imgui(input)]
     #[getset(get_copy = "pub with_prefix")]
-    mass: f32,
+    pub(super) mass: f32,
 
     #[getset(get_copy = "pub with_prefix")]
-    size: glam::Vec3,
+    pub(super) size: Vec3,
 
     #[getset(get_copy = "pub with_prefix")]
-    position: glam::Vec3,
+    pub(super) position: Vec3,
     #[getset(get_copy = "pub with_prefix")]
-    prev_position: glam::Vec3,
-
-    #[getset(get_copy = "pub with_prefix", set = "pub")]
-    velocity: glam::Vec3,
-    #[getset(get_copy = "pub with_prefix")]
-    acceleration: glam::Vec3,
-
-    #[getset(get_copy = "pub with_prefix")]
-    net_force: glam::Vec3,
-    normal_force: glam::Vec3,
-    #[getset(get_copy = "pub with_prefix")]
-    applied_force: glam::Vec3,
+    pub(super) prev_position: Vec3,
 
     #[getset(get_copy = "pub with_prefix", set = "pub")]
-    grounded: bool,
+    pub(super) velocity: Vec3,
+    #[getset(get_copy = "pub with_prefix")]
+    pub(super) acceleration: Vec3,
+
+    #[getset(get_copy = "pub with_prefix")]
+    pub(super) net_force: Vec3,
+    pub(super) normal_force: Vec3,
+    #[getset(get_copy = "pub with_prefix")]
+    pub(super) applied_force: Vec3,
 
     #[getset(get_copy = "pub with_prefix", set = "pub")]
-    r_yaw: f32,
+    pub(super) grounded: bool,
+
     #[getset(get_copy = "pub with_prefix", set = "pub")]
-    r_pitch: f32,
+    pub(super) r_yaw: f32,
+    #[getset(get_copy = "pub with_prefix", set = "pub")]
+    pub(super) r_pitch: f32,
 
     #[imgui(skip)]
-    collider_handle: ColliderHandle,
+    pub(super) collider_handle: ColliderHandle,
     #[imgui(skip)]
-    controller: KinematicCharacterController,
+    pub(super) controller: KinematicCharacterController,
 
-    wish_dir: glam::Vec3,
-    wish_speed: f32,
-    jump_requested: bool,
+    pub(super) wish_dir: Vec3,
+    pub(super) wish_speed: f32,
+    pub(super) jump_requested: bool,
 
-    ground_accel: f32,
-    air_accel: f32,
-    ground_friction: f32,
-    stop_speed: f32,
+    pub(super) ground_accel: f32,
+    pub(super) air_accel: f32,
+    pub(super) ground_friction: f32,
+    pub(super) stop_speed: f32,
 }
 
-// constructor
-
 impl Entity {
-    pub fn new(mass: f32, size: glam::Vec3, position: glam::Vec3, physics: &mut Physics) -> Self {
+    pub fn new(mass: f32, size: Vec3, position: Vec3, physics: &mut Physics) -> Self {
         let collider_handle = physics.create_capsule_collider(size.y * 0.5, size.x * 0.5, position);
 
         let mut controller = KinematicCharacterController::default();
@@ -77,17 +74,17 @@ impl Entity {
             size,
             position,
             prev_position: position,
-            velocity: glam::Vec3::ZERO,
-            acceleration: glam::Vec3::ZERO,
-            net_force: glam::Vec3::ZERO,
-            normal_force: glam::Vec3::ZERO,
-            applied_force: glam::Vec3::ZERO,
+            velocity: Vec3::ZERO,
+            acceleration: Vec3::ZERO,
+            net_force: Vec3::ZERO,
+            normal_force: Vec3::ZERO,
+            applied_force: Vec3::ZERO,
             grounded: false,
             r_yaw: 0.0,
             r_pitch: 0.0,
             collider_handle,
             controller,
-            wish_dir: glam::Vec3::ZERO,
+            wish_dir: Vec3::ZERO,
             wish_speed: 0.0,
             jump_requested: false,
             ground_accel: 10.0,
@@ -97,88 +94,6 @@ impl Entity {
         }
     }
 }
-
-// public
-
-impl Entity {
-    pub fn add_applied_force(&mut self, force: glam::Vec3) {
-        self.applied_force += force;
-    }
-
-    pub fn add_normal_force(&mut self, force: glam::Vec3) {
-        self.normal_force += force;
-    }
-
-    pub fn reset_normal_force(&mut self) {
-        self.normal_force = Vec3::ZERO;
-    }
-
-    pub fn reset_applied_force(&mut self) {
-        self.applied_force = Vec3::ZERO;
-    }
-
-    pub fn reset_net_force(&mut self) {
-        self.net_force = Vec3::ZERO;
-    }
-
-    pub fn set_wish_move(&mut self, wish_dir: Vec3, wish_speed: f32) {
-        self.wish_dir = wish_dir;
-        self.wish_speed = wish_speed;
-    }
-
-    pub fn request_jump(&mut self) {
-        self.jump_requested = true;
-    }
-
-    pub fn interpolated_position(&self, alpha: f32) -> Vec3 {
-        self.prev_position.lerp(self.position, alpha)
-    }
-}
-
-// private
-
-impl Entity {
-    fn calculate_acceleration(&mut self) {
-        self.net_force += self.applied_force + self.normal_force;
-        self.acceleration = self.net_force / self.mass;
-    }
-
-    fn calculate_velocity(&mut self, delta_time: f32) {
-        self.velocity += self.acceleration * delta_time;
-    }
-
-    fn apply_ground_friction(&mut self, stop_speed: f32, ground_friction: f32, dt: f32) {
-        if !self.grounded {
-            return;
-        }
-        let speed = Vec3::new(self.velocity.x, 0.0, self.velocity.z).length();
-        if speed < 1e-4 {
-            return;
-        }
-        let control = speed.max(stop_speed);
-        let drop = control * ground_friction * dt;
-        let new_speed = (speed - drop).max(0.0);
-        let scale = new_speed / speed;
-        self.velocity.x *= scale;
-        self.velocity.z *= scale;
-    }
-
-    fn accelerate(&mut self, wish_dir: Vec3, wish_speed: f32, accel: f32, dt: f32) {
-        if wish_dir == Vec3::ZERO || wish_speed <= 0.0 {
-            return;
-        }
-        let current_speed = Vec3::new(self.velocity.x, 0.0, self.velocity.z).dot(wish_dir);
-        let add_speed = wish_speed - current_speed;
-        if add_speed <= 0.0 {
-            return;
-        }
-        let accel_speed = (accel * wish_speed * dt).min(add_speed);
-        self.velocity.x += wish_dir.x * accel_speed;
-        self.velocity.z += wish_dir.z * accel_speed;
-    }
-}
-
-// traits
 
 impl Updateable for Entity {
     fn fixed_update(&mut self, physics: &mut Physics) {

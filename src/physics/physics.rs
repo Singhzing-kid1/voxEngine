@@ -1,14 +1,15 @@
-use crate::{
-    common::conversions::{FromRapier, ToRapier},
-    world::World,
-};
+use crate::world::World;
+
+use super::helpers;
+use dear_imgui_reflect::ImGuiReflect;
 use getset::{CopyGetters, Setters};
 use rapier3d::{
-    control::KinematicCharacterController, parry::query::DefaultQueryDispatcher, prelude::*,
+    control::KinematicCharacterController,
+    glamx::{IVec3, Vec3, ivec3},
+    parry::query::DefaultQueryDispatcher,
+    prelude::*,
 };
 use std::collections::HashMap;
-
-use dear_imgui_reflect::ImGuiReflect;
 
 const CHUNK_LOAD_RADIUS: i32 = 4;
 
@@ -38,15 +39,15 @@ pub struct Physics {
     integration_parameters: IntegrationParameters,
 
     #[getset(get_copy = "pub with_prefix")]
-    gravity: glam::Vec3,
+    gravity: Vec3,
 
     #[imgui(skip)]
-    loaded_chunks: HashMap<glam::IVec3, ColliderHandle>,
+    loaded_chunks: HashMap<IVec3, ColliderHandle>,
     chunk_size: i32,
 }
 
 impl Physics {
-    pub fn new(_world: &World, gravity: glam::Vec3, chunk_size: i32) -> Self {
+    pub fn new(gravity: Vec3, chunk_size: i32) -> Self {
         let physics = Physics {
             rigid_body_set: RigidBodySet::new(),
             soft_body_set: SoftBodySet::new(),
@@ -66,8 +67,8 @@ impl Physics {
         physics
     }
 
-    pub fn update_loaded_chunks(&mut self, world: &World, player_position: glam::Vec3) {
-        let player_chunk = glam::ivec3(
+    pub fn update_loaded_chunks(&mut self, world: &World, player_position: Vec3) {
+        let player_chunk = ivec3(
             (player_position.x as i32).div_euclid(self.chunk_size),
             (player_position.y as i32).div_euclid(self.chunk_size),
             (player_position.z as i32).div_euclid(self.chunk_size),
@@ -79,7 +80,8 @@ impl Physics {
         let soft_body_set = &mut self.soft_body_set;
 
         self.loaded_chunks.retain(|&chunk_key, &mut handle| {
-            let in_range = chebyshev_distance(chunk_key, player_chunk) <= CHUNK_LOAD_RADIUS;
+            let in_range =
+                helpers::chebyshev_distance(chunk_key, player_chunk) <= CHUNK_LOAD_RADIUS;
             if !in_range {
                 collider_set.remove(handle, island_manager, rigid_body_set, soft_body_set, false);
             }
@@ -87,7 +89,7 @@ impl Physics {
         });
 
         for &chunk_key in world.chunk_keys() {
-            if chebyshev_distance(chunk_key, player_chunk) <= CHUNK_LOAD_RADIUS
+            if helpers::chebyshev_distance(chunk_key, player_chunk) <= CHUNK_LOAD_RADIUS
                 && !self.loaded_chunks.contains_key(&chunk_key)
             {
                 if let Some(collider) = world.build_chunk_collider(chunk_key) {
@@ -100,7 +102,7 @@ impl Physics {
 
     pub fn step(&mut self) {
         self.physics_pipeline.step(
-            self.gravity.to_rapier(),
+            self.gravity,
             &self.integration_parameters,
             &mut self.island_manager,
             &mut self.broad_phase,
@@ -120,21 +122,21 @@ impl Physics {
         &mut self,
         half_height: f32,
         radius: f32,
-        position: glam::Vec3,
+        position: Vec3,
     ) -> ColliderHandle {
         let collider = ColliderBuilder::capsule_y(half_height, radius)
-            .translation(position.to_rapier())
+            .translation(position)
             .build();
         self.collider_set.insert(collider)
     }
 
-    pub fn collider_translation(&self, handle: ColliderHandle) -> glam::Vec3 {
-        self.collider_set[handle].translation().from_rapier()
+    pub fn collider_translation(&self, handle: ColliderHandle) -> Vec3 {
+        self.collider_set[handle].translation()
     }
 
-    pub fn apply_collider_movement(&mut self, handle: ColliderHandle, movement: glam::Vec3) {
+    pub fn apply_collider_movement(&mut self, handle: ColliderHandle, movement: Vec3) {
         let collider = &mut self.collider_set[handle];
-        let new_pos = collider.translation() + movement.to_rapier();
+        let new_pos = collider.translation() + movement;
         collider.set_translation(new_pos);
     }
 
@@ -143,8 +145,8 @@ impl Physics {
         dt: f32,
         controller: &KinematicCharacterController,
         handle: ColliderHandle,
-        desired_translation: glam::Vec3,
-    ) -> (glam::Vec3, bool, Vec<glam::Vec3>) {
+        desired_translation: Vec3,
+    ) -> (Vec3, bool, Vec<Vec3>) {
         let collider = &self.collider_set[handle];
         let query_pipeline = self.broad_phase.as_query_pipeline(
             &DefaultQueryDispatcher,
@@ -160,23 +162,16 @@ impl Physics {
             &query_pipeline,
             collider.shape(),
             collider.position(),
-            desired_translation.to_rapier(),
+            desired_translation,
             |collision| {
-                collision_normals.push(collision.hit.normal1.from_rapier());
+                collision_normals.push(collision.hit.normal1);
             },
         );
 
         (
-            effective_movement.translation.from_rapier(),
+            effective_movement.translation,
             effective_movement.grounded,
             collision_normals,
         )
     }
-}
-
-fn chebyshev_distance(a: glam::IVec3, b: glam::IVec3) -> i32 {
-    (a.x - b.x)
-        .abs()
-        .max((a.y - b.y).abs())
-        .max((a.z - b.z).abs())
 }
