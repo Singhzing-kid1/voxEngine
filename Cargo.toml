@@ -1,5 +1,6 @@
 [package]
 name = "vox_engine"
+description = "voxel game engine"
 version = "0.3.0"
 edition = "2024"
 readme = "README.md"
