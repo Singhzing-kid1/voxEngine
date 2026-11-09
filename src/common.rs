@@ -1,24 +1,16 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
-use vulkano::{buffer::BufferContents, padded::Padded};
+use vulkano::buffer::BufferContents;
 
 use rapier3d::glamx::Vec3;
 
 use crate::{
     engine::Engine,
     physics::{Physics, entity::Entity},
-    shader::*,
 };
 
 pub(crate) const TICK_RATE: f32 = 1.0 / 60.0; // 1 / fps -> matches rapier internals
-pub(crate) const MAX_FRAME_TIME: f32 = 0.25;
-
-#[derive(BufferContents)]
-#[repr(C)]
-pub struct RayHit {
-    pub hit: u32,
-    pub distance: f32,
-}
+pub const MAX_FRAME_TIME: f32 = 0.25;
 
 #[repr(C)]
 #[derive(BufferContents, Clone, Copy)]
@@ -32,26 +24,6 @@ pub struct GlobalLight {
     pub position: Vec3,
     pub color: Vec3,
     pub intensity: f32,
-}
-
-impl From<GlobalLight> for render_compute_shader::GlobalLight {
-    fn from(sun: GlobalLight) -> Self {
-        Self {
-            position: Padded(sun.position.to_array()),
-            color: sun.color.to_array(),
-            intensity: sun.intensity,
-        }
-    }
-}
-
-impl From<GlobalLight> for apply_light_shader::GlobalLight {
-    fn from(sun: GlobalLight) -> Self {
-        Self {
-            position: Padded(sun.position.to_array()),
-            color: sun.color.to_array(),
-            intensity: sun.intensity,
-        }
-    }
 }
 
 pub trait Updateable {
