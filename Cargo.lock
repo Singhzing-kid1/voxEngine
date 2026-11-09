@@ -181,15 +181,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dear-imgui-reflect"
-version = "0.22.0"
-dependencies = [
- "dear-imgui-reflect-derive",
- "dear-imgui-rs",
- "glam 0.33.12",
-]
-
-[[package]]
 name = "dear-imgui-reflect-derive"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -198,6 +189,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.9",
+]
+
+[[package]]
+name = "dear-imgui-reflect-glam033"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9480f0c3b108e1e5ed0ec67425ac40de3aadf303dc3fd3a6b9e1825823175352"
+dependencies = [
+ "dear-imgui-reflect-derive",
+ "dear-imgui-rs",
+ "glam 0.33.12",
 ]
 
 [[package]]
@@ -1375,7 +1377,7 @@ version = "0.3.0"
 dependencies = [
  "ash",
  "dear-imgui-ash",
- "dear-imgui-reflect",
+ "dear-imgui-reflect-glam033",
  "dear-imgui-rs",
  "dear-imgui-sdl3",
  "getset",
