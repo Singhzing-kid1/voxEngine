@@ -1,10 +1,12 @@
 [package]
 name = "vox_engine"
 description = "voxel game engine"
-version = "0.3.4"
+authors = ["Veer Singh <veer.singh.real@pm.me>"]
+version = "0.3.5"
 edition = "2024"
 readme = "README.md"
-repository = "https://github.com/Singhzing-kid1/voxEngine"
+repository = "https://github.com/varda-games/voxEngine"
+documentation = "https://varda-games.github.io/voxEngine/"
 license = "Unlicense"
 keywords = ["gamedev", "game-engine", "graphics"]
 categories = ["game-engines"]
