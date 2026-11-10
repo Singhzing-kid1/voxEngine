@@ -2,7 +2,7 @@
 name = "vox_engine"
 description = "voxel game engine"
 authors = ["Veer Singh <veer.singh.real@pm.me>"]
-version = "0.3.5"
+version = "0.3.6"
 edition = "2024"
 readme = "README.md"
 repository = "https://github.com/varda-games/voxEngine"
