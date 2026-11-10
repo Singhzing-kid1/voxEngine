@@ -10,3 +10,4 @@ pub use dear_imgui_reflect;
 pub use rapier3d;
 pub use sdl3;
 pub use vulkano;
+pub use vulkano_shaders;

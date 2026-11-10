@@ -9,7 +9,7 @@ use crate::{
     physics::{Physics, entity::Entity},
 };
 
-pub(crate) const TICK_RATE: f32 = 1.0 / 60.0; // 1 / fps -> matches rapier internals
+pub const TICK_RATE: f32 = 1.0 / 60.0; // 1 / fps -> matches rapier internals
 pub const MAX_FRAME_TIME: f32 = 0.25;
 
 #[repr(C)]

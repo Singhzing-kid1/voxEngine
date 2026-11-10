@@ -14,6 +14,7 @@ categories = ["game-engines"]
 [dependencies]
 sdl3 = { version = "0.20.0", features = ["ash"] }
 vulkano = "0.35.2"
+vulkano-shaders = "0.35.0"
 ash = "0.38.0"
 dear-imgui-rs = {version = "0.22.0", optional = true}
 dear-imgui-ash = {version = "0.22.0", optional = true }
