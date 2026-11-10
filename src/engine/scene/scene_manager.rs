@@ -1,5 +1,8 @@
 use super::{Scene, Transition};
-use crate::engine::{Debug, Engine};
+use crate::engine::Engine;
+
+#[cfg(feature = "imgui")]
+use crate::engine::Debug;
 
 pub struct SceneManager {
     current: Box<dyn Scene>,
@@ -56,6 +59,7 @@ impl SceneManager {
         engine.finish_frame(frame);
     }
 
+    #[cfg(feature = "imgui")]
     pub fn render_debug(&mut self, engine: &mut Engine, debug: &mut Debug) {
         self.current.render_debug(engine, debug);
     }

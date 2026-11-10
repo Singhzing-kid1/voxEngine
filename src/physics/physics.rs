@@ -1,6 +1,7 @@
 use crate::world::World;
 
 use super::helpers;
+#[cfg(feature = "imgui")]
 use dear_imgui_reflect::ImGuiReflect;
 use getset::{CopyGetters, Setters};
 use rapier3d::{
@@ -13,35 +14,36 @@ use std::collections::HashMap;
 
 const CHUNK_LOAD_RADIUS: i32 = 4;
 
-#[derive(CopyGetters, Setters, ImGuiReflect)]
+#[derive(CopyGetters, Setters)]
+#[cfg_attr(feature = "imgui", derive(ImGuiReflect))]
 pub struct Physics {
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     rigid_body_set: RigidBodySet,
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     soft_body_set: SoftBodySet,
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     collider_set: ColliderSet,
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     physics_pipeline: PhysicsPipeline,
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     island_manager: IslandManager,
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     broad_phase: BroadPhaseBvh,
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     narrow_phase: NarrowPhase,
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     impulse_joint_set: ImpulseJointSet,
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     multibody_joint_set: MultibodyJointSet,
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     ccd_solver: CCDSolver,
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     integration_parameters: IntegrationParameters,
 
     #[getset(get_copy = "pub with_prefix")]
     gravity: Vec3,
 
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     loaded_chunks: HashMap<IVec3, ColliderHandle>,
     chunk_size: i32,
 }

@@ -2,6 +2,7 @@ pub mod helpers;
 pub mod scene;
 
 mod camera;
+#[cfg(feature = "imgui")]
 mod debug;
 mod engine;
 mod event;
@@ -11,6 +12,7 @@ mod render;
 
 //re-exports
 pub use camera::Camera;
+#[cfg(feature = "imgui")]
 pub use debug::Debug;
 pub use engine::Engine;
 pub use flags::Flags;

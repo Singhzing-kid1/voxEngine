@@ -1,11 +1,13 @@
 use crate::{common::Updateable, physics::Physics};
+#[cfg(feature = "imgui")]
 use dear_imgui_reflect::ImGuiReflect;
 use getset::{CopyGetters, Setters};
 use rapier3d::glamx::{Mat3, Mat4, Quat, Vec3, vec3, vec4};
 
-#[derive(Clone, ImGuiReflect, CopyGetters, Setters, Debug)]
+#[derive(Clone, CopyGetters, Setters, Debug)]
+#[cfg_attr(feature = "imgui", derive(ImGuiReflect))]
 pub struct Camera {
-    #[imgui(slider, min = 0.0, max = 200.0)]
+    #[cfg_attr(feature = "imgui", imgui(slider, min = 0.0, max = 200.0))]
     #[getset(get_copy = "pub with_prefix", set = "pub")]
     fov: f32,
     #[getset(get_copy = "pub with_prefix", set = "pub")]
@@ -21,10 +23,10 @@ pub struct Camera {
     #[getset(get_copy = "pub with_prefix")]
     right: Vec3,
     camera_orientation: Quat,
-    #[imgui(slider, min = 0.0, max = 360.0)]
+    #[cfg_attr(feature = "imgui", imgui(slider, min = 0.0, max = 360.0))]
     #[getset(get_copy = "pub with_prefix", set = "pub")]
     yaw: f32,
-    #[imgui(slider, min = -89.9, max = 89.9)]
+    #[cfg_attr(feature = "imgui", imgui(slider, min = -89.9, max = 89.9))]
     #[getset(get_copy = "pub with_prefix", set = "pub")]
     pitch: f32,
     dimensions: (u16, u16),

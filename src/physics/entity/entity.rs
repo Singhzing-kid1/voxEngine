@@ -1,3 +1,4 @@
+#[cfg(feature = "imgui")]
 use dear_imgui_reflect::ImGuiReflect;
 use getset::{CopyGetters, Setters};
 use rapier3d::{
@@ -8,9 +9,10 @@ use rapier3d::{
 
 use crate::{common::Updateable, physics::Physics};
 
-#[derive(Copy, Clone, ImGuiReflect, CopyGetters, Setters, Debug)]
+#[derive(Copy, Clone, CopyGetters, Setters, Debug)]
+#[cfg_attr(feature = "imgui", derive(ImGuiReflect))]
 pub struct Entity {
-    #[imgui(input)]
+    #[cfg_attr(feature = "imgui", imgui(input))]
     #[getset(get_copy = "pub with_prefix")]
     pub(super) mass: f32,
 
@@ -41,9 +43,9 @@ pub struct Entity {
     #[getset(get_copy = "pub with_prefix", set = "pub")]
     pub(super) r_pitch: f32,
 
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     pub(super) collider_handle: ColliderHandle,
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     pub(super) controller: KinematicCharacterController,
 
     pub(super) wish_dir: Vec3,

@@ -3,8 +3,10 @@ use rapier3d::glamx::{Vec3, Vec4, vec4};
 
 use super::AnimationType;
 
+#[cfg(feature = "imgui")]
 use dear_imgui_reflect::ImGuiReflect;
 
+#[cfg(feature = "imgui")]
 impl ImGuiReflect for AnimationType {
     fn imgui_reflect(
         &mut self,
@@ -39,7 +41,8 @@ impl Default for AnimationType {
     }
 }
 
-#[derive(Clone, Default, CopyGetters, Setters, Getters, ImGuiReflect)]
+#[cfg_attr(feature = "imgui", derive(ImGuiReflect))]
+#[derive(Clone, Default, CopyGetters, Setters, Getters)]
 pub struct Light {
     #[getset(get_copy = "pub with_prefix")]
     position: Vec3,

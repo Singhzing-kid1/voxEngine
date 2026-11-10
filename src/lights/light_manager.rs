@@ -1,3 +1,4 @@
+#[cfg(feature = "imgui")]
 use dear_imgui_reflect::ImGuiReflect;
 use getset::Getters;
 use std::collections::HashMap;
@@ -8,7 +9,8 @@ use crate::common::LocalLight;
 
 use super::{AnimationType, light::Light};
 
-#[derive(ImGuiReflect, Getters)]
+#[derive(Getters)]
+#[cfg_attr(feature = "imgui", derive(ImGuiReflect))]
 pub struct LightManager {
     lights: HashMap<String, Light>,
     #[getset(get = "pub with_prefix")]

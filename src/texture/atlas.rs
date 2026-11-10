@@ -5,31 +5,34 @@ use vulkano::{
     image::{sampler::Sampler, view::ImageView},
 };
 
+#[cfg(feature = "imgui")]
 use dear_imgui_reflect::ImGuiReflect;
 
 use super::{builder::AtlasBuilder, texture::Texture};
 use crate::common::Buildable;
 
 #[allow(unused)]
-#[derive(ImGuiReflect, CloneGetters, CopyGetters)]
+#[derive(CloneGetters, CopyGetters)]
+#[cfg_attr(feature = "imgui", derive(ImGuiReflect))]
 pub struct Atlas {
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     #[getset(get_clone = "pub with_prefix")]
     pub(super) atlas: Arc<ImageView>,
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     #[getset(get_clone = "pub with_prefix")]
     pub(super) atlas_sampler: Arc<Sampler>,
 
-    #[imgui(slider, min = -4.0, max = 0.0)]
+    #[cfg_attr(feature = "imgui", imgui(slider, min = -4.0, max = 0.0))]
     #[getset(get_copy = "pub with_prefix")]
     pub(super) atlas_lod_bias: f32,
 
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     pub(super) atlas_format: Format,
 
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     pub(super) layers: u32,
 
-    #[imgui(skip)]
+    #[cfg_attr(feature = "imgui", imgui(skip))]
     pub(super) raw_textures: Vec<Texture>,
 }
 

@@ -1,6 +1,10 @@
 use super::Transition;
-use crate::engine::{Debug, Engine, Frame};
+use crate::engine::{Engine, Frame};
 
+#[cfg(feature = "imgui")]
+use crate::engine::Debug;
+
+#[cfg(feature = "imgui")]
 use dear_imgui_reflect::Inspector;
 
 pub trait Scene {
@@ -18,8 +22,10 @@ pub trait Scene {
 
     fn render_as_overlay(&mut self, _engine: &mut Engine, _frame: &mut Frame) {}
 
+    #[cfg(feature = "imgui")]
     fn render_debug(&mut self, _engine: &mut Engine, _debug: &mut Debug) {}
 
+    #[cfg(feature = "imgui")]
     fn imgui_reflect_dyn(&mut self, _ui: &mut Inspector<'_, '_>) -> bool {
         false
     }
