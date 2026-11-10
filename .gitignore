@@ -10,3 +10,6 @@ perf.data.old
 # Added by cargo
 
 /target
+docs/debug/
+docs/.rustc_info.json
+docs/.rustdoc_fingerprint.json

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["create_descriptor_set","create_image","create_image_array","create_image_array_with_mipmap","create_pipeline","get_layout"]};

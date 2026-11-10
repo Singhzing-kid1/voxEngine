@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["MAX_FRAME_TIME"],"fn":["asset_path"],"struct":["GlobalLight","LocalLight"],"trait":["AABB","Buildable","Builder","HasEntity","Updateable"]};

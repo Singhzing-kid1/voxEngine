@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DescriptorResource"],"mod":["helpers","scene"],"struct":["Camera","Debug","Engine","Flags","Frame"],"trait":["Record"]};

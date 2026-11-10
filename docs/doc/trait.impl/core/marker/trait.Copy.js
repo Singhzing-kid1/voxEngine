@@ -1,0 +1,9 @@
+(function() {
+    const implementors = Object.fromEntries([["vox_engine",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.99.1/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"struct\" href=\"vox_engine/physics/entity/struct.Entity.html\" title=\"struct vox_engine::physics::entity::Entity\">Entity</a>",0],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.99.1/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"struct\" href=\"vox_engine/engine/struct.Flags.html\" title=\"struct vox_engine::engine::Flags\">Flags</a>",0],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.99.1/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"struct\" href=\"vox_engine/common/struct.GlobalLight.html\" title=\"struct vox_engine::common::GlobalLight\">GlobalLight</a>",0],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.99.1/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"struct\" href=\"vox_engine/common/struct.LocalLight.html\" title=\"struct vox_engine::common::LocalLight\">LocalLight</a>",0]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":59,"fragment_lengths":[1133]}
