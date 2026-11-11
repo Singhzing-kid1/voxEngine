@@ -24,7 +24,10 @@ use vulkano::{
     image::{ImageAspects, ImageSubresourceLayers},
 };
 
-use std::ops::Add;
+use std::{
+    ops::Add,
+    path::{Path, PathBuf},
+};
 
 use crate::{
     common::Builder,
@@ -47,23 +50,21 @@ pub struct AtlasBuilder {
 }
 
 impl AtlasBuilder {
-    pub fn add_image(mut self, path: impl Into<String>) -> Self {
+    pub fn add_image(mut self, path: PathBuf) -> Self {
         self.raw_textures
             .get_or_insert_with(Vec::new)
-            .push(Texture::new(path.into()));
+            .push(Texture::new(&path));
         self.layers = Some(self.layers.get_or_insert(0).add(1));
         self
     }
 
     pub fn add_image_from_sprite_sheet(
         mut self,
-        path: impl Into<String>,
+        path: PathBuf,
         sprite_size: [u32; 2],
         texture_size: [u32; 2],
     ) -> Self {
         let (texture_width, texture_height) = (texture_size[0], texture_size[1]);
-
-        let str_path: &str = &path.into();
 
         for column in 0..texture_width {
             for row in 0..texture_height {
@@ -71,7 +72,7 @@ impl AtlasBuilder {
 
                 self.raw_textures
                     .get_or_insert_with(Vec::new)
-                    .push(Texture::from_sprite_sheet(str_path, idx, sprite_size));
+                    .push(Texture::from_sprite_sheet(&path, idx, sprite_size));
                 self.layers = Some(self.layers.get_or_insert(0).add(1));
             }
         }

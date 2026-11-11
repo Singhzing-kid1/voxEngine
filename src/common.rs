@@ -37,21 +37,6 @@ pub trait HasEntity: Debug {
     fn entity_mut(&mut self) -> &mut Entity;
 }
 
-pub fn asset_path(path: &str) -> PathBuf {
-    let rel = path.trim_start_matches(['/', '\\']);
-
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            let candidate = dir.join(rel);
-            if candidate.exists() {
-                return candidate;
-            }
-        }
-    }
-
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(rel)
-}
-
 pub trait Builder {
     type Output;
     type Error;

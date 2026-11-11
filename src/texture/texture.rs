@@ -2,8 +2,7 @@ use getset::{CopyGetters, Getters};
 use png::{Decoder, Transformations};
 use std::fs::File;
 use std::io::BufReader;
-
-use crate::common::asset_path;
+use std::path::PathBuf;
 
 #[allow(unused)]
 #[derive(CopyGetters, Getters, Clone)]
@@ -15,8 +14,8 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn new(path: impl AsRef<str>) -> Self {
-        let file = File::open(asset_path(path.as_ref())).unwrap();
+    pub fn new(path: &PathBuf) -> Self {
+        let file = File::open(path).unwrap();
 
         let mut decoder = Decoder::new(BufReader::new(file));
         decoder.set_transformations(Transformations::EXPAND | Transformations::STRIP_16);
@@ -35,11 +34,11 @@ impl Texture {
     }
 
     pub fn from_sprite_sheet(
-        path: impl AsRef<str>,
+        path: &PathBuf,
         sprite_index: [u32; 2],
         sprite_size: [u32; 2],
     ) -> Self {
-        let file = File::open(asset_path(path.as_ref())).unwrap();
+        let file = File::open(path).unwrap();
 
         let mut decoder = Decoder::new(BufReader::new(file));
         decoder.set_transformations(Transformations::EXPAND | Transformations::STRIP_16);
