@@ -7,7 +7,11 @@ use vulkano::{
     },
     device::Device,
     format::Format,
-    image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView},
+    image::{
+        Image, ImageCreateInfo, ImageType, ImageUsage,
+        sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo, SamplerMipmapMode},
+        view::ImageView,
+    },
     memory::allocator::{
         AllocationCreateInfo, FreeListAllocator, GenericMemoryAllocator, MemoryTypeFilter,
     },
@@ -60,6 +64,38 @@ pub fn create_image(
             format,
             extent,
             usage,
+            ..Default::default()
+        },
+        AllocationCreateInfo {
+            memory_type_filter: mem_filter,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let view = ImageView::new_default(image.clone()).unwrap();
+
+    (image, view)
+}
+
+pub fn create_image_with_mipmap(
+    image_type: ImageType,
+    extent: [u32; 3],
+    format: Format,
+    usage: ImageUsage,
+    mem_filter: MemoryTypeFilter,
+    allocator: Arc<GenericMemoryAllocator<FreeListAllocator>>,
+) -> (Arc<Image>, Arc<ImageView>) {
+    let mip_levels = (extent[0] as f32).log2().floor() as u32 + 1;
+
+    let image = Image::new(
+        allocator.clone(),
+        ImageCreateInfo {
+            image_type,
+            format,
+            extent,
+            usage,
+            mip_levels,
             ..Default::default()
         },
         AllocationCreateInfo {
@@ -137,6 +173,30 @@ pub fn create_image_array_with_mipmap(
     let view = ImageView::new_default(image.clone()).unwrap();
 
     (image, view)
+}
+
+pub fn create_sampler(
+    mag_filter: Filter,
+    min_filter: Filter,
+    mipmap_mode: SamplerMipmapMode,
+    address_mode: [SamplerAddressMode; 3],
+    device: Arc<Device>,
+    lod: Option<f32>,
+    anisotropy: Option<f32>,
+) -> Arc<Sampler> {
+    Sampler::new(
+        device.clone(),
+        SamplerCreateInfo {
+            mag_filter,
+            min_filter,
+            mipmap_mode,
+            address_mode,
+            lod: 0f32..=lod.unwrap_or(0f32),
+            anisotropy,
+            ..Default::default()
+        },
+    )
+    .unwrap()
 }
 
 pub fn get_layout(pipeline: Arc<ComputePipeline>, index: usize) -> Arc<DescriptorSetLayout> {
