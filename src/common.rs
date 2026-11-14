@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
-use vulkano::buffer::BufferContents;
+use vulkano::{buffer::BufferContents, pipeline::graphics::vertex_input::Vertex};
 
 use rapier3d::glamx::Vec3;
 
@@ -24,6 +24,15 @@ pub struct GlobalLight {
     pub position: Vec3,
     pub color: Vec3,
     pub intensity: f32,
+}
+
+#[derive(BufferContents, Vertex, Clone, Copy)]
+#[repr(C)]
+pub struct UiVertex {
+    #[format(R32G32_SFLOAT)]
+    pub pos: [f32; 2],
+    #[format(R8G8B8A8_UNORM)]
+    pub color: [u8; 4],
 }
 
 pub trait Updateable {

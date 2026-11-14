@@ -16,15 +16,29 @@ use vulkano::{
         AllocationCreateInfo, FreeListAllocator, GenericMemoryAllocator, MemoryTypeFilter,
     },
     pipeline::{
-        ComputePipeline, Pipeline, PipelineLayout, PipelineShaderStageCreateInfo,
-        compute::ComputePipelineCreateInfo, layout::PipelineDescriptorSetLayoutCreateInfo,
+        ComputePipeline, DynamicState, GraphicsPipeline, Pipeline, PipelineLayout,
+        PipelineShaderStageCreateInfo,
+        compute::ComputePipelineCreateInfo,
+        graphics::{
+            GraphicsPipelineCreateInfo,
+            color_blend::{AttachmentBlend, ColorBlendAttachmentState, ColorBlendState},
+            input_assembly::InputAssemblyState,
+            multisample::MultisampleState,
+            rasterization::{CullMode, RasterizationState},
+            subpass::PipelineRenderingCreateInfo,
+            vertex_input::{Vertex, VertexDefinition},
+            viewport::ViewportState,
+        },
+        layout::PipelineDescriptorSetLayoutCreateInfo,
     },
     shader::ShaderModule,
 };
 
+use crate::common::UiVertex;
+
 use super::DescriptorResource;
 
-pub fn create_pipeline(
+pub fn create_compute_pipeline(
     shader: Arc<ShaderModule>,
     entry_point: &str,
     device: Arc<Device>,
@@ -45,6 +59,66 @@ pub fn create_pipeline(
         device.clone(),
         None,
         ComputePipelineCreateInfo::stage_layout(stage, layout),
+    )
+    .unwrap()
+}
+
+pub fn create_graphics_pipeline(
+    vertex: Arc<ShaderModule>,
+    fragment: Arc<ShaderModule>,
+    entry_point: &str,
+    format: Format,
+    device: Arc<Device>,
+) -> Arc<GraphicsPipeline> {
+    let vs = vertex.entry_point(entry_point).unwrap();
+    let fs = fragment.entry_point(entry_point).unwrap();
+
+    let vertex_input_state = UiVertex::per_vertex().definition(&vs).unwrap();
+
+    let stages = [
+        PipelineShaderStageCreateInfo::new(vs),
+        PipelineShaderStageCreateInfo::new(fs),
+    ];
+
+    let layout = PipelineLayout::new(
+        device.clone(),
+        PipelineDescriptorSetLayoutCreateInfo::from_stages(&stages)
+            .into_pipeline_layout_create_info(device.clone())
+            .unwrap(),
+    )
+    .unwrap();
+
+    let rendering_info = PipelineRenderingCreateInfo {
+        color_attachment_formats: vec![Some(format)],
+        ..Default::default()
+    };
+
+    GraphicsPipeline::new(
+        device.clone(),
+        None,
+        GraphicsPipelineCreateInfo {
+            stages: stages.into_iter().collect(),
+            vertex_input_state: Some(vertex_input_state),
+            input_assembly_state: Some(InputAssemblyState::default()),
+            viewport_state: Some(ViewportState::default()),
+            rasterization_state: Some(RasterizationState {
+                cull_mode: CullMode::None,
+                ..Default::default()
+            }),
+            multisample_state: Some(MultisampleState::default()),
+            color_blend_state: Some(ColorBlendState::with_attachment_states(
+                rendering_info.color_attachment_formats.len() as u32,
+                ColorBlendAttachmentState {
+                    blend: Some(AttachmentBlend::alpha()),
+                    ..Default::default()
+                },
+            )),
+            dynamic_state: [DynamicState::Viewport, DynamicState::Scissor]
+                .into_iter()
+                .collect(),
+            subpass: Some(rendering_info.into()),
+            ..GraphicsPipelineCreateInfo::layout(layout)
+        },
     )
     .unwrap()
 }
@@ -199,8 +273,8 @@ pub fn create_sampler(
     .unwrap()
 }
 
-pub fn get_layout(pipeline: Arc<ComputePipeline>, index: usize) -> Arc<DescriptorSetLayout> {
-    pipeline.layout().set_layouts().get(index).unwrap().clone()
+pub fn get_layout(layout: &Arc<PipelineLayout>, index: usize) -> Arc<DescriptorSetLayout> {
+    layout.set_layouts().get(index).unwrap().clone()
 }
 
 pub fn create_descriptor_set(

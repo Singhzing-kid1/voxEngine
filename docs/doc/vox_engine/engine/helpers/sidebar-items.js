@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["create_descriptor_set","create_image","create_image_array","create_image_array_with_mipmap","create_pipeline","get_layout"]};
+window.SIDEBAR_ITEMS = {"fn":["create_compute_pipeline","create_descriptor_set","create_graphics_pipeline","create_image","create_image_array","create_image_array_with_mipmap","create_image_with_mipmap","create_sampler","get_layout"]};

@@ -28,6 +28,7 @@ pub struct Atlas {
 
     #[getset(get_copy = "pub with_prefix")]
     lod_bias: f32,
+    #[getset(get_clone = "pub with_prefix")]
     format: Format,
 
     texture_count: u32,

@@ -185,6 +185,7 @@ impl Engine {
 
         let device_features = DeviceFeatures {
             sampler_anisotropy: true,
+            dynamic_rendering: true,
             ..Default::default()
         };
 
@@ -290,7 +291,10 @@ impl Engine {
                 1,
             ],
             image_format,
-            ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC | ImageUsage::TRANSFER_DST,
+            ImageUsage::STORAGE
+                | ImageUsage::TRANSFER_SRC
+                | ImageUsage::TRANSFER_DST
+                | ImageUsage::COLOR_ATTACHMENT,
             MemoryTypeFilter::PREFER_DEVICE,
             memory_allocator.clone(),
         );

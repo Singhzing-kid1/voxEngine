@@ -2,7 +2,7 @@
 name = "vox_engine"
 description = "voxel game engine"
 authors = ["Veer Singh <veer.singh.real@pm.me>"]
-version = "0.4.0"
+version = "0.5.0"
 edition = "2024"
 readme = "README.md"
 repository = "https://github.com/varda-games/voxEngine"
@@ -22,6 +22,7 @@ dear-imgui-sdl3 = {version = "0.22.0", optional = true }
 dear-imgui-reflect = {package = "dear-imgui-reflect-glam033", version = "0.22.0", features = ["glam"], optional = true }
 sdl3-sys = "0.7.2"
 getset = "0.1.7"
+dyn-clone = "1.0.20"
 
 png = "0.18.1"
 

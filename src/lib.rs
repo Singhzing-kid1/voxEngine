@@ -3,7 +3,7 @@ pub mod engine;
 pub mod lights;
 pub mod physics;
 pub mod texture;
-//pub mod ui;
+pub mod ui;
 pub mod world;
 
 #[cfg(feature = "imgui")]
