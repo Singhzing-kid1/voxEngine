@@ -5,7 +5,10 @@ use std::collections::HashMap;
 
 use rapier3d::glamx::{Vec3, Vec4};
 
-use crate::common::LocalLight;
+use crate::{
+    common::{LocalLight, Updateable},
+    physics::Physics,
+};
 
 use super::{AnimationType, light::Light};
 
@@ -85,27 +88,29 @@ impl LightManager {
             })
             .count() as u32
     }
+}
 
-    pub fn update_lights(&mut self) {
+impl Updateable for LightManager {
+    fn update(&mut self, alpha: f32, _physics: &mut Physics) {
         self.lights.retain(|_, light| {
             let lifetime = light.get_lifetime();
             match lifetime {
                 None => {
-                    light.apply_position_animation();
+                    light.apply_position_animation(alpha);
                     light.apply_color_animation();
 
-                    return true;
+                    true
                 }
                 Some(lifetime) => {
-                    if lifetime <= 0.0 {
+                    if lifetime <= 0f64 {
                         return false;
-                    };
+                    }
 
-                    light.apply_position_animation();
+                    light.apply_position_animation(alpha);
                     light.apply_color_animation();
                     light.decay();
 
-                    return true;
+                    true
                 }
             }
         });

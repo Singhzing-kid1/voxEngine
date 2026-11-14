@@ -1,5 +1,6 @@
 use super::Transition;
 use crate::engine::{Engine, Frame};
+use dyn_clone::{DynClone, clone_trait_object};
 
 #[cfg(feature = "imgui")]
 use crate::engine::Debug;

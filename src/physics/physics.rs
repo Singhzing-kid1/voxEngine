@@ -1,5 +1,7 @@
 use crate::world::World;
 
+use std::sync::{Arc, Mutex};
+
 use super::helpers;
 #[cfg(feature = "imgui")]
 use dear_imgui_reflect::ImGuiReflect;
@@ -103,7 +105,7 @@ impl Physics {
     }
 
     pub fn step(&mut self) {
-        self.physics_pipeline.step(
+        let mut pipeline = self.physics_pipeline.step(
             self.gravity,
             &self.integration_parameters,
             &mut self.island_manager,

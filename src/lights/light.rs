@@ -77,11 +77,11 @@ impl Light {
 }
 
 impl Light {
-    pub fn apply_position_animation(&mut self) {
+    pub fn apply_position_animation(&mut self, alpha: f32) {
         match &mut self.position_animation {
             None => {}
             Some(AnimationType::Follow(entity)) => {
-                self.position = entity.borrow().entity().get_position();
+                self.position = entity.borrow().entity().interpolated_position(alpha);
             }
             _ => {}
         }

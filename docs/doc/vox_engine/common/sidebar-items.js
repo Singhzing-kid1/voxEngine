@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["MAX_FRAME_TIME","TICK_RATE"],"struct":["GlobalLight","LocalLight"],"trait":["AABB","Buildable","Builder","HasEntity","Updateable"]};
+window.SIDEBAR_ITEMS = {"constant":["MAX_FRAME_TIME","TICK_RATE"],"struct":["GlobalLight","LocalLight","UiVertex"],"trait":["AABB","Buildable","Builder","HasEntity","Updateable"]};
